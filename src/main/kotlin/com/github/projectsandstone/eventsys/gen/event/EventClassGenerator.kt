@@ -51,6 +51,7 @@ import com.github.jonathanxd.codeapi.util.codeType
 import com.github.jonathanxd.codeapi.util.source.CodeArgumentUtil
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.Debug
+import com.github.projectsandstone.eventsys.event.Cancellable
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.annotation.Name
 import com.github.projectsandstone.eventsys.event.annotation.Validate
@@ -167,7 +168,7 @@ internal object EventClassGenerator {
         val body = codeClass.body as MutableCodeSource
 
         this.genFields(body, properties)
-        this.genConstructor(body, properties)
+        this.genConstructor(classType, body, properties)
         this.genMethods(classType, body, properties)
 
         extensions.forEach { ext ->
@@ -259,11 +260,16 @@ internal object EventClassGenerator {
                         listOf(CodeAPI.accessThisField(propertiesFieldType, propertiesFieldName))))
     }
 
-    private fun genConstructor(body: MutableCodeSource, properties: List<PropertyInfo>) {
+    private fun genConstructor(base: Class<*>, body: MutableCodeSource, properties: List<PropertyInfo>) {
         val parameters = mutableListOf<CodeParameter>()
+
+        val cancellable = Cancellable::class.java.isAssignableFrom(base)
 
         properties.forEach {
             val name = it.propertyName
+
+            if(cancellable && name == "cancelled")
+                return@forEach
 
             val valueType: CodeType = CodeAPI.getJavaType(it.type)
 
@@ -288,7 +294,11 @@ internal object EventClassGenerator {
         properties.forEach {
             val valueType: CodeType = CodeAPI.getJavaType(it.type)
 
-            constructorBody += CodeAPI.setThisField(valueType, it.propertyName, CodeAPI.accessLocalVariable(valueType, it.propertyName))
+            if(cancellable && it.propertyName == "cancelled") {
+                constructorBody += CodeAPI.setThisField(valueType, it.propertyName, Literals.FALSE)
+            } else {
+                constructorBody += CodeAPI.setThisField(valueType, it.propertyName, CodeAPI.accessLocalVariable(valueType, it.propertyName))
+            }
         }
 
         genConstructorPropertiesMap(constructorBody, properties)
@@ -620,8 +630,8 @@ internal object EventClassGenerator {
                     val getter = getGetter(type, propertyName) ?: getGetter(method.declaringClass, propertyName)
                     val setter = getSetter(type, propertyName, propertyType) ?: getSetter(method.declaringClass, propertyName, propertyType)
 
-                    val getterName = if (getter != null) "get${propertyName.capitalize()}" else null
-                    val setterName = if (setter != null) "set${propertyName.capitalize()}" else null
+                    val getterName = if (getter != null) getter.name else null
+                    val setterName = if (setter != null) setter.name else null
 
                     val validator = setter?.getDeclaredAnnotation(Validate::class.java)?.value?.java
 

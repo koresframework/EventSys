@@ -27,6 +27,7 @@
  */
 package com.github.projectsandstone.eventsys.test.event;
 
+import com.github.projectsandstone.eventsys.event.Cancellable;
 import com.github.projectsandstone.eventsys.event.Event;
 import com.github.projectsandstone.eventsys.event.annotation.Validate;
 import com.github.projectsandstone.eventsys.event.property.Property;
@@ -37,7 +38,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Objects;
 import java.util.function.Function;
 
-public interface MessageEvent extends Event {
+public interface MessageEvent extends Event, Cancellable {
 
     String getMessage();
     @Validate(NonNullValidator.class)
