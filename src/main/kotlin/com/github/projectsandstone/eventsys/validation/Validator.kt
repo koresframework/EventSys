@@ -25,29 +25,15 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.gen
+package com.github.projectsandstone.eventsys.validation
 
-import java.util.*
+import com.github.projectsandstone.eventsys.event.property.Property
 
-internal data class GeneratedEventClass<T>(val javaClass: Class<T>, val bytes: ByteArray, val disassembled: Lazy<String>) {
+/**
+ * This class must be singleton and have a INSTANCE field.
+ */
+interface Validator<V> {
 
-    override fun hashCode(): Int {
-        var result = 1
-
-        result = 31 * result + javaClass.hashCode()
-
-        result = 31 * result + Arrays.hashCode(bytes)
-
-        return result
-    }
-
-    override fun equals(other: Any?): Boolean {
-
-        if (other != null && other is GeneratedEventClass<*>)
-            return this.javaClass == other.javaClass
-                    && Arrays.equals(this.bytes, other.bytes)
-
-        return super.equals(other)
-    }
+    fun validate(obj: V, property: Property<V>)
 
 }

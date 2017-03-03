@@ -1,4 +1,4 @@
-/**
+/*
  *      EventImpl - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
@@ -53,6 +53,7 @@ import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.Debug
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.annotation.Name
+import com.github.projectsandstone.eventsys.event.annotation.Validate
 import com.github.projectsandstone.eventsys.event.property.*
 import com.github.projectsandstone.eventsys.event.property.primitive.*
 import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
@@ -63,6 +64,7 @@ import com.github.projectsandstone.eventsys.reflect.getName
 import com.github.projectsandstone.eventsys.reflect.isEqual
 import com.github.projectsandstone.eventsys.reflect.parameterNames
 import com.github.projectsandstone.eventsys.util.BooleanConsumer
+import com.github.projectsandstone.eventsys.validation.Validator
 import java.lang.Void
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -402,7 +404,7 @@ internal object EventClassGenerator {
             }
 
             if (it.isMutable()) {
-                genSetter(type, body, it.setterName!!, name, it.type)
+                genSetter(type, body, it.setterName!!, name, it.type, it.validator)
             }
         }
 
@@ -473,15 +475,33 @@ internal object EventClassGenerator {
         }
     }
 
-    private fun genSetter(type: Class<*>, body: MutableCodeSource, setterName: String, name: String, propertyType: Class<*>?) {
+    private fun genSetter(type: Class<*>, body: MutableCodeSource, setterName: String, name: String, propertyType: Class<*>?, validator: Class<out Validator<out Any>>?) {
         val fieldType = propertyType?.let { CodeAPI.getJavaType(it) } ?: getPropertyType(type, name)
+
+
+        val base = if(validator == null)
+            CodeSource.empty()
+        else
+            CodeSource.fromVarArgs(
+                    CodeAPI.invokeInterface(Validator::class.java, CodeAPI.accessStaticField(validator, validator, "INSTANCE"),
+                            "validate",
+                            CodeAPI.voidTypeSpec(Any::class.java, Property::class.java),
+                            listOf(CodeAPI.accessLocalVariable(fieldType, name),
+                                    CodeAPI.invokeInterface(
+                                            PropertyHolder::class.java,
+                                            CodeAPI.accessThis(),
+                                            "getProperty",
+                                            CodeAPI.typeSpec(Property::class.java, Class::class.java, String::class.java),
+                                            listOf(Literals.CLASS(fieldType), Literals.STRING(name))
+                                    )))
+            )
 
         val method = MethodDeclarationBuilder.builder()
                 .withModifiers(EnumSet.of(CodeModifier.PUBLIC))
                 .withReturnType(Types.VOID)
                 .withParameters(CodeAPI.parameter(fieldType, name))
                 .withName(setterName)
-                .withBody(CodeAPI.sourceOfParts(CodeAPI.setThisField(fieldType, name, CodeAPI.accessLocalVariable(fieldType, name))))
+                .withBody(base + CodeAPI.setThisField(fieldType, name, CodeAPI.accessLocalVariable(fieldType, name)))
                 .build()
 
         body += method
@@ -494,7 +514,7 @@ internal object EventClassGenerator {
                     .withReturnType(Types.VOID)
                     .withParameters(CodeAPI.parameter(castType, name))
                     .withName(setterName)
-                    .withBody(CodeAPI.sourceOfParts(CodeAPI.setThisField(fieldType, name, CodeAPI.cast(castType, fieldType, CodeAPI.accessLocalVariable(castType, name)))))
+                    .withBody(base + CodeAPI.setThisField(fieldType, name, CodeAPI.cast(castType, fieldType, CodeAPI.accessLocalVariable(castType, name))))
                     .build()
         }
     }
@@ -513,32 +533,29 @@ internal object EventClassGenerator {
         body += getPropertiesMethod
     }
 
-    private fun hasSetter(type: Class<*>, name: String, propertyType: Class<*>): Boolean {
+    private fun getSetter(type: Class<*>, name: String, propertyType: Class<*>): Method? {
 
         val capitalized = name.capitalize()
 
         return try {
             type.getMethod("set$capitalized", propertyType)
-            true
         } catch (t: Throwable) {
-            false
+            null
         }
     }
 
-    private fun hasGetter(type: Class<*>, name: String): Boolean {
+    private fun getGetter(type: Class<*>, name: String): Method? {
 
         val capitalized = name.capitalize()
 
         return try {
             type.getMethod("is$capitalized")
-            true
         } catch (t: Throwable) {
-            false
-        } || try {
+            null
+        } ?: try {
             type.getMethod("get$capitalized")
-            true
         } catch (t: Throwable) {
-            false
+            null
         }
     }
 
@@ -599,10 +616,16 @@ internal object EventClassGenerator {
                 val propertyType = if (isGet || isIs) method.returnType else method.parameterTypes[0]
 
                 if (!list.any { it.propertyName == propertyName }) {
-                    val getterName = if (hasGetter(type, propertyName) || hasGetter(method.declaringClass, propertyName)) "get${propertyName.capitalize()}" else null
-                    val setterName = if (hasSetter(type, propertyName, propertyType) || hasSetter(method.declaringClass, propertyName, propertyType)) "set${propertyName.capitalize()}" else null
 
-                    list += PropertyInfo(propertyName, getterName, setterName, propertyType)
+                    val getter = getGetter(type, propertyName) ?: getGetter(method.declaringClass, propertyName)
+                    val setter = getSetter(type, propertyName, propertyType) ?: getSetter(method.declaringClass, propertyName, propertyType)
+
+                    val getterName = if (getter != null) "get${propertyName.capitalize()}" else null
+                    val setterName = if (setter != null) "set${propertyName.capitalize()}" else null
+
+                    val validator = setter?.getDeclaredAnnotation(Validate::class.java)?.value?.java
+
+                    list += PropertyInfo(propertyName, getterName, setterName, propertyType, validator)
                 }
 
             }

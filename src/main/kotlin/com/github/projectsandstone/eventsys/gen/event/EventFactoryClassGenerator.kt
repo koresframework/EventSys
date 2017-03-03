@@ -1,4 +1,4 @@
-/**
+/*
  *      EventImpl - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
@@ -53,6 +53,7 @@ import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.annotation.Extension
 import com.github.projectsandstone.eventsys.event.annotation.Mutable
 import com.github.projectsandstone.eventsys.event.annotation.Name
+import com.github.projectsandstone.eventsys.event.annotation.Validate
 import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
 import com.github.projectsandstone.eventsys.gen.save.ClassSaver
 import com.github.projectsandstone.eventsys.reflect.findImplementation
@@ -173,7 +174,8 @@ internal object EventFactoryClassGenerator {
                                     propertyName = name,
                                     type = parameter.type,
                                     getterName = getterName,
-                                    setterName = setterName
+                                    setterName = setterName,
+                                    validator = parameter.getDeclaredAnnotation(Validate::class.java)?.value?.java
                             )
                         }
                     }

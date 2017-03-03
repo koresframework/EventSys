@@ -1,4 +1,4 @@
-/**
+/*
  *      EventImpl - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)

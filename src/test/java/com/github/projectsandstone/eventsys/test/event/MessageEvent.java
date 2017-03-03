@@ -1,4 +1,4 @@
-/**
+/*
  *      EventImpl - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
@@ -28,13 +28,31 @@
 package com.github.projectsandstone.eventsys.test.event;
 
 import com.github.projectsandstone.eventsys.event.Event;
+import com.github.projectsandstone.eventsys.event.annotation.Validate;
+import com.github.projectsandstone.eventsys.event.property.Property;
+import com.github.projectsandstone.eventsys.validation.Validator;
 
+import org.jetbrains.annotations.NotNull;
+
+import java.util.Objects;
 import java.util.function.Function;
 
 public interface MessageEvent extends Event {
 
     String getMessage();
+    @Validate(NonNullValidator.class)
     void setMessage(String message);
 
     void transform(Function<String, String> transformer);
+
+
+    class NonNullValidator implements Validator<String> {
+
+        public static final NonNullValidator INSTANCE = new NonNullValidator();
+
+        @Override
+        public void validate(String obj, @NotNull Property<String> property) {
+            Objects.requireNonNull(obj);
+        }
+    }
 }
