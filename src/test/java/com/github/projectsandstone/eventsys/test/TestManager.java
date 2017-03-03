@@ -61,7 +61,7 @@ public class TestManager {
 
         ktEvent.reset();
 
-        Assert.assertEquals("hello world", messageEvent.getMessage());
+        Assert.assertEquals("[TAG] hello world", messageEvent.getMessage());
     }
 
 
