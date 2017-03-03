@@ -58,7 +58,8 @@ import com.github.projectsandstone.eventsys.event.property.primitive.*
 import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
 import com.github.projectsandstone.eventsys.gen.genericFromTypeInfo
 import com.github.projectsandstone.eventsys.gen.save.ClassSaver
-import com.github.projectsandstone.eventsys.reflect.getImplementation
+import com.github.projectsandstone.eventsys.reflect.findImplementation
+import com.github.projectsandstone.eventsys.reflect.getName
 import com.github.projectsandstone.eventsys.reflect.isEqual
 import com.github.projectsandstone.eventsys.reflect.parameterNames
 import com.github.projectsandstone.eventsys.util.BooleanConsumer
@@ -68,6 +69,7 @@ import java.lang.reflect.Modifier
 import java.lang.reflect.Type
 import java.util.*
 import java.util.function.*
+import kotlin.reflect.KClass
 import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.jvm.jvmErasure
 
@@ -113,30 +115,6 @@ internal object EventClassGenerator {
         }
     }
 
-    private fun getName(base: String): String {
-
-        var base_ = base
-        var count = 0
-
-        fun findClass(base: String): Boolean =
-                try {
-                    Class.forName(base)
-                    true
-                } catch (t: Throwable) {
-                    false
-                }
-
-        while (findClass(base_)) {
-            if (count == 0)
-                base_ += "\$"
-
-            base_ += "$base$count"
-            count++
-        }
-
-        return base_
-    }
-
     @Suppress("UNCHECKED_CAST")
     fun <T : Event> genImplementation(eventClassSpecification: EventClassSpecification<T>): Class<T> {
 
@@ -169,14 +147,16 @@ internal object EventClassGenerator {
         } else
             codeClassBuilder = codeClassBuilder.withSuperClass(type)
 
-        val properties = this.getProperties(classType) + additionalProperties
+        val extensionImplementations = mutableListOf<Class<*>>()
 
         extensions.forEach {
             it.implement?.let {
                 implementations += it.codeType
+                extensionImplementations += it
             }
         }
 
+        val properties = this.getProperties(classType, additionalProperties, extensionImplementations)
 
         codeClassBuilder = codeClassBuilder.withImplementations(implementations)
 
@@ -185,12 +165,12 @@ internal object EventClassGenerator {
         val body = codeClass.body as MutableCodeSource
 
         this.genFields(body, properties)
-        this.genConstructor(classType, body, properties)
+        this.genConstructor(body, properties)
         this.genMethods(classType, body, properties)
 
-        extensions.forEach {
-            it.extensionMethodsClass?.let {
-                this.genExtensionMethods(classType, it, body)
+        extensions.forEach { ext ->
+            ext.extensionMethodsClass?.let {
+                this.genExtensionMethods(classType, ext.implement, it, body)
             }
         }
 
@@ -277,7 +257,7 @@ internal object EventClassGenerator {
                         listOf(CodeAPI.accessThisField(propertiesFieldType, propertiesFieldName))))
     }
 
-    private fun genConstructor(type: Class<*>, body: MutableCodeSource, properties: List<PropertyInfo>) {
+    private fun genConstructor(body: MutableCodeSource, properties: List<PropertyInfo>) {
         val parameters = mutableListOf<CodeParameter>()
 
         properties.forEach {
@@ -412,7 +392,7 @@ internal object EventClassGenerator {
 
     private fun genMethods(type: Class<*>, body: MutableCodeSource, properties: List<PropertyInfo>) {
 
-        genDefaultMethodsImpl(body)
+        genDefaultMethodsImpl(type, body)
 
         properties.forEach {
             val name = it.propertyName
@@ -428,15 +408,17 @@ internal object EventClassGenerator {
 
     }
 
-    private fun genExtensionMethods(base: Class<*>, methodClass: Class<*>, body: MutableCodeSource) {
+    private fun genExtensionMethods(base: Class<*>, implement: Class<*>?, methodClass: Class<*>, body: MutableCodeSource) {
         methodClass.declaredMethods.forEach {
 
             if (Modifier.isPublic(it.modifiers) && Modifier.isStatic(it.modifiers)) {
 
                 val names = it.parameterNames
 
-                if (!it.parameters[0].type.isAssignableFrom(base))
-                    throw IllegalArgumentException("Method '$it' of provided methodClass '${methodClass.canonicalName}' must receive '${base.canonicalName}' (or supertype or superinterface of the class) as first parameter!")
+                val receiver = it.parameters[0]
+
+                if ((implement == null || !receiver.type.isAssignableFrom(implement)) && !receiver.type.isAssignableFrom(base))
+                    throw IllegalArgumentException("Method '$it' of provided methodClass '${methodClass.canonicalName}' must receive '${base.canonicalName}${if(implement != null) "|${implement.canonicalName}" else ""}' (or supertype or superinterface of the class) as first parameter!")
 
                 val parameters = it.parameters.mapIndexed { index, parameter ->
                     if (index > 0) {
@@ -576,45 +558,24 @@ internal object EventClassGenerator {
                 && it.parameters.map { it.type.canonicalName } == method.parameterTypes.map { it.canonicalName }
             }
 
-            /*
-            val isGet = name.startsWith("get")
-            val isIs = name.startsWith("is")
-            val isSet = name.startsWith("set")
-
-            if (this.hasMethod(PropertyHolder::class.java, method))
-                return@forEach
-
-
-            val hasImpl = properties.any {
-                if ((isGet || isIs)
-                        && it.getterName == name
-                        && method.parameterCount == 0
-                        && method.returnType == it.type)
-                    return@any true
-
-                if (isSet && it.setterName == name
-                        && method.returnType == Void.TYPE
-                        && method.parameterCount == 1
-                        && method.parameterTypes[0] == it.type)
-                    return@any true
-
-                return@any false
-            } || extensions.any {
-                it.methodName == name
-                        && it.typeSpec.returnType.`is`(method.returnType.codeType)
-                        && it.typeSpec.parameterTypes.equals(method.parameterTypes.map { it.codeType })
-            }*/
-
             if(!hasImpl && !method.isDefault) {
                 throw IllegalStateException("Cannot find implementation of method '$method'! Provide an extension that implements this method.")
             }
         }
     }
 
-    internal fun getProperties(type: Class<*>): List<PropertyInfo> {
+    internal fun getProperties(type: Class<*>, additional: List<PropertyInfo>, extensionsImplementation: List<Class<*>>): List<PropertyInfo> {
         val list = mutableListOf<PropertyInfo>()
 
-        type.methods.forEach { method ->
+        val methods = type.methods
+                .filter { it.declaringClass != Any::class.java }
+                .toMutableList()
+
+        extensionsImplementation.forEach {
+            methods += it.methods.filter { it.declaringClass != Any::class.java }
+        }
+
+        methods.forEach { method ->
 
             val name = method.name
 
@@ -638,14 +599,19 @@ internal object EventClassGenerator {
                 val propertyType = if (isGet || isIs) method.returnType else method.parameterTypes[0]
 
                 if (!list.any { it.propertyName == propertyName }) {
-                    val getterName = if (hasGetter(type, propertyName)) "get${propertyName.capitalize()}" else null
-                    val setterName = if (hasSetter(type, propertyName, propertyType)) "set${propertyName.capitalize()}" else null
+                    val getterName = if (hasGetter(type, propertyName) || hasGetter(method.declaringClass, propertyName)) "get${propertyName.capitalize()}" else null
+                    val setterName = if (hasSetter(type, propertyName, propertyType) || hasSetter(method.declaringClass, propertyName, propertyType)) "set${propertyName.capitalize()}" else null
 
                     list += PropertyInfo(propertyName, getterName, setterName, propertyType)
                 }
 
             }
 
+        }
+
+        additional.forEach { ad ->
+            if(!list.any { it.propertyName == ad.propertyName })
+                list.add(ad)
         }
 
         return list
@@ -667,9 +633,9 @@ internal object EventClassGenerator {
         }
     }
 
-    internal fun genDefaultMethodsImpl(body: MutableCodeSource) {
-        val funcs = PropertyHolder::class.memberFunctions.map { base ->
-            getImplementation(PropertyHolder::class, base)?.let { Pair(base, it) }
+    internal fun genDefaultMethodsImpl(baseClass: Class<*>, body: MutableCodeSource) {
+        val funcs = baseClass.methods.map { base ->
+            findImplementation(baseClass, base)?.let { Pair(base, it) }
         }.filterNotNull()
 
         funcs.forEach {
@@ -691,17 +657,17 @@ internal object EventClassGenerator {
                     TypeSpec(delegate.returnType.codeType, delegate.parameters.map { it.type.codeType }),
                     arguments
             ).let {
-                if (base.returnType.jvmErasure.java == Void.TYPE)
+                if (base.returnType == Void.TYPE)
                     it
                 else
-                    CodeAPI.returnValue(base.returnType.jvmErasure.codeType, it)
+                    CodeAPI.returnValue(base.returnType.codeType, it)
             }
 
             body.add(MethodDeclarationBuilder.builder()
                     .withAnnotations(CodeAPI.overrideAnnotation())
                     .withModifiers(CodeModifier.PUBLIC, CodeModifier.BRIDGE)
                     .withName(base.name)
-                    .withReturnType(base.returnType.jvmErasure.codeType)
+                    .withReturnType(base.returnType.codeType)
                     .withParameters(parameters)
                     .withBody(CodeAPI.sourceOfParts(invoke))
                     .build()

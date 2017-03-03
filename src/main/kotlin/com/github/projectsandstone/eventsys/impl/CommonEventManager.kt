@@ -29,11 +29,10 @@ package com.github.projectsandstone.eventsys.impl
 
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeUtil
-import com.github.projectsandstone.eventsys.event.Event
+import com.github.projectsandstone.eventsys.event.*
 import com.github.projectsandstone.eventsys.event.EventListener
-import com.github.projectsandstone.eventsys.event.EventManager
-import com.github.projectsandstone.eventsys.event.ListenerSpec
 import com.github.projectsandstone.eventsys.event.annotation.Listener
+import com.github.projectsandstone.eventsys.gen.event.CommonEventGenerator
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
 import com.github.projectsandstone.eventsys.logging.LoggerInterface
 import com.github.projectsandstone.eventsys.util.getEventType
@@ -124,7 +123,7 @@ open class CommonEventManager @JvmOverloads constructor(
 
         val listenerPhase = container.eventListener.phase
 
-        return checkType() && listenerPhase < 0 || phase < 0 || listenerPhase == phase
+        return checkType() && (listenerPhase < 0 || phase < 0 || listenerPhase == phase)
     }
 
     override fun <T : Event> dispatchAsync(event: T, owner: Any, phase: Int) {
@@ -222,4 +221,19 @@ open class CommonEventManager @JvmOverloads constructor(
         this.onEvent(event as T, owner)
     }
 
+}
+
+class Default : CommonEventManager(true, COMMON_SORTER, COMMON_THREAD_FACTORY, COMMON_LOGGER, COMMON_EVENT_GENERATOR) {
+
+    companion object {
+        private val COMMON_SORTER = Comparator.comparing(EventListener<*>::priority)
+        private val COMMON_THREAD_FACTORY = Executors.defaultThreadFactory()
+        private val COMMON_LOGGER = object: LoggerInterface{
+            override fun error(message: String, throwable: Throwable) {
+                System.err.println(message)
+                throwable.printStackTrace()
+            }
+        }
+        private val COMMON_EVENT_GENERATOR = CommonEventGenerator()
+    }
 }

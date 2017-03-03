@@ -36,6 +36,7 @@ import com.github.projectsandstone.eventsys.logging.LoggerInterface;
 import com.github.projectsandstone.eventsys.test.event.MessageEvent;
 import com.github.projectsandstone.eventsys.test.listener.MyListener;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Comparator;
@@ -52,11 +53,15 @@ public class TestManager {
 
         manager.registerListeners(this, new MyListener());
 
-        MessageEvent messageEvent = Constant.getMyFactoryInstance().createMessageEvent("HELLO WORLD");
+        MessageEvent messageEvent = Constant.getMyFactoryInstance().createMessageEvent("HELLO WORLD", "[TAG] ");
+        KtEvent ktEvent = Constant.getMyFactoryInstance().createKtEvent("ProjectSandstone");
 
         manager.dispatch(messageEvent, this);
+        manager.dispatch(ktEvent, this);
 
-        System.out.println(messageEvent.getMessage());
+        ktEvent.reset();
+
+        Assert.assertEquals("hello world", messageEvent.getMessage());
     }
 
 

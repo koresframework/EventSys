@@ -29,12 +29,16 @@ package com.github.projectsandstone.eventsys.test.factory;
 
 import com.github.projectsandstone.eventsys.event.annotation.Extension;
 import com.github.projectsandstone.eventsys.event.annotation.Name;
+import com.github.projectsandstone.eventsys.test.KtEvent;
 import com.github.projectsandstone.eventsys.test.event.MessageEvent;
 import com.github.projectsandstone.eventsys.test.extension.MyExtension;
+import com.github.projectsandstone.eventsys.test.extension.PrefixHolder;
 
 public interface MyFactory {
 
-    @Extension(extensionMethodsClass = MyExtension.class)
-    MessageEvent createMessageEvent(@Name("message") String message);
+    @Extension(extensionMethodsClass = MyExtension.class, implement = PrefixHolder.class)
+    MessageEvent createMessageEvent(@Name("message") String message, @Name("prefix") String prefix);
+
+    KtEvent createKtEvent(@Name("name") String name);
 
 }

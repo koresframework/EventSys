@@ -126,8 +126,8 @@ license {
     strictCheck true
 
     mapping {
-        java = 'JAVADOC_STYLE'
-        kt = 'JAVADOC_STYLE'
+        java = 'SLASHSTAR_STYLE'
+        kt = 'SLASHSTAR_STYLE'
     }
 }
 

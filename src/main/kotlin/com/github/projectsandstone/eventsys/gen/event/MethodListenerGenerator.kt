@@ -54,6 +54,7 @@ import com.github.projectsandstone.eventsys.event.property.Property
 import com.github.projectsandstone.eventsys.event.property.PropertyHolder
 import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
 import com.github.projectsandstone.eventsys.gen.save.ClassSaver
+import com.github.projectsandstone.eventsys.reflect.getName
 import com.github.projectsandstone.eventsys.util.toGeneric
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -97,7 +98,7 @@ internal object MethodListenerGenerator {
         val baseCanonicalName = "${EventListener::class.java.`package`.name}.generated."
         val declaringName = method.declaringClass.canonicalName.replace('.', '_')
 
-        val name = "${baseCanonicalName}_${declaringName}_${method.name}"
+        val name = getName("${baseCanonicalName}_${declaringName}_${method.name}")
 
         val eventType = listenerSpec.eventType
 

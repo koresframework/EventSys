@@ -25,16 +25,16 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.test.extension;
+package com.github.projectsandstone.eventsys.test
 
-import com.github.projectsandstone.eventsys.test.event.MessageEvent;
+import com.github.projectsandstone.eventsys.event.Event
 
-import java.util.function.Function;
+interface KtEvent : Event {
 
-public class MyExtension {
+    val name: String
 
-    public static void transform(MessageEvent messageEvent, Function<String, String> transformer) {
-        messageEvent.setMessage(((PrefixHolder) messageEvent).getPrefix() + transformer.apply(messageEvent.getMessage()));
+    fun reset() {
+        println("reset")
     }
 
 }

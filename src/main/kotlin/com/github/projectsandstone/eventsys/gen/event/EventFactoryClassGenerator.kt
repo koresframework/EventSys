@@ -45,7 +45,6 @@ import com.github.jonathanxd.codeapi.conversions.toCodeArgument
 import com.github.jonathanxd.codeapi.conversions.toMethodDeclaration
 import com.github.jonathanxd.codeapi.literal.Literals
 import com.github.jonathanxd.codeapi.util.codeType
-import com.github.jonathanxd.iutils.exception.RethrowException
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeUtil
 import com.github.projectsandstone.eventsys.Debug
@@ -56,10 +55,7 @@ import com.github.projectsandstone.eventsys.event.annotation.Mutable
 import com.github.projectsandstone.eventsys.event.annotation.Name
 import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
 import com.github.projectsandstone.eventsys.gen.save.ClassSaver
-import com.github.projectsandstone.eventsys.reflect.getImplementation
-import com.github.projectsandstone.eventsys.reflect.parameterNames
-import kotlin.reflect.jvm.jvmErasure
-import kotlin.reflect.jvm.kotlinFunction
+import com.github.projectsandstone.eventsys.reflect.findImplementation
 
 /**
  * This class generates an implementation of an event factory, this method will create the event class
@@ -104,10 +100,10 @@ internal object EventFactoryClassGenerator {
         factoryClass.declaredMethods.forEach { factoryMethod ->
             if (!factoryMethod.isDefault) {
 
-                val kFunc = factoryMethod.kotlinFunction
-                val cl = factoryMethod.declaringClass.kotlin
+                val kFunc = factoryMethod
+                val cl = factoryMethod.declaringClass
 
-                val impl = kFunc?.let { getImplementation(cl, it) }
+                val impl = kFunc?.let { findImplementation(cl, it) }
 
                 if (kFunc != null && impl != null) {
                     val base = kFunc
@@ -128,10 +124,10 @@ internal object EventFactoryClassGenerator {
                             TypeSpec(delegate.returnType.codeType, delegate.parameters.map { it.type.codeType }),
                             arguments
                     ).let {
-                        if (kFunc.returnType.jvmErasure.java == Void.TYPE)
+                        if (kFunc.returnType == Void.TYPE)
                             it
                         else
-                            CodeAPI.returnValue(kFunc.returnType.jvmErasure.codeType, it)
+                            CodeAPI.returnValue(kFunc.returnType.codeType, it)
                     }
 
                     val methodDeclaration = factoryMethod.toMethodDeclaration()
@@ -154,7 +150,13 @@ internal object EventFactoryClassGenerator {
                             ktNames[i]
                     }
 
-                    val properties = EventClassGenerator.getProperties(eventType)
+                    val extensions = factoryMethod.getDeclaredAnnotationsByType(Extension::class.java).map {
+                        val implement = it.implement.java.let { if (it == Default::class.java) null else it }
+                        val extension = it.extensionMethodsClass.java.let { if (it == Default::class.java) null else it }
+                        ExtensionSpecification(implement, extension)
+                    }
+
+                    val properties = EventClassGenerator.getProperties(eventType, emptyList(), extensions.map { it.implement }.filterNotNull())
                     val additionalProperties = mutableListOf<PropertyInfo>()
 
                     factoryMethod.parameters.forEachIndexed { i, parameter ->
@@ -181,12 +183,6 @@ internal object EventFactoryClassGenerator {
                     if (!Event::class.java.isAssignableFrom(eventTypeInfo.aClass))
                         throw IllegalStateException("Factory method '$factoryMethod' present in factory class '${factoryClass.canonicalName}' must returns a class that extends 'Event' class (currentClass: ${eventTypeInfo.aClass.canonicalName}).")
 
-                    val extensions = factoryMethod.getDeclaredAnnotationsByType(Extension::class.java).map {
-                        val implement = it.implement.java.let { if (it == Default::class.java) null else it }
-                        val extension = it.extensionMethodsClass.java.let { if (it == Default::class.java) null else it }
-                        ExtensionSpecification(implement, extension)
-                    }
-
                     val implClass = eventGenerator.createEventClass(eventTypeInfo, additionalProperties, extensions)
 
                     val methodDeclaration = factoryMethod.toMethodDeclaration { index, parameter ->
@@ -198,11 +194,11 @@ internal object EventFactoryClassGenerator {
                     val ctr = implClass.declaredConstructors[0]
                     val names = ctr.parameterNames
 
-                    val arguments = ctr.parameters.mapIndexed map@{ index, it ->
+                    val arguments = ctr.parameters.mapIndexed map@ { index, it ->
                         val name = it.getDeclaredAnnotation(Name::class.java)?.value
                                 ?: names[index] // Should we remove it?
 
-                        if(!methodDeclaration.parameters.any { codeParameter -> codeParameter.name == it.name && codeParameter.type.canonicalName == it.type.canonicalName })
+                        if (!methodDeclaration.parameters.any { codeParameter -> codeParameter.name == it.name && codeParameter.type.canonicalName == it.type.canonicalName })
                             throw IllegalStateException("Cannot find property '[name: $name, type: ${it.type.canonicalName}]' in factory method '$factoryMethod'. Please provide a parameter with this name, use '-parameters' javac option or annotate parameters with '@${Name::class.java.canonicalName}' annotation.",
                                     IllegalStateException("Found properties: ${methodDeclaration.parameters.map { "${it.type.canonicalName} ${it.name}" }}. Required: ${ctr.parameters.contentToString()}."))
 

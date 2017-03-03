@@ -27,14 +27,6 @@
  */
 package com.github.projectsandstone.eventsys.test.extension;
 
-import com.github.projectsandstone.eventsys.test.event.MessageEvent;
-
-import java.util.function.Function;
-
-public class MyExtension {
-
-    public static void transform(MessageEvent messageEvent, Function<String, String> transformer) {
-        messageEvent.setMessage(((PrefixHolder) messageEvent).getPrefix() + transformer.apply(messageEvent.getMessage()));
-    }
-
+public interface PrefixHolder {
+    String getPrefix();
 }

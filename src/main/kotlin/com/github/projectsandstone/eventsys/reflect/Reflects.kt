@@ -35,7 +35,9 @@ import java.lang.reflect.Method
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.superclasses
 import kotlin.reflect.full.valueParameters
+import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.jvmErasure
 
 val propertyHolderSignatures: List<Description> =
@@ -48,19 +50,34 @@ val KFunction<*>.parameterNames: List<String>
         it.findAnnotation<Name>()?.value ?: it.name ?: throw IllegalStateException("Cannot determine name of parameter $it")
     }
 
-fun getImplementation(klass: KClass<*>, kfunc: KFunction<*>): Pair<Class<*>, Method>? {
-    val paramTypes = kfunc.parameters.map { it.type.jvmErasure.java }
+fun findImplementation(jClass: Class<*>, method: Method): Pair<Class<*>, Method>? {
+    val paramTypes = arrayOf(method.declaringClass) + method.parameterTypes
+    val retType = method.returnType
 
-    klass.java.classes.filter { it.simpleName == "DefaultImpls" }.forEach { type ->
+    jClass.classes.filter { it.simpleName == "DefaultImpls" }.forEach { type ->
         val found = type.methods.find {
-            it.name == kfunc.name
-                    && it.parameters.map { it.type } == paramTypes
-                    && it.returnType == kfunc.returnType.jvmErasure.java
+            it.name == method.name
+                    && it.parameterTypes.contentEquals(paramTypes)
+                    && it.returnType == retType
         }
 
         found?.let {
             return Pair(type, it)
         }
+    }
+
+    val superclasses = mutableListOf<Class<*>>()
+
+    if(jClass.superclass != null && jClass.superclass != Any::class.java)
+        superclasses += jClass.superclass
+
+    superclasses += jClass.interfaces
+
+    superclasses.forEach {
+        val find = findImplementation(it, method)
+
+        if(find != null)
+            return find
     }
 
     return null
@@ -70,3 +87,27 @@ fun Method.isEqual(other: Method): Boolean =
         this.name == other.name
                 && this.returnType == other.returnType
                 && this.parameterTypes.contentEquals(other.parameterTypes)
+
+internal fun getName(base: String): String {
+
+    var base_ = base
+    var count = 0
+
+    fun findClass(base: String): Boolean =
+            try {
+                Class.forName(base)
+                true
+            } catch (t: Throwable) {
+                false
+            }
+
+    while (findClass(base_)) {
+        if (count == 0)
+            base_ += "\$"
+
+        base_ += "$base$count"
+        count++
+    }
+
+    return base_
+}
