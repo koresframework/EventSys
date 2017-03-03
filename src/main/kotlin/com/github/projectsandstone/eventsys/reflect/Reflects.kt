@@ -102,10 +102,7 @@ internal fun getName(base: String): String {
             }
 
     while (findClass(base_)) {
-        if (count == 0)
-            base_ += "\$"
-
-        base_ += "$base$count"
+        base_ = "$base\$$count"
         count++
     }
 
