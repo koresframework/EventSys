@@ -1,5 +1,7 @@
 # EventSys
 
+**This branch is targeting CodeAPI 4 alpha, not production ready**
+
 Property based event class generator.
 
 # Class Generation
