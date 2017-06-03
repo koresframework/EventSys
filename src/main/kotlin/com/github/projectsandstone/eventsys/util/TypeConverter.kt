@@ -35,7 +35,7 @@ import com.github.jonathanxd.iutils.type.TypeInfo
  * Convert type info to CodeAPI [Generic].
  */
 fun <T: Any> TypeInfo<T>.toGeneric(): Generic {
-    val aClass = this.aClass
+    val aClass = this.typeClass
     val related = this.related
 
     var generic = Generic.type(aClass.codeType)

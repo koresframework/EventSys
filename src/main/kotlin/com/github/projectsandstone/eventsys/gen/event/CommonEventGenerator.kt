@@ -71,7 +71,7 @@ class CommonEventGenerator : EventGenerator {
 
     override fun <T : Event> createEventClass(type: TypeInfo<T>, additionalProperties: List<PropertyInfo>, extensions: List<ExtensionSpecification>): Class<T> {
 
-        val exts = (this.extensionMap[type.aClass] ?: emptyList()) + extensions
+        val exts = (this.extensionMap[type.typeClass] ?: emptyList()) + extensions
 
         return EventClassGenerator.genImplementation(EventClassSpecification(
                 typeInfo = type,

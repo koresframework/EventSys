@@ -31,7 +31,9 @@ import com.github.projectsandstone.eventsys.validation.Validator
 import kotlin.reflect.KClass
 
 /**
- * Specifies validator of property.
+ * Specifies validator of property. The class must be singleton, implements
+ * [com.github.projectsandstone.eventsys.validation.Validator] and have a
+ * `INSTANCE` public static field.
  */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.PROPERTY_SETTER, AnnotationTarget.VALUE_PARAMETER)

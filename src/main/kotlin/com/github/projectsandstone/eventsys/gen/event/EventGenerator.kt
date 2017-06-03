@@ -34,6 +34,9 @@ import com.github.projectsandstone.eventsys.event.ListenerSpec
 import java.lang.reflect.Method
 import java.util.concurrent.Future
 
+/**
+ * Event generator manager.
+ */
 interface EventGenerator {
 
     /**

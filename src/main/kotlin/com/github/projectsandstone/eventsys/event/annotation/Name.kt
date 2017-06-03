@@ -27,6 +27,9 @@
  */
 package com.github.projectsandstone.eventsys.event.annotation
 
+/**
+ * Specifies the name of an elements. Used to identify properties in factories.
+ */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FIELD,
         AnnotationTarget.PROPERTY,

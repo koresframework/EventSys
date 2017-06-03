@@ -40,12 +40,12 @@ fun <T : Event> getEventTypes(event: T): List<TypeInfo<*>> {
     val types = mutableListOf<TypeInfo<*>>()
 
     if (superClass.first != null && Event::class.java.isAssignableFrom(superClass.first)) {
-        types += TypeUtil.toReference(superClass.second)!!
+        types += TypeUtil.toTypeInfo(superClass.second)!!
     }
 
     for ((itf, type) in interfaces) {
         if (Event::class.java.isAssignableFrom(itf)) {
-            types += TypeUtil.toReference(type)!!
+            types += TypeUtil.toTypeInfo(type)!!
         }
     }
 
@@ -53,4 +53,4 @@ fun <T : Event> getEventTypes(event: T): List<TypeInfo<*>> {
 }
 
 fun <T : Event> getEventType(event: T): TypeInfo<*> =
-        TypeUtil.toReference(event.javaClass)
+        TypeUtil.toTypeInfo(event.javaClass)

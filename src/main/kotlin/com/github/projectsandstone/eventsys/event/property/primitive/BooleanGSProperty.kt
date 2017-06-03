@@ -28,10 +28,7 @@
 package com.github.projectsandstone.eventsys.event.property.primitive
 
 import com.github.projectsandstone.eventsys.event.property.GSProperty
-import com.github.projectsandstone.eventsys.event.property.primitive.BooleanProperty
-import com.github.projectsandstone.eventsys.event.property.primitive.BooleanSetterProperty
 import com.github.projectsandstone.eventsys.util.BooleanConsumer
-import com.github.projectsandstone.eventsys.event.property.primitive.BooleanGetterProperty
 import java.util.function.BooleanSupplier
 
 /**

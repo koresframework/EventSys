@@ -25,22 +25,16 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.test.extension;
+package com.github.projectsandstone.eventsys.common
 
-import com.github.projectsandstone.eventsys.test.event.MessageEvent;
+/**
+ * Interface which all events that holds any extension extends.
+ */
+interface ExtensionHolder {
 
-import java.util.function.Function;
-
-public class MyExtension {
-
-    private final MessageEvent event;
-
-    public MyExtension(MessageEvent event) {
-        this.event = event;
-    }
-
-    public void transform(Function<String, String> transformer) {
-        event.setMessage(((PrefixHolder) event).getPrefix() + transformer.apply(event.getMessage()));
-    }
+    /**
+     * Gets extension instance by [extension class][extensionClass]. Returns null if extension was not found.
+     */
+    fun <T> getExtension(extensionClass: Class<T>): T?
 
 }

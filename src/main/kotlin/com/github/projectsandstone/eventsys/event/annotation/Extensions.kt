@@ -25,22 +25,16 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.test.extension;
+@file:Suppress("DEPRECATED_JAVA_ANNOTATION")
 
-import com.github.projectsandstone.eventsys.test.event.MessageEvent;
+package com.github.projectsandstone.eventsys.event.annotation
 
-import java.util.function.Function;
-
-public class MyExtension {
-
-    private final MessageEvent event;
-
-    public MyExtension(MessageEvent event) {
-        this.event = event;
-    }
-
-    public void transform(Function<String, String> transformer) {
-        event.setMessage(((PrefixHolder) event).getPrefix() + transformer.apply(event.getMessage()));
-    }
-
-}
+/**
+ * Defines multiple extensions.
+ *
+ * Since 1.1, event interfaces (and sub-classes) can be annotated with this.
+ * @see Extension
+ */
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
+annotation class Extensions(vararg val value: Extension)

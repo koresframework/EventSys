@@ -43,10 +43,13 @@ import java.util.Comparator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
+import kotlin.Unit;
+
 public class TestManager {
 
     @Test
     public void test() {
+
         EventManager manager = new MyManager();
 
         Constant.initialize(manager);
@@ -62,6 +65,7 @@ public class TestManager {
         ktEvent.reset();
 
         Assert.assertEquals("[TAG] hello world", messageEvent.getMessage());
+
     }
 
 

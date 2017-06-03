@@ -27,14 +27,17 @@
  */
 package com.github.projectsandstone.eventsys.event
 
-import com.github.jonathanxd.codeapi.conversions.kotlinParameters
+import com.github.jonathanxd.codeapi.util.conversion.kotlinParameters
 import com.github.jonathanxd.iutils.annotation.Named
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeUtil
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.event.annotation.Name
 import com.github.projectsandstone.eventsys.event.annotation.NullableProperty
+import com.github.projectsandstone.eventsys.reflect.isKotlin
+import org.jetbrains.annotations.Nullable
 import java.lang.reflect.Method
+import kotlin.reflect.jvm.kotlinFunction
 
 /**
  * Data Class version of [Listener] annotation.
@@ -82,16 +85,18 @@ data class ListenerSpec(
 
             val listenerAnnotation = method.getDeclaredAnnotation(Listener::class.java)
 
-            val ktParameters = method.kotlinParameters
+            val isKotlin = method.declaringClass.isKotlin
+
+            val ktParameters = if(isKotlin) method.kotlinParameters else null
 
             val namedParameters = method.parameters.mapIndexed { i, it ->
 
-                val isNullable = if (ktParameters != null) ktParameters[i].type.isMarkedNullable else false
+                val isNullable = if (ktParameters != null) ktParameters[i].type.isMarkedNullable else
+                    it.isAnnotationPresent(Nullable::class.java)
 
-                val typeInfo = TypeUtil.toReference(it.parameterizedType)
+                val typeInfo = TypeUtil.toTypeInfo(it.parameterizedType)
 
-                val name: String? = it.getDeclaredAnnotation(Named::class.java)?.value
-                        ?: it.getDeclaredAnnotation(Name::class.java)?.value
+                val name: String? = it.getDeclaredAnnotation(Name::class.java)?.value ?: ktParameters?.get(i)?.name
 
                 return@mapIndexed LParameter(name ?: it.name, it.annotations.toList(), typeInfo, it.isAnnotationPresent(NullableProperty::class.java) || isNullable)
 
@@ -99,7 +104,7 @@ data class ListenerSpec(
 
 
 
-            return ListenerSpec(eventType = TypeUtil.toReference(method.genericParameterTypes[0]),
+            return ListenerSpec(eventType = TypeUtil.toTypeInfo(method.genericParameterTypes[0]),
                     ignoreCancelled = listenerAnnotation.ignoreCancelled,
                     priority = listenerAnnotation.priority,
                     parameters = namedParameters,

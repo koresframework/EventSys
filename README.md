@@ -204,19 +204,28 @@ public interface PlayerJoinEvent extends Event {
 }
 
 public class PlayerJoinEventExtension {
-    public static void kick(PlayerJoinEvent event) {
+    public void kick(PlayerJoinEvent event) {
         event.getPlayer().kick();
     }
 }
 ```
 
-Extension methods must be static and receive event as parameter (and have only one argument).
+~~Extension methods must be static and receive event as parameter (and have only one argument).~~ Since 1.1, extensions must not be static and is instantiated in event constructor. The extension class must have at least one no-arg constructor.
 
 You may prefer to use Kotlin extension methods:
 
 ```kotlin
-fun PlayerJoinEvent.kick() {
-    this.player.kick()
+class PlayerJoinEventExtension(val event: PlayerJoinEvent) {
+    fun PlayerJoinEvent.kick() {
+        this.player.kick()
+    }
 }
 ```
 
+# Performance
+
+Measures points that `Kotlin Reflect` takes too much time to get function names, this can be resolved using only Java classes. 
+
+**If (and only if), JetBrains enables Java 8 parameters emission by default ([KT-15346](https://youtrack.jetbrains.com/issue/KT-15346)), we will change te code to use annotations or Java 8 parameter names.** 
+
+This is not a `Major` problem because JIT may (and will) optimize this.

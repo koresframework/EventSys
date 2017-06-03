@@ -60,7 +60,7 @@ interface EventManager {
      */
     @Suppress("UNCHECKED_CAST")
     fun <T : Event> registerListener(owner: Any, eventType: Class<T>, eventListener: EventListener<T>) {
-        this.registerListener(owner, TypeInfo.aEnd(eventType), eventListener)
+        this.registerListener(owner, TypeInfo.of(eventType), eventListener)
     }
 
     /**

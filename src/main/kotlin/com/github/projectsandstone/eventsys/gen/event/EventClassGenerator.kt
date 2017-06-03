@@ -27,30 +27,32 @@
  */
 package com.github.projectsandstone.eventsys.gen.event
 
-import com.github.jonathanxd.codeapi.*
-import com.github.jonathanxd.codeapi.base.MethodDeclaration
-import com.github.jonathanxd.codeapi.base.MethodInvocation
-import com.github.jonathanxd.codeapi.base.impl.ConstructorDeclarationImpl
-import com.github.jonathanxd.codeapi.builder.MethodDeclarationBuilder
+import com.github.jonathanxd.codeapi.CodeInstruction
+import com.github.jonathanxd.codeapi.CodeSource
+import com.github.jonathanxd.codeapi.MutableCodeSource
+import com.github.jonathanxd.codeapi.Types
+import com.github.jonathanxd.codeapi.base.*
 import com.github.jonathanxd.codeapi.bytecode.CHECK
 import com.github.jonathanxd.codeapi.bytecode.VISIT_LINES
 import com.github.jonathanxd.codeapi.bytecode.VisitLineType
-import com.github.jonathanxd.codeapi.bytecode.gen.BytecodeGenerator
-import com.github.jonathanxd.codeapi.common.*
-import com.github.jonathanxd.codeapi.conversions.createInvocation
-import com.github.jonathanxd.codeapi.conversions.parameterNames
-import com.github.jonathanxd.codeapi.conversions.toCodeArgument
-import com.github.jonathanxd.codeapi.factory.field
+import com.github.jonathanxd.codeapi.bytecode.processor.BytecodeProcessor
+import com.github.jonathanxd.codeapi.common.FieldRef
+import com.github.jonathanxd.codeapi.common.MethodTypeSpec
+import com.github.jonathanxd.codeapi.factory.*
 import com.github.jonathanxd.codeapi.generic.GenericSignature
-import com.github.jonathanxd.codeapi.inspect.SourceInspect
 import com.github.jonathanxd.codeapi.literal.Literals
 import com.github.jonathanxd.codeapi.type.CodeType
 import com.github.jonathanxd.codeapi.type.Generic
-import com.github.jonathanxd.codeapi.util.Alias
-import com.github.jonathanxd.codeapi.util.codeType
-import com.github.jonathanxd.codeapi.util.source.CodeArgumentUtil
+import com.github.jonathanxd.codeapi.type.PlainCodeType
+import com.github.jonathanxd.codeapi.util.*
+import com.github.jonathanxd.codeapi.util.conversion.access
+import com.github.jonathanxd.codeapi.util.conversion.toInvocation
+import com.github.jonathanxd.codeapi.util.conversion.toVariableAccess
+import com.github.jonathanxd.codeapi.util.conversion.typeSpec
+/*import com.github.jonathanxd.codeapi.util.conversion.*/
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.Debug
+import com.github.projectsandstone.eventsys.common.ExtensionHolder
 import com.github.projectsandstone.eventsys.event.Cancellable
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.annotation.Name
@@ -66,15 +68,14 @@ import com.github.projectsandstone.eventsys.reflect.isEqual
 import com.github.projectsandstone.eventsys.reflect.parameterNames
 import com.github.projectsandstone.eventsys.util.BooleanConsumer
 import com.github.projectsandstone.eventsys.validation.Validator
-import java.lang.Void
+import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.lang.reflect.Type
-import java.util.*
+import java.util.Collections
+import java.util.EnumSet
+import java.util.HashMap
 import java.util.function.*
-import kotlin.reflect.KClass
-import kotlin.reflect.full.memberFunctions
-import kotlin.reflect.jvm.jvmErasure
 
 /**
  * Generates [Event] class implementation.
@@ -92,15 +93,15 @@ internal object EventClassGenerator {
 
     val propertiesFieldName = "#properties"
     val propertiesUnmodName = "immutable#properties"
-    val propertiesFieldType = Generic.type(CodeAPI.getJavaType(Map::class.java))
+    val propertiesFieldType = Generic.type(Map::class.java)
             .of(Types.STRING)
-            .of(CodeAPI.getJavaType(Property::class.java))
+            .of(Property::class.java)
 
     private fun TypeInfo<*>.toStr(): String {
         if (this.related.isEmpty()) {
             return this.toFullString()
         } else {
-            val base = StringBuilder(this.aClass.name)
+            val base = StringBuilder(this.typeClass.name)
 
             base.append("_of_")
             this.related.forEach {
@@ -129,73 +130,82 @@ internal object EventClassGenerator {
         val additionalProperties = eventClassSpecification.additionalProperties
         val extensions = eventClassSpecification.extensions
         val type: CodeType = genericFromTypeInfo(typeInfo)
-        val classType = typeInfo.aClass
+        val classType = typeInfo.typeClass
         val isItf = classType.isInterface
 
         val typeInfoLiter = typeInfo.toStr()
 
         val name = getName("${typeInfoLiter}Impl")
 
-        var codeClassBuilder = CodeAPI
-                .aClassBuilder()
-                .withBody(MutableCodeSource())
-                .withModifiers(CodeModifier.PUBLIC)
-                .withQualifiedName(name)
+        var classDeclarationBuilder = ClassDeclaration.Builder.builder()
+                .modifiers(CodeModifier.PUBLIC)
+                .qualifiedName(name)
 
-        val implementations = mutableListOf<CodeType>()
+        val implementations = mutableListOf<Type>()
 
         if (isItf) {
             implementations += type
-            codeClassBuilder = codeClassBuilder.withSuperClass(Types.OBJECT)
+            classDeclarationBuilder = classDeclarationBuilder.superClass(Types.OBJECT)
         } else
-            codeClassBuilder = codeClassBuilder.withSuperClass(type)
+            classDeclarationBuilder = classDeclarationBuilder.superClass(type)
 
         val extensionImplementations = mutableListOf<Class<*>>()
 
         extensions.forEach {
             it.implement?.let {
-                implementations += it.codeType
+                implementations += it
                 extensionImplementations += it
+
+                if (!implementations.contains(ExtensionHolder::class.java))
+                    implementations += ExtensionHolder::class.java
             }
         }
 
         val properties = this.getProperties(classType, additionalProperties, extensionImplementations)
 
-        codeClassBuilder = codeClassBuilder.withImplementations(implementations)
+        classDeclarationBuilder = classDeclarationBuilder.implementations(implementations)
 
-        val codeClass = codeClassBuilder.build()
+        val plain = PlainCodeType(type = name,
+                isInterface = false,
+                superclass_ = { classDeclarationBuilder.superClass },
+                superinterfaces_ = { classDeclarationBuilder.implementations })
 
-        val body = codeClass.body as MutableCodeSource
+        classDeclarationBuilder = classDeclarationBuilder
+                .fields(this.genFields(properties, extensions, plain))
+                .constructors(this.genConstructor(classType, properties))
 
-        this.genFields(body, properties)
-        this.genConstructor(classType, body, properties)
-        this.genMethods(classType, body, properties)
+        val methods = this.genMethods(classType, properties).toMutableList()
 
         extensions.forEach { ext ->
-            ext.extensionMethodsClass?.let {
-                this.genExtensionMethods(classType, ext.implement, it, body)
+            ext.extensionClass?.let {
+                methods += this.genExtensionMethods(it)
             }
         }
 
+        // gen getExtension method of ExtensionHolder
+        methods += this.genExtensionGetter(extensions)
+
         // Gen getProperties & getProperty & hasProperty
-        this.genPropertyHolderMethods(body)
-        this.checkDuplicates(body)
-        this.checkMethodImplementations(classType, body)
+        methods += this.genPropertyHolderMethods()
+
+        val classDeclaration = classDeclarationBuilder.methods(methods).build()
+
+        this.checkDuplicates(classDeclaration)
+        this.validateExtensions(extensions, classDeclaration)
+        this.checkMethodImplementations(classType, classDeclaration, extensions)
 
 
-        val codeSource = CodeAPI.sourceOfParts(codeClass)
-
-        val generator = BytecodeGenerator()
+        val generator = BytecodeProcessor()
 
         generator.options.set(VISIT_LINES, VisitLineType.FOLLOW_CODE_SOURCE)
         generator.options.set(CHECK, false)
 
-        val bytecodeClass = generator.gen(codeSource)[0]
+        val bytecodeClass = generator.process(classDeclaration)[0]
 
         val bytes = bytecodeClass.bytecode
         val disassembled = lazy { bytecodeClass.disassembledCode }
 
-        val generatedEventClass = EventGenClassLoader.defineClass(codeClass, bytes, disassembled) as GeneratedEventClass<T>
+        val generatedEventClass = EventGenClassLoader.defineClass(classDeclaration, bytes, disassembled) as GeneratedEventClass<T>
 
         if (Debug.EVENT_GEN_DEBUG) {
             ClassSaver.save("eventgen", generatedEventClass)
@@ -207,26 +217,57 @@ internal object EventClassGenerator {
         }
     }
 
-    private fun checkDuplicates(codeSource: CodeSource) {
+    private fun genExtensionGetter(extensions: List<ExtensionSpecification>): MethodDeclaration {
+        val extensionClasses = extensions.filter { it.extensionClass != null }.map { it.extensionClass!! }
+
+        val type = Generic.type("T")
+        val variableType = Generic.type(Class::class.java).of("T")
+
+        return methodDec().modifiers(CodeModifier.PUBLIC)
+                .name("getExtension")
+                .genericSignature(GenericSignature.create(type))
+                .parameters(parameter(name = "extensionClass", type = variableType))
+                .returnType(type)
+                .body(source(
+                        switchStm()
+                                .switchType(SwitchType.STRING)
+                                .value(accessVariable(variableType, "extensionClass").invokeVirtual(
+                                        Class::class.java,
+                                        "getCanonicalName",
+                                        typeSpec(String::class.java),
+                                        emptyList()))
+                                .cases(
+                                        extensionClasses.map {
+                                            val ref = getExtensionFieldRef(it)
+                                            caseStm()
+                                                    .value(Literals.STRING(it.canonicalName))
+                                                    .body(source(returnValue(type, fieldAccess().base(ref).build())))
+                                                    .build()
+                                        } + caseStm().defaultCase().body(source(returnValue(type, Literals.NULL))).build()
+                                )
+                                .build()
+                ))
+                .build()
+    }
+
+    private fun checkDuplicates(holder: ElementsHolder) {
 
         val methodList = mutableListOf<MethodDeclaration>()
 
-        codeSource.forEach { outer ->
-            if (outer is MethodDeclaration) {
-                if (methodList.any {
-                    it.name == outer.name
-                            && it.returnType == outer.returnType
-                            && it.parameters.map { it.type } == outer.parameters.map { it.type }
-                })
-                    throw IllegalStateException("Duplicated method: ${outer.name}")
-                else
-                    methodList += outer
-            }
+        holder.methods.forEach { outer ->
+            if (methodList.any {
+                outer.name == it.name
+                        && outer.returnType.`is`(it.returnType)
+                        && outer.parameters.map { it.type } == it.parameters.map { it.type }
+            })
+                throw IllegalStateException("Duplicated method: ${outer.name}")
+            else
+                methodList += outer
         }
     }
 
-    private fun genFields(body: MutableCodeSource, properties: List<PropertyInfo>) {
-        properties.forEach {
+    private fun genFields(properties: List<PropertyInfo>, extensions: List<ExtensionSpecification>, type: Type): List<FieldDeclaration> {
+        return properties.map {
             val name = it.propertyName
 
             val modifiers = EnumSet.of(CodeModifier.PRIVATE)
@@ -235,32 +276,57 @@ internal object EventClassGenerator {
                 modifiers.add(CodeModifier.FINAL)
             }
 
-            val codeType: CodeType = CodeAPI.getJavaType(it.type)
+            fieldDec().modifiers(modifiers).type(it.type).name(name).build()
+        } + genPropertyField() + genExtensionsFields(extensions, type)
 
-            val field = field(modifiers, codeType, name)
 
-            body += field
-        }
-
-        genPropertyField(body)
     }
 
-    private fun genPropertyField(body: MutableCodeSource) {
-        body += field(EnumSet.of(CodeModifier.PRIVATE, CodeModifier.FINAL),
-                propertiesFieldType,
-                propertiesFieldName,
-                CodeAPI.invokeConstructor(HashMap::class.java))
+    private fun getExtensionFieldRef(extensionClass: Class<*>): FieldRef =
+            extensionClass.let {
+                FieldRef(localization = Alias.THIS,
+                        target = Access.THIS,
+                        name = "extension#${it.simpleName}",
+                        type = it)
+            }
 
-        body += field(EnumSet.of(CodeModifier.PRIVATE, CodeModifier.FINAL),
-                propertiesFieldType,
-                propertiesUnmodName,
-                CodeAPI.invokeStatic(Collections::class.java,
-                        "unmodifiableMap",
-                        CodeAPI.typeSpec(Map::class.java, Map::class.java),
-                        listOf(CodeAPI.accessThisField(propertiesFieldType, propertiesFieldName))))
+    private fun getExtensionFieldRef(extension: ExtensionSpecification): FieldRef? =
+            extension.extensionClass?.let(this::getExtensionFieldRef)
+
+    private fun genExtensionsFields(extensions: List<ExtensionSpecification>, type: Type): List<FieldDeclaration> =
+            extensions
+                    .filter { it.extensionClass != null }
+                    .map {
+                        it.extensionClass!! // Safe: null filtered above
+                        val ref = this.getExtensionFieldRef(it)!!
+                        val ctr = findConstructor(it, it.extensionClass, type)
+                        fieldDec()
+                                .modifiers(CodeModifier.PRIVATE, CodeModifier.FINAL)
+                                .type(ref.type)
+                                .name(ref.name)
+                                .value(it.extensionClass.invokeConstructor(ctr.typeSpec, listOf(Access.THIS)))
+                                .build()
+                    }
+
+
+    private fun genPropertyField(): List<FieldDeclaration> {
+        return listOf(FieldDeclaration.Builder.builder()
+                .modifiers(CodeModifier.PRIVATE, CodeModifier.FINAL)
+                .type(propertiesFieldType)
+                .name(propertiesFieldName)
+                .value(HashMap::class.java.invokeConstructor())
+                .build(),
+                FieldDeclaration.Builder.builder()
+                        .modifiers(CodeModifier.PRIVATE, CodeModifier.FINAL)
+                        .type(propertiesFieldType)
+                        .name(propertiesUnmodName)
+                        .value(Collections::class.java.invokeStatic("unmodifiableMap",
+                                typeSpec(Map::class.java, Map::class.java),
+                                listOf(accessThisField(propertiesFieldType, propertiesFieldName))))
+                        .build())
     }
 
-    private fun genConstructor(base: Class<*>, body: MutableCodeSource, properties: List<PropertyInfo>) {
+    private fun genConstructor(base: Class<*>, properties: List<PropertyInfo>): ConstructorDeclaration {
         val parameters = mutableListOf<CodeParameter>()
 
         val cancellable = Cancellable::class.java.isAssignableFrom(base)
@@ -268,45 +334,42 @@ internal object EventClassGenerator {
         properties.forEach {
             val name = it.propertyName
 
-            if(cancellable && name == "cancelled")
+            if (cancellable && name == "cancelled")
                 return@forEach
 
-            val valueType: CodeType = CodeAPI.getJavaType(it.type)
-
-            parameters += CodeParameter(
+            parameters += parameter(
                     name = name,
-                    type = valueType,
-                    annotations = listOf(CodeAPI.visibleAnnotation(Name::class.java, mapOf<String, Any>("value" to name)))
+                    type = it.type,
+                    annotations = listOf(visibleAnnotation(Name::class.java, mapOf<String, Any>("value" to name)))
             )
         }
 
-        val constructor = ConstructorDeclarationImpl(
-                modifiers = EnumSet.of(CodeModifier.PUBLIC),
-                parameters = parameters,
-                annotations = emptyList(),
-                body = MutableCodeSource(),
-                genericSignature = GenericSignature.empty())
-
-        body += constructor
+        val constructor = ConstructorDeclaration.Builder.builder()
+                .modifiers(CodeModifier.PUBLIC)
+                .parameters(parameters)
+                .body(MutableCodeSource.create())
+                .build()
 
         val constructorBody = constructor.body as MutableCodeSource
 
         properties.forEach {
-            val valueType: CodeType = CodeAPI.getJavaType(it.type)
+            val valueType: CodeType = it.type.codeType
 
-            if(cancellable && it.propertyName == "cancelled") {
-                constructorBody += CodeAPI.setThisField(valueType, it.propertyName, Literals.FALSE)
+            if (cancellable && it.propertyName == "cancelled") {
+                constructorBody += setFieldValue(Alias.THIS, Access.THIS, valueType, it.propertyName, Literals.FALSE)
             } else {
-                constructorBody += CodeAPI.setThisField(valueType, it.propertyName, CodeAPI.accessLocalVariable(valueType, it.propertyName))
+                constructorBody += setFieldValue(Alias.THIS, Access.THIS, valueType, it.propertyName, accessVariable(valueType, it.propertyName))
             }
         }
 
         genConstructorPropertiesMap(constructorBody, properties)
 
+        return constructor
+
     }
 
     private fun genConstructorPropertiesMap(constructorBody: MutableCodeSource, properties: List<PropertyInfo>) {
-        val accessMap = CodeAPI.accessThisField(propertiesFieldType, propertiesFieldName)
+        val accessMap = accessThisField(propertiesFieldType, propertiesFieldName)
 
         properties.forEach {
             constructorBody += this.invokePut(accessMap,
@@ -316,18 +379,18 @@ internal object EventClassGenerator {
 
     }
 
-    private fun invokePut(accessMap: CodePart, vararg arguments: CodePart): CodePart {
-        return CodeAPI.invokeInterface(Map::class.java, accessMap, "put", CodeAPI.typeSpec(Any::class.java, Any::class.java, Any::class.java), listOf(*arguments))
+    private fun invokePut(accessMap: CodeInstruction, vararg arguments: CodeInstruction): CodeInstruction {
+        return invokeInterface(Map::class.java, accessMap, "put", typeSpec(Any::class.java, Any::class.java, Any::class.java), listOf(*arguments))
     }
 
-    private fun propertyToSProperty(property: PropertyInfo): CodePart {
+    private fun propertyToSProperty(property: PropertyInfo): CodeInstruction {
 
         val hasGetter = property.hasGetter()
         val hasSetter = property.hasSetter()
 
-        val typeToInvoke = CodeAPI.getJavaType(this.getTypeToInvoke(hasGetter, hasSetter, property.type))
+        val typeToInvoke = this.getTypeToInvoke(hasGetter, hasSetter, property.type).codeType
 
-        val arguments = mutableListOf<CodePart>()
+        val arguments = mutableListOf<CodeInstruction>()
         val argumentTypes = mutableListOf<CodeType>()
 
         if (!property.type.isPrimitive) {
@@ -344,7 +407,7 @@ internal object EventClassGenerator {
         }
 
         if (hasSetter) {
-            val consumerType = CodeAPI.getJavaType(this.getConsumerType(property.type))
+            val consumerType = this.getConsumerType(property.type).codeType
 
             arguments += this.invokeSetter(property.type, consumerType, property)
             argumentTypes += consumerType
@@ -352,10 +415,10 @@ internal object EventClassGenerator {
 
         val typeSpec = TypeSpec(Types.VOID, argumentTypes)
 
-        return CodeAPI.invokeConstructor(typeToInvoke, typeSpec, arguments)
+        return typeToInvoke.invokeConstructor(typeSpec, arguments)
     }
 
-    private fun invokeGetter(type: Class<*>, supplierInfo: Pair<String, Class<*>>, property: PropertyInfo): CodePart {
+    private fun invokeGetter(type: Class<*>, supplierInfo: Pair<String, Class<*>>, property: PropertyInfo): CodeInstruction {
         val propertyType = property.type
         val getterName = property.getterName!!
 
@@ -363,24 +426,22 @@ internal object EventClassGenerator {
         val realType = this.getCastType(propertyType).codeType
         val rtype = if (type.isPrimitive) realType /*type.codeType*/ else Types.OBJECT
 
-        val invocation = CodeAPI.invoke(InvokeType.INVOKE_VIRTUAL,
+        val invocation = invoke(InvokeType.INVOKE_VIRTUAL,
                 Alias.THIS,
-                CodeAPI.accessThis(),
+                Access.THIS,
                 getterName,
-                CodeAPI.typeSpec(realType/*propertyType*/),
+                typeSpec(realType/*propertyType*/),
                 mutableListOf()
         )
 
-        return CodeAPI.invokeDynamic(
-                InvokeDynamic.LambdaMethodReference(
-                        methodTypeSpec = MethodTypeSpec(supplierType, supplierInfo.first, CodeAPI.typeSpec(rtype)),
-                        expectedTypes = CodeAPI.typeSpec(realType /*propertyType*/)
-                ),
-                invocation
-        )
+        return InvokeDynamic.LambdaMethodRef.Builder.builder()
+                .invocation(invocation)
+                .baseSam(MethodTypeSpec(supplierType, supplierInfo.first, typeSpec(rtype)))
+                .expectedTypes(typeSpec(realType /*propertyType*/))
+                .build()
     }
 
-    private fun invokeSetter(type: Class<*>, consumerType: CodeType, property: PropertyInfo): CodePart {
+    private fun invokeSetter(type: Class<*>, consumerType: CodeType, property: PropertyInfo): CodeInstruction {
         val setterName = property.setterName!!
 
         val realType = this.getCastType(property.type).codeType
@@ -388,159 +449,154 @@ internal object EventClassGenerator {
 
         val invocation: MethodInvocation
 
-        invocation = CodeAPI.invokeVirtual(Alias.THIS, CodeAPI.accessThis(), setterName,
+        invocation = invokeVirtual(Alias.THIS, Access.THIS, setterName,
                 TypeSpec(Types.VOID, listOf(realType/*propertyType*/)),
                 emptyList()
         )
 
-        return CodeAPI.invokeDynamic(
-                InvokeDynamic.LambdaMethodReference(
-                        methodTypeSpec = MethodTypeSpec(consumerType, "accept", CodeAPI.constructorTypeSpec(ptype)),
-                        expectedTypes = CodeAPI.constructorTypeSpec(realType/*propertyType*/)
-                ),
-                invocation
-        )
+        return InvokeDynamic.LambdaMethodRef.Builder.builder()
+                .invocation(invocation)
+                .baseSam(MethodTypeSpec(consumerType, "accept", constructorTypeSpec(ptype)))
+                .expectedTypes(constructorTypeSpec(realType/*propertyType*/))
+                .build()
     }
 
-    private fun genMethods(type: Class<*>, body: MutableCodeSource, properties: List<PropertyInfo>) {
+    private fun genMethods(type: Class<*>, properties: List<PropertyInfo>): List<MethodDeclaration> {
 
-        genDefaultMethodsImpl(type, body)
+        val methods = mutableListOf<MethodDeclaration>()
 
-        properties.forEach {
+        methods += genDefaultMethodsImpl(type)
+
+        properties.map {
             val name = it.propertyName
 
             if (it.hasGetter()) {
-                genGetter(type, body, it.getterName!!, name, it.type)
+                methods += genGetter(type, it.getterName!!, name, it.type)
             }
 
             if (it.isMutable()) {
-                genSetter(type, body, it.setterName!!, name, it.type, it.validator)
+                methods += genSetter(type, it.setterName!!, name, it.type, it.validator)
             }
         }
 
+        return methods
     }
 
-    private fun genExtensionMethods(base: Class<*>, implement: Class<*>?, methodClass: Class<*>, body: MutableCodeSource) {
-        methodClass.declaredMethods.forEach {
+    private fun genExtensionMethods(extensionClass: Class<*>): List<MethodDeclaration> {
+        return extensionClass.declaredMethods
+                .filter { Modifier.isPublic(it.modifiers) && !Modifier.isStatic(it.modifiers) }
+                .map {
 
-            if (Modifier.isPublic(it.modifiers) && Modifier.isStatic(it.modifiers)) {
+                    val parameters = it.parameters.mapIndexed { index, parameter ->
+                        parameter(type = parameter.parameterizedType.codeType, name = "arg$index")
+                    }.filterNotNull()
 
-                val names = it.parameterNames
+                    val arguments = parameters.access
 
-                val receiver = it.parameters[0]
+                    val ref = getExtensionFieldRef(extensionClass)
 
-                if ((implement == null || !receiver.type.isAssignableFrom(implement)) && !receiver.type.isAssignableFrom(base))
-                    throw IllegalArgumentException("Method '$it' of provided methodClass '${methodClass.canonicalName}' must receive '${base.canonicalName}${if(implement != null) "|${implement.canonicalName}" else ""}' (or supertype or superinterface of the class) as first parameter!")
+                    MethodDeclaration.Builder.builder()
+                            .modifiers(CodeModifier.PUBLIC)
+                            .name(it.name)
+                            .returnType(it.genericReturnType.codeType)
+                            .parameters(parameters)
+                            .body(source(
+                                    returnValue(it.returnType.codeType, it.toInvocation(
+                                            InvokeType.INVOKE_VIRTUAL,
+                                            ref.let { accessField(it.localization, it.target, it.type, it.name) },
+                                            arguments))
+                            ))
+                            .build()
 
-                val parameters = it.parameters.mapIndexed { index, parameter ->
-                    if (index > 0) {
-                        val name = parameter.getDeclaredAnnotation(Name::class.java)?.value ?: names[index]
-                        return@mapIndexed CodeParameter(parameter.parameterizedType.codeType, name)
-                    } else null
-                }.filterNotNull()
-
-                val arguments = mutableListOf<CodePart>(CodeAPI.accessThis()).let {
-                    it.addAll(CodeArgumentUtil.argumentsFromParameters(parameters))
-                    it
                 }
-
-                body.add(MethodDeclarationBuilder.builder()
-                        .withModifiers(CodeModifier.PUBLIC)
-                        .withName(it.name)
-                        .withReturnType(it.genericReturnType.codeType)
-                        .withParameters(parameters)
-                        .withBody(CodeAPI.source(
-                                CodeAPI.returnValue(it.returnType.codeType, it.createInvocation(null, arguments))
-                        ))
-                        .build())
-            }
-        }
     }
 
-    private fun genGetter(type: Class<*>, body: MutableCodeSource, getterName: String, name: String, propertyType: Class<*>?) {
-        val fieldType = propertyType?.let { CodeAPI.getJavaType(it) } ?: getPropertyType(type, name)
+    private fun genGetter(type: Class<*>, getterName: String, name: String, propertyType: Class<*>?): List<MethodDeclaration> {
 
-        val method = MethodDeclarationBuilder.builder()
-                .withModifiers(EnumSet.of(CodeModifier.PUBLIC))
-                .withReturnType(fieldType)
-                .withName(getterName)
-                .withBody(CodeAPI.sourceOfParts(CodeAPI.returnThisField(fieldType, name)))
+        val methods = mutableListOf<MethodDeclaration>()
+
+        val fieldType = propertyType?.codeType ?: getPropertyType(type, name)
+
+        methods += MethodDeclaration.Builder.builder()
+                .modifiers(CodeModifier.PUBLIC)
+                .returnType(fieldType)
+                .name(getterName)
+                .body(source(returnValue(fieldType, accessThisField(fieldType, name))))
                 .build()
-
-        body += method
 
         val castType = this.getCastType(fieldType)
 
         if (castType != fieldType) {
-            body += MethodDeclarationBuilder.builder()
-                    .withModifiers(EnumSet.of(CodeModifier.PUBLIC))
-                    .withReturnType(castType)
-                    .withName(getterName)
-                    .withBody(CodeAPI.sourceOfParts(
-                            CodeAPI.returnValue(castType,
-                                    CodeAPI.cast(fieldType, castType, CodeAPI.accessThisField(fieldType, name))
+            methods += MethodDeclaration.Builder.builder()
+                    .modifiers(EnumSet.of(CodeModifier.PUBLIC))
+                    .returnType(castType)
+                    .name(getterName)
+                    .body(source(
+                            returnValue(castType,
+                                    cast(fieldType, castType, accessThisField(fieldType, name))
                             )
                     ))
                     .build()
         }
+
+        return methods
     }
 
-    private fun genSetter(type: Class<*>, body: MutableCodeSource, setterName: String, name: String, propertyType: Class<*>?, validator: Class<out Validator<out Any>>?) {
-        val fieldType = propertyType?.let { CodeAPI.getJavaType(it) } ?: getPropertyType(type, name)
+    private fun genSetter(type: Class<*>, setterName: String, name: String, propertyType: Class<*>?, validator: Class<out Validator<out Any>>?): List<MethodDeclaration> {
+        val methods = mutableListOf<MethodDeclaration>()
+        val fieldType = propertyType?.codeType ?: getPropertyType(type, name)
 
 
-        val base = if(validator == null)
+        val base = if (validator == null)
             CodeSource.empty()
         else
             CodeSource.fromVarArgs(
-                    CodeAPI.invokeInterface(Validator::class.java, CodeAPI.accessStaticField(validator, validator, "INSTANCE"),
+                    accessStaticField(validator, validator, "INSTANCE").invokeInterface(Validator::class.java,
                             "validate",
-                            CodeAPI.voidTypeSpec(Any::class.java, Property::class.java),
-                            listOf(CodeAPI.accessLocalVariable(fieldType, name),
-                                    CodeAPI.invokeInterface(
+                            voidTypeSpec(Any::class.java, Property::class.java),
+                            listOf(accessVariable(fieldType, name),
+                                    invokeInterface(
                                             PropertyHolder::class.java,
-                                            CodeAPI.accessThis(),
+                                            Access.THIS,
                                             "getProperty",
-                                            CodeAPI.typeSpec(Property::class.java, Class::class.java, String::class.java),
+                                            typeSpec(Property::class.java, Class::class.java, String::class.java),
                                             listOf(Literals.CLASS(fieldType), Literals.STRING(name))
                                     )))
             )
 
-        val method = MethodDeclarationBuilder.builder()
-                .withModifiers(EnumSet.of(CodeModifier.PUBLIC))
-                .withReturnType(Types.VOID)
-                .withParameters(CodeAPI.parameter(fieldType, name))
-                .withName(setterName)
-                .withBody(base + CodeAPI.setThisField(fieldType, name, CodeAPI.accessLocalVariable(fieldType, name)))
+        methods += MethodDeclaration.Builder.builder()
+                .modifiers(EnumSet.of(CodeModifier.PUBLIC))
+                .returnType(Types.VOID)
+                .parameters(parameter(type = fieldType, name = name))
+                .name(setterName)
+                .body(base + setFieldValue(Alias.THIS, Access.THIS, fieldType, name, accessVariable(fieldType, name)))
                 .build()
-
-        body += method
 
         val castType = this.getCastType(fieldType)
 
         if (castType != fieldType) {
-            body += MethodDeclarationBuilder.builder()
-                    .withModifiers(EnumSet.of(CodeModifier.PUBLIC))
-                    .withReturnType(Types.VOID)
-                    .withParameters(CodeAPI.parameter(castType, name))
-                    .withName(setterName)
-                    .withBody(base + CodeAPI.setThisField(fieldType, name, CodeAPI.cast(castType, fieldType, CodeAPI.accessLocalVariable(castType, name))))
+            methods += MethodDeclaration.Builder.builder()
+                    .modifiers(EnumSet.of(CodeModifier.PUBLIC))
+                    .returnType(Types.VOID)
+                    .parameters(parameter(type = castType, name = name))
+                    .name(setterName)
+                    .body(base + setFieldValue(Alias.THIS, Access.THIS, fieldType, name, cast(castType, fieldType, accessVariable(castType, name))))
                     .build()
         }
+
+        return methods
     }
 
-    private fun genPropertyHolderMethods(body: MutableCodeSource) {
-        val getPropertiesMethod = CodeAPI.methodBuilder()
-                .withModifiers(CodeModifier.PUBLIC)
-                .withName("getProperties")
-                .withReturnType(propertiesFieldType)
-                .withAnnotations(CodeAPI.annotation(Override::class.java))
-                .withBody(CodeAPI.sourceOfParts(
-                        CodeAPI.returnValue(propertiesFieldType, CodeAPI.accessThisField(propertiesFieldType, propertiesUnmodName))
+    private fun genPropertyHolderMethods(): MethodDeclaration {
+        return MethodDeclaration.Builder.builder()
+                .modifiers(CodeModifier.PUBLIC)
+                .name("getProperties")
+                .returnType(propertiesFieldType)
+                .annotations(visibleAnnotation(Override::class.java))
+                .body(source(
+                        returnValue(propertiesFieldType, accessThisField(propertiesFieldType, propertiesUnmodName))
                 ))
                 .build()
-
-        body += getPropertiesMethod
     }
 
     private fun getSetter(type: Class<*>, name: String, propertyType: Class<*>): Method? {
@@ -569,24 +625,47 @@ internal object EventClassGenerator {
         }
     }
 
-    internal fun checkMethodImplementations(type: Class<*>, body: MutableCodeSource) { //, properties: List<PropertyInfo>, extensions: List<MethodTypeSpec>
+    private fun validateExtensions(extensions: List<ExtensionSpecification>, type: CodeType) {
+        extensions.forEach { extension ->
+            extension.extensionClass?.let {
+                findConstructor(extension, it, type)
+            }
+        }
+    }
 
-        val implementedMethods: List<MethodDeclaration> = SourceInspect.find { it is MethodDeclaration }
-                .includeSource(true)
-                .mapTo { it as MethodDeclaration }
-                .inspect(body)
+    private fun findConstructor(extension: ExtensionSpecification,
+                                extensionClass: Class<*>,
+                                type: Type): Constructor<*> {
+
+        val resolver = type.defaultResolver
+        val foundsCtr = mutableListOf<Constructor<*>>()
+
+        extensionClass.declaredConstructors.forEach {
+            if (it.parameterCount == 1) {
+                if (resolver.isAssignableFrom(it.parameterTypes.single(), type))
+                    return it
+                else
+                    foundsCtr += it
+            }
+        }
+
+        throw IllegalArgumentException("Provided extension class '${extensionClass.canonicalName}' (spec: '$extension') does not have a single-arg constructor with an argument which receives a '${type.canonicalName}' (or a sub-type). Found single-arg constructors: ${foundsCtr.joinToString { it.parameterTypes.joinToString(prefix = "(", postfix = ")") { it.simpleName } }}.")
+    }
+
+    internal fun checkMethodImplementations(type: Class<*>, holder: ElementsHolder, extensions: List<ExtensionSpecification>) {
+        val implementedMethods: List<MethodDeclaration> = holder.methods
 
         type.methods.forEach { method ->
             val name = method.name
 
             val hasImpl = implementedMethods.any {
                 it.name == name
-                && it.returnType.canonicalName == method.returnType.canonicalName
-                && it.parameters.map { it.type.canonicalName } == method.parameterTypes.map { it.canonicalName }
+                        && it.returnType.canonicalName == method.returnType.canonicalName
+                        && it.parameters.map { it.type.canonicalName } == method.parameterTypes.map { it.canonicalName }
             }
 
-            if(!hasImpl && !method.isDefault) {
-                throw IllegalStateException("Cannot find implementation of method '$method'! Provide an extension that implements this method.")
+            if (!hasImpl && !method.isDefault) {
+                throw IllegalStateException("Cannot find implementation of method '$method'! Provide an extension that implements this method ${if (extensions.isNotEmpty()) "(Obs: none of provided extensions '$extensions' provides an implementation)" else ""}.")
             }
         }
     }
@@ -627,11 +706,10 @@ internal object EventClassGenerator {
 
                 if (!list.any { it.propertyName == propertyName }) {
 
-                    val getter = getGetter(type, propertyName) ?: getGetter(method.declaringClass, propertyName)
                     val setter = getSetter(type, propertyName, propertyType) ?: getSetter(method.declaringClass, propertyName, propertyType)
 
-                    val getterName = if (getter != null) getter.name else null
-                    val setterName = if (setter != null) setter.name else null
+                    val getterName = (getGetter(type, propertyName) ?: getGetter(method.declaringClass, propertyName))?.name
+                    val setterName = setter?.name
 
                     val validator = setter?.getDeclaredAnnotation(Validate::class.java)?.value?.java
 
@@ -643,7 +721,7 @@ internal object EventClassGenerator {
         }
 
         additional.forEach { ad ->
-            if(!list.any { it.propertyName == ad.propertyName })
+            if (!list.any { it.propertyName == ad.propertyName })
                 list.add(ad)
         }
 
@@ -660,51 +738,50 @@ internal object EventClassGenerator {
         }
 
         if (method != null) {
-            return CodeAPI.getJavaType(method.returnType)
+            return method.returnType.codeType
         } else {
             throw IllegalArgumentException("Cannot find property with name: $name!")
         }
     }
 
-    internal fun genDefaultMethodsImpl(baseClass: Class<*>, body: MutableCodeSource) {
+    internal fun genDefaultMethodsImpl(baseClass: Class<*>): List<MethodDeclaration> {
         val funcs = baseClass.methods.map { base ->
             findImplementation(baseClass, base)?.let { Pair(base, it) }
         }.filterNotNull()
 
-        funcs.forEach {
+        return funcs.map {
             val base = it.first
             val delegateClass = it.second.first
             val delegate = it.second.second
 
-            val parameters = base.parameterNames.mapIndexed { i, it ->
-                CodeParameter(delegate.parameters[i + 1].type.codeType, it)
+            val parameters = base.parameters.mapIndexed {i, it ->
+                parameter(type = delegate.parameters[i + 1].type, name = "arg$i")
             }
 
-            val arguments = mutableListOf<CodePart>(CodeAPI.accessThis()) + parameters.map { it.toCodeArgument() }
+            val arguments = mutableListOf<CodeInstruction>(Access.THIS) + parameters.map { it.toVariableAccess() }
 
-            val invoke = CodeAPI.invoke(
+            val invoke: CodeInstruction = invoke(
                     InvokeType.INVOKE_STATIC,
                     delegateClass.codeType,
-                    CodeAPI.accessStatic(),
+                    Access.STATIC,
                     delegate.name,
-                    TypeSpec(delegate.returnType.codeType, delegate.parameters.map { it.type.codeType }),
+                    TypeSpec(delegate.returnType, delegate.parameters.map { it.type }),
                     arguments
             ).let {
-                if (base.returnType == Void.TYPE)
+                if (base.returnType.`is`(Void.TYPE))
                     it
                 else
-                    CodeAPI.returnValue(base.returnType.codeType, it)
+                    returnValue(base.returnType, it)
             }
 
-            body.add(MethodDeclarationBuilder.builder()
-                    .withAnnotations(CodeAPI.overrideAnnotation())
-                    .withModifiers(CodeModifier.PUBLIC, CodeModifier.BRIDGE)
-                    .withName(base.name)
-                    .withReturnType(base.returnType.codeType)
-                    .withParameters(parameters)
-                    .withBody(CodeAPI.sourceOfParts(invoke))
+            MethodDeclaration.Builder.builder()
+                    .annotations(overrideAnnotation())
+                    .modifiers(CodeModifier.PUBLIC, CodeModifier.BRIDGE)
+                    .name(base.name)
+                    .returnType(base.returnType)
+                    .parameters(parameters)
+                    .body(source(invoke))
                     .build()
-            )
 
         }
     }

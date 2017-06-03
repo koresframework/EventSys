@@ -35,4 +35,15 @@ data class EventClassSpecification<T>(
         val extensions: List<ExtensionSpecification>
 )
 
-data class ExtensionSpecification(val implement: Class<*>?, val extensionMethodsClass: Class<*>?)
+/**
+ * Specifies extension.
+ *
+ * @property residence Location which this extension was specified. For annotations,
+ * this will be the annotated elements. (may be [Unit])
+ * @property implement Specifies the interface to add to event implementation.
+ * @property extensionClass Specifies the extension class which implements the methods
+ * of [implement] or provides additional features to the event. This class is instantiated in
+ * event constructor and stored as variable, a single-arg constructor is required, the first argument must be
+ * a type assignable to target event type.
+ */
+data class ExtensionSpecification(val residence: Any, val implement: Class<*>?, val extensionClass: Class<*>?)

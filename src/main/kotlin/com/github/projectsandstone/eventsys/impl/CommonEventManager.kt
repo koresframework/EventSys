@@ -29,8 +29,10 @@ package com.github.projectsandstone.eventsys.impl
 
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeUtil
-import com.github.projectsandstone.eventsys.event.*
+import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
+import com.github.projectsandstone.eventsys.event.EventManager
+import com.github.projectsandstone.eventsys.event.ListenerSpec
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.gen.event.CommonEventGenerator
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
@@ -38,7 +40,8 @@ import com.github.projectsandstone.eventsys.logging.LoggerInterface
 import com.github.projectsandstone.eventsys.util.getEventType
 import com.github.projectsandstone.eventsys.util.mh.MethodDispatcher
 import java.lang.reflect.Method
-import java.util.*
+import java.util.Comparator
+import java.util.TreeSet
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadFactory
 
@@ -118,7 +121,7 @@ open class CommonEventManager @JvmOverloads constructor(
             return container.eventType.isAssignableFrom(eventType)
                     ||
                     (container.eventType.related.isEmpty()
-                            && container.eventType.aClass.isAssignableFrom(eventType.aClass))
+                            && container.eventType.typeClass.isAssignableFrom(eventType.typeClass))
         }
 
         val listenerPhase = container.eventListener.phase
@@ -186,7 +189,7 @@ open class CommonEventManager @JvmOverloads constructor(
 
 
         return EventListenerContainer(owner,
-                TypeUtil.toReference(method.genericParameterTypes[0]) as TypeInfo<Event>,
+                TypeUtil.toTypeInfo(method.genericParameterTypes[0]) as TypeInfo<Event>,
                 this.eventGenerator.createMethodListener(owner, method, instance, ListenerSpec.fromMethod(method)))
     }
 
@@ -228,7 +231,7 @@ class Default : CommonEventManager(true, COMMON_SORTER, COMMON_THREAD_FACTORY, C
     companion object {
         private val COMMON_SORTER = Comparator.comparing(EventListener<*>::priority)
         private val COMMON_THREAD_FACTORY = Executors.defaultThreadFactory()
-        private val COMMON_LOGGER = object: LoggerInterface{
+        private val COMMON_LOGGER = object : LoggerInterface {
             override fun error(message: String, throwable: Throwable) {
                 System.err.println(message)
                 throwable.printStackTrace()

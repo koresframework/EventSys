@@ -30,10 +30,20 @@ package com.github.projectsandstone.eventsys.validation
 import com.github.projectsandstone.eventsys.event.property.Property
 
 /**
- * This class must be singleton and have a INSTANCE field.
+ * The implementation class must be singleton and have a `INSTANCE` field.
+ *
+ * This class is used to validate properties at runtime. The validator will
+ * be appended to the top of constructors (after `super` invocation) and to
+ * the top of property setter functions.
  */
 interface Validator<V> {
 
+    /**
+     * Validates value [V] for [property].
+     *
+     * Throws exception for invalid properties.
+     */
+    @Throws(Exception::class)
     fun validate(obj: V, property: Property<V>)
 
 }

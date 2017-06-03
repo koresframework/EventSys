@@ -72,11 +72,11 @@ open class MethodDispatcher(
     val method: MethodHandle
         get() = backingMethod_
 
-    val parameters: Array<TypeInfo<*>> = method.genericParameterTypes.map { TypeUtil.toReference(it) }.toTypedArray()
+    val parameters: Array<TypeInfo<*>> = method.genericParameterTypes.map { TypeUtil.toTypeInfo(it) }.toTypedArray()
 
     internal val namedParameters: Array<com.github.jonathanxd.iutils.`object`.Named<TypeInfo<*>>> =
             method.parameters.map {
-                val typeInfo = TypeUtil.toReference(it.parameterizedType)
+                val typeInfo = TypeUtil.toTypeInfo(it.parameterizedType)
 
                 val name: String? = it.getDeclaredAnnotation(Named::class.java)?.value
                         ?: it.getDeclaredAnnotation(Name::class.java)?.value
@@ -104,7 +104,7 @@ open class MethodDispatcher(
                     val name = named.name
                     val typeInfo = named.value
 
-                    args += event.getProperty(typeInfo.aClass, name)
+                    args += event.getProperty(typeInfo.typeClass, name)
                 }
             }
 

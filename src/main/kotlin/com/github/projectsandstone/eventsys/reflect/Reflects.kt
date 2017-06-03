@@ -27,23 +27,35 @@
  */
 package com.github.projectsandstone.eventsys.reflect
 
+import com.github.jonathanxd.codeapi.util.conversion.parameterNames
 import com.github.jonathanxd.iutils.description.Description
 import com.github.jonathanxd.iutils.description.DescriptionUtil
 import com.github.projectsandstone.eventsys.event.annotation.Name
 import com.github.projectsandstone.eventsys.event.property.Property
 import java.lang.reflect.Method
-import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.findAnnotation
-import kotlin.reflect.full.superclasses
 import kotlin.reflect.full.valueParameters
-import kotlin.reflect.jvm.javaType
-import kotlin.reflect.jvm.jvmErasure
 
 val propertyHolderSignatures: List<Description> =
         Property::class.java.methods.map {
             DescriptionUtil.from(it)
         }
+
+val Class<*>.isKotlin get() = this.declaredAnnotations.any {
+    (it as java.lang.annotation.Annotation).annotationType().canonicalName.startsWith("kotlin.Metadata")
+}
+
+val Method.parameterNames: List<String>
+    get() {
+        val kNames by lazy {
+            this.parameterNames
+        }
+
+        return this.parameters.mapIndexed { i, it ->
+            it.getDeclaredAnnotation(Name::class.java)?.value ?: kNames[i]
+        }
+    }
 
 val KFunction<*>.parameterNames: List<String>
     get() = this.valueParameters.map {
@@ -68,7 +80,7 @@ fun findImplementation(jClass: Class<*>, method: Method): Pair<Class<*>, Method>
 
     val superclasses = mutableListOf<Class<*>>()
 
-    if(jClass.superclass != null && jClass.superclass != Any::class.java)
+    if (jClass.superclass != null && jClass.superclass != Any::class.java)
         superclasses += jClass.superclass
 
     superclasses += jClass.interfaces
@@ -76,7 +88,7 @@ fun findImplementation(jClass: Class<*>, method: Method): Pair<Class<*>, Method>
     superclasses.forEach {
         val find = findImplementation(it, method)
 
-        if(find != null)
+        if (find != null)
             return find
     }
 
@@ -107,4 +119,21 @@ internal fun getName(base: String): String {
     }
 
     return base_
+}
+
+fun <T : Annotation> Class<*>.getAllAnnotationsOfType(type: Class<out T>): List<T> {
+    val list = mutableListOf<T>()
+    this.addAllAnnotationsOfTypeTo(list, type)
+    return list
+}
+
+private fun <T : Annotation> Class<*>.addAllAnnotationsOfTypeTo(destination: MutableList<T>, type: Class<out T>) {
+    destination += this.getDeclaredAnnotationsByType(type)
+
+    if (this.superclass != null && this.superclass != Any::class.java)
+        this.superclass.addAllAnnotationsOfTypeTo(destination, type)
+
+    this.interfaces.forEach {
+        it.addAllAnnotationsOfTypeTo(destination, type)
+    }
 }

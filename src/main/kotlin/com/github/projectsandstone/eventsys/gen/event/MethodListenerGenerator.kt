@@ -28,21 +28,19 @@
 package com.github.projectsandstone.eventsys.gen.event
 
 import com.github.jonathanxd.codeapi.*
-import com.github.jonathanxd.codeapi.base.Typed
+import com.github.jonathanxd.codeapi.base.*
 import com.github.jonathanxd.codeapi.bytecode.VISIT_LINES
 import com.github.jonathanxd.codeapi.bytecode.VisitLineType
 import com.github.jonathanxd.codeapi.bytecode.extra.Dup
 import com.github.jonathanxd.codeapi.bytecode.extra.Pop
-import com.github.jonathanxd.codeapi.bytecode.gen.BytecodeGenerator
-import com.github.jonathanxd.codeapi.common.CodeModifier
-import com.github.jonathanxd.codeapi.common.CodeParameter
-import com.github.jonathanxd.codeapi.conversions.createInvocation
-import com.github.jonathanxd.codeapi.conversions.createStaticInvocation
-import com.github.jonathanxd.codeapi.factory.field
+import com.github.jonathanxd.codeapi.bytecode.processor.BytecodeProcessor
+import com.github.jonathanxd.codeapi.common.Stack
+import com.github.jonathanxd.codeapi.factory.*
 import com.github.jonathanxd.codeapi.literal.Literals
 import com.github.jonathanxd.codeapi.type.Generic
-import com.github.jonathanxd.codeapi.util.Stack
+import com.github.jonathanxd.codeapi.util.Alias
 import com.github.jonathanxd.codeapi.util.codeType
+import com.github.jonathanxd.codeapi.util.conversion.toInvocation
 import com.github.projectsandstone.eventsys.Debug
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
@@ -58,7 +56,6 @@ import com.github.projectsandstone.eventsys.reflect.getName
 import com.github.projectsandstone.eventsys.util.toGeneric
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
-import java.util.*
 
 /**
  * Creates [EventListener] class that invokes a method (that are annotated with [Listener]) directly (without reflection).
@@ -69,7 +66,7 @@ internal object MethodListenerGenerator {
 
     fun create(owner: Any, method: Method, instance: Any?, listenerSpec: ListenerSpec): EventListener<Event> {
 
-        if(this.cache.containsKey(method)) {
+        if (this.cache.containsKey(method)) {
             return this.cache[method]!!
         }
 
@@ -102,21 +99,23 @@ internal object MethodListenerGenerator {
 
         val eventType = listenerSpec.eventType
 
-        val codeClass = CodeAPI.aClassBuilder()
-                .withModifiers(CodeModifier.PUBLIC)
-                .withQualifiedName(name)
-                .withImplementations(Generic.type(EventListener::class.java.codeType).of(eventType.toGeneric()))
-                .withSuperClass(Types.OBJECT)
-                .withBody(genBody(method, instance, listenerSpec))
+        val (field, constructor, methods) = genBody(method, instance, listenerSpec);
+
+        val codeClass = ClassDeclaration.Builder.builder()
+                .modifiers(CodeModifier.PUBLIC)
+                .qualifiedName(name)
+                .implementations(Generic.type(EventListener::class.java.codeType).of(eventType.toGeneric()))
+                .superClass(Types.OBJECT)
+                .fields(field?.let(::listOf) ?: emptyList())
+                .constructors(constructor?.let(::listOf) ?: emptyList())
+                .methods(methods)
                 .build()
 
-        val source = CodeAPI.sourceOfParts(codeClass)
-
-        val generator = BytecodeGenerator()
+        val generator = BytecodeProcessor()
 
         generator.options.set(VISIT_LINES, VisitLineType.FOLLOW_CODE_SOURCE)
 
-        val bytecodeClass = generator.gen(source)[0]
+        val bytecodeClass = generator.process(codeClass)[0]
 
         val bytes = bytecodeClass.bytecode
 
@@ -133,60 +132,61 @@ internal object MethodListenerGenerator {
     private const val ownerVariableName: String = "pluginContainer"
     private const val instanceFieldName: String = "\$instance"
 
-    private fun genBody(method: Method, instance: Any?, listenerSpec: ListenerSpec): CodeSource {
-        val source = MutableCodeSource()
+    private fun genBody(method: Method, instance: Any?, listenerSpec: ListenerSpec):
+            Triple<FieldDeclaration?, ConstructorDeclaration?, List<MethodDeclaration>> {
 
         val isStatic = Modifier.isStatic(method.modifiers)
 
-        if (!isStatic) {
+        val (field, constructor) = if (!isStatic) {
             val instanceType = instance!!::class.java.codeType
 
-            source.add(field(EnumSet.of(CodeModifier.PRIVATE, CodeModifier.FINAL), instanceType, instanceFieldName))
-            source.add(CodeAPI.constructorBuilder()
-                    .withModifiers(CodeModifier.PUBLIC)
-                    .withParameters(CodeParameter(instanceType, instanceFieldName))
-                    .withBody(CodeAPI.sourceOfParts(
-                            CodeAPI.setThisField(instanceType, instanceFieldName, CodeAPI.accessLocalVariable(instanceType, instanceFieldName))
+            fieldDec()
+                    .modifiers(CodeModifier.PRIVATE, CodeModifier.FINAL)
+                    .type(instanceType)
+                    .name(instanceFieldName)
+                    .build() to constructorDec()
+                    .modifiers(CodeModifier.PUBLIC)
+                    .parameters(parameter(type = instanceType, name = instanceFieldName))
+                    .body(source(
+                            setFieldValue(localization = Alias.THIS,
+                                    target = Access.THIS,
+                                    type = instanceType,
+                                    name = instanceFieldName,
+                                    value = accessVariable(instanceType, instanceFieldName))
                     ))
                     .build()
-            )
-        }
+        } else null to null
 
-        source.addAll(genMethods(method, instance, listenerSpec))
-
-        return source
+        return Triple(field, constructor, genMethods(method, instance, listenerSpec))
     }
 
-    private fun genMethods(method: Method, instance: Any?, listenerSpec: ListenerSpec): CodeSource {
-        val source = MutableCodeSource()
+    private fun genMethods(method: Method, instance: Any?, listenerSpec: ListenerSpec): List<MethodDeclaration> {
+        val methods = mutableListOf<MethodDeclaration>()
 
         val isStatic = Modifier.isStatic(method.modifiers)
         val eventType = Event::class.java.codeType
 
         // This is hard to maintain, but, is funny :D
         fun genOnEventBody(): CodeSource {
-            val body = MutableCodeSource()
+            val body = MutableCodeSource.create()
 
             val parameters = listenerSpec.parameters
 
-            val arguments = mutableListOf<CodePart>()
+            val arguments = mutableListOf<CodeInstruction>()
 
-            val accessEventVar = CodeAPI.accessLocalVariable(eventType, eventVariableName)
+            val accessEventVar = accessVariable(eventType, eventVariableName)
 
-            arguments.add(CodeAPI.cast(eventType, parameters[0].type.aClass.codeType, accessEventVar))
+            arguments.add(cast(eventType, parameters[0].type.typeClass.codeType, accessEventVar))
 
             parameters.forEachIndexed { i, param ->
                 if (i > 0) {
                     val name = param.name
                     val typeInfo = param.type
 
-                    val toAdd: CodePart
-
-                    if (typeInfo.aClass == Property::class.java
-                            && typeInfo.related.isNotEmpty()) {
-                        toAdd = this.callGetPropertyDirectOn(accessEventVar, name, typeInfo.related[0].aClass, true, param.isNullable)
+                    val toAdd: CodeInstruction = if (typeInfo.typeClass == Property::class.java && typeInfo.related.isNotEmpty()) {
+                        this.callGetPropertyDirectOn(accessEventVar, name, typeInfo.related[0].typeClass, true, param.isNullable)
                     } else {
-                        toAdd = this.callGetPropertyDirectOn(accessEventVar, name, typeInfo.aClass, false, param.isNullable)
+                        this.callGetPropertyDirectOn(accessEventVar, name, typeInfo.typeClass, false, param.isNullable)
                     }
 
                     arguments.add(toAdd)
@@ -195,91 +195,99 @@ internal object MethodListenerGenerator {
 
 
             if (isStatic) {
-                body.add(method.createStaticInvocation(arguments))
+                body.add(method.toInvocation(InvokeType.INVOKE_STATIC, Access.STATIC, arguments))
             } else {
-                body.add(method.createInvocation(CodeAPI.accessThisField(instance!!::class.java.codeType, instanceFieldName), arguments))
+                body.add(method.toInvocation(
+                        invokeType = null,
+                        target = accessThisField(instance!!::class.java.codeType, instanceFieldName),
+                        arguments = arguments))
             }
 
             return body
         }
 
-        val onEvent = CodeAPI.methodBuilder()
-                .withModifiers(CodeModifier.PUBLIC)
-                .withBody(genOnEventBody())
-                .withReturnType(Types.VOID)
-                .withName("onEvent")
-                .withParameters(
-                        CodeAPI.parameter(eventType, eventVariableName), CodeAPI.parameter(Any::class.java, ownerVariableName)
+        val onEvent = MethodDeclaration.Builder.builder()
+                .modifiers(CodeModifier.PUBLIC)
+                .body(genOnEventBody())
+                .returnType(Types.VOID)
+                .name("onEvent")
+                .parameters(
+                        parameter(type = eventType, name = eventVariableName), parameter(type = Any::class.java, name = ownerVariableName)
                 )
                 .build()
 
-        source.add(onEvent)
+        methods += onEvent
 
-        val getPriorityMethod = CodeAPI.methodBuilder()
-                .withModifiers(CodeModifier.PUBLIC)
-                .withBody(CodeAPI.sourceOfParts(
-                        CodeAPI.returnValue(EventPriority::class.java,
-                                CodeAPI.accessStaticField(EventPriority::class.java, EventPriority::class.java, listenerSpec.priority.name)
+        val getPriorityMethod = MethodDeclaration.Builder.builder()
+                .modifiers(CodeModifier.PUBLIC)
+                .body(source(
+                        returnValue(EventPriority::class.java,
+                                accessStaticField(EventPriority::class.java, EventPriority::class.java, listenerSpec.priority.name)
                         )
                 ))
-                .withName("getPriority")
-                .withReturnType(EventPriority::class.java.codeType)
+                .name("getPriority")
+                .returnType(EventPriority::class.java.codeType)
                 .build()
 
-        source.add(getPriorityMethod)
+        methods += getPriorityMethod
 
-        val getPhaseMethod = CodeAPI.methodBuilder()
-                .withModifiers(CodeModifier.PUBLIC)
-                .withBody(CodeAPI.sourceOfParts(
-                        CodeAPI.returnValue(Types.INT, Literals.INT(listenerSpec.phase))
+        val getPhaseMethod = MethodDeclaration.Builder.builder()
+                .modifiers(CodeModifier.PUBLIC)
+                .body(source(
+                        returnValue(Types.INT, Literals.INT(listenerSpec.phase))
                 ))
-                .withName("getPhase")
-                .withReturnType(Types.INT)
+                .name("getPhase")
+                .returnType(Types.INT)
                 .build()
 
-        source.add(getPhaseMethod)
+        methods += getPhaseMethod
 
-        val ignoreCancelledMethod = CodeAPI.methodBuilder()
-                .withModifiers(CodeModifier.PUBLIC)
-                .withBody(CodeAPI.sourceOfParts(
-                        CodeAPI.returnValue(Types.BOOLEAN, Literals.BOOLEAN(listenerSpec.ignoreCancelled))
+        val ignoreCancelledMethod = MethodDeclaration.Builder.builder()
+                .modifiers(CodeModifier.PUBLIC)
+                .body(source(
+                        returnValue(Types.BOOLEAN, Literals.BOOLEAN(listenerSpec.ignoreCancelled))
                 ))
-                .withName("getIgnoreCancelled")
-                .withReturnType(Types.BOOLEAN)
+                .name("getIgnoreCancelled")
+                .returnType(Types.BOOLEAN)
                 .build()
 
-        source.add(ignoreCancelledMethod)
+        methods += ignoreCancelledMethod
 
-        return source
+        return methods
     }
 
-    private fun callGetPropertyDirectOn(target: CodePart, name: String, type: Class<*>, propertyOnly: Boolean, isNullable: Boolean): CodePart {
-        val getPropertyMethod = CodeAPI.invokeInterface(PropertyHolder::class.java, target,
+    private fun callGetPropertyDirectOn(target: CodeInstruction,
+                                        name: String,
+                                        type: Class<*>,
+                                        propertyOnly: Boolean,
+                                        isNullable: Boolean): CodeInstruction {
+
+        val getPropertyMethod = invokeInterface(PropertyHolder::class.java, target,
                 if (propertyOnly) "getProperty" else "getGetterProperty",
-                CodeAPI.typeSpec(if (propertyOnly) Property::class.java else GetterProperty::class.java, Class::class.java, String::class.java),
+                typeSpec(if (propertyOnly) Property::class.java else GetterProperty::class.java, Class::class.java, String::class.java),
                 listOf(Literals.CLASS(type), Literals.STRING(name))
         )
 
-        val elsePart = if (isNullable) Literals.NULL else CodeAPI.returnVoid()
+        val elsePart: CodeInstruction = if (isNullable) Literals.NULL else returnVoid()
 
         val getPropMethod = checkNull(getPropertyMethod, elsePart)
 
         if (propertyOnly)
             return getPropMethod
 
-        return CodeAPI.ifStatement(CodeAPI.checkNotNull(Dup(getPropMethod, GetterProperty::class.codeType)),
+        return ifStatement(checkNotNull(Dup(getPropMethod, GetterProperty::class.codeType)),
                 // Body
-                CodeAPI.source(CodeAPI.invokeInterface(GetterProperty::class.java, Stack,
+                source(invokeInterface(GetterProperty::class.java, Stack,
                         "getValue",
-                        CodeAPI.typeSpec(Any::class.java),
+                        typeSpec(Any::class.java),
                         emptyList())),
                 // Else
-                CodeAPI.source(
+                source(
                         Pop,
                         elsePart
                 ))
 
     }
 
-    private fun checkNull(part: Typed, else_: CodePart) = CodeAPI.ifStatement(CodeAPI.checkNotNull(Dup(part)), CodeAPI.source(Stack), CodeAPI.source(Pop, else_))
+    private fun checkNull(part: Typed, else_: CodeInstruction) = ifStatement(checkNotNull(Dup(part)), source(Stack), source(Pop, else_))
 }

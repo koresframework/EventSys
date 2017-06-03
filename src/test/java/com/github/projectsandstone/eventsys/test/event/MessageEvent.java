@@ -41,6 +41,7 @@ import java.util.function.Function;
 public interface MessageEvent extends Event, Cancellable {
 
     String getMessage();
+
     @Validate(NonNullValidator.class)
     void setMessage(String message);
 

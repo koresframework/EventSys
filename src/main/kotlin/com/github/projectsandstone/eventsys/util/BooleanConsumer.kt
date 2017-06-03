@@ -28,7 +28,7 @@
 package com.github.projectsandstone.eventsys.util
 
 /**
- * Boolean primitive consumer specialized version.
+ * Consumer specialized for boolean.
  */
 @FunctionalInterface
 interface BooleanConsumer {

@@ -30,6 +30,8 @@ package com.github.projectsandstone.eventsys.test.listener;
 import com.github.projectsandstone.eventsys.event.annotation.Listener;
 import com.github.projectsandstone.eventsys.test.event.MessageEvent;
 
+import kotlin.Unit;
+
 public class MyListener {
 
     @Listener

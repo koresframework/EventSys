@@ -25,18 +25,31 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
+@file:Suppress("DEPRECATED_JAVA_ANNOTATION")
+
 package com.github.projectsandstone.eventsys.event.annotation
 
-import com.github.jonathanxd.codeapi.annotation.Default
+import com.github.jonathanxd.iutils.`object`.Default
 import kotlin.reflect.KClass
 
 /**
  * Defines the extension of a event class that will be created by the factory class.
+ *
+ * Since 1.1, event interfaces (and sub-classes) can be annotated with this.
+ * If annotated in event interface or sub-classes, the event generated will always implement
+ * extensions regardless the factory specification.
+ *
+ * @property implement Interface which generated event class should implement.
+ * @property extensionClass An extension class which implements functions of
+ * [implement] interface and provide additional methods. All methods of [extensionClass]
+ * is added to target event and is delegated to [extensionClass], which should have a single-arg
+ * constructor which accepts target event type (or a sub-type, it includes the [implement]).
+ * Only non-static functions are added to target event.
  */
 @Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.FUNCTION)
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
 @Repeatable
 annotation class Extension(
         val implement: KClass<*> = Default::class,
-        val extensionMethodsClass: KClass<*> = Default::class
+        val extensionClass: KClass<*> = Default::class
 )
