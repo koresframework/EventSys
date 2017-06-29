@@ -27,7 +27,7 @@
  */
 package com.github.projectsandstone.eventsys.event
 
-import com.github.jonathanxd.iutils.type.ConcreteTypeInfo
+import com.github.jonathanxd.iutils.type.AbstractTypeInfo
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
@@ -171,7 +171,7 @@ interface EventManager {
  * @param eventListener Event Listener instance.
  */
 inline fun <reified T : Event> EventManager.registerListener(plugin: Any, eventListener: EventListener<T>) {
-    val typeInfo: TypeInfo<T> = object : ConcreteTypeInfo<T>() {}
+    val typeInfo: TypeInfo<T> = object : AbstractTypeInfo<T>() {}
 
     this.registerListener(plugin, typeInfo, eventListener)
 }

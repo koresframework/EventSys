@@ -42,6 +42,7 @@ val propertyHolderSignatures: List<Description> =
             DescriptionUtil.from(it)
         }
 
+@Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
 val Class<*>.isKotlin get() = this.declaredAnnotations.any {
     (it as java.lang.annotation.Annotation).annotationType().canonicalName.startsWith("kotlin.Metadata")
 }
