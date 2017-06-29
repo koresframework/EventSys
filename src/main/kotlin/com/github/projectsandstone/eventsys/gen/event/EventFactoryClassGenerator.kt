@@ -55,6 +55,7 @@ import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
 import com.github.projectsandstone.eventsys.gen.save.ClassSaver
 import com.github.projectsandstone.eventsys.reflect.findImplementation
 import com.github.projectsandstone.eventsys.reflect.getAllAnnotationsOfType
+import com.github.projectsandstone.eventsys.util.toSimpleString
 import java.lang.reflect.Parameter
 
 /**
@@ -207,7 +208,7 @@ internal object EventFactoryClassGenerator {
                                             ?: names[index] // Should we remove it?
 
                                     if (!methodDeclaration.parameters.any { codeParameter -> codeParameter.name == it.name && codeParameter.type.canonicalName == it.type.canonicalName })
-                                        throw IllegalStateException("Cannot find property '[name: $name, type: ${it.type.canonicalName}]' in factory method '$factoryMethod'. Please provide a parameter with this name, use '-parameters' javac option or annotate parameters with '@${Name::class.java.canonicalName}' annotation.",
+                                        throw IllegalStateException("Cannot find property '[name: $name, type: ${it.type.canonicalName}]' in factory method '${factoryMethod.toSimpleString()}'. Please provide a parameter with this name, use '-parameters' javac option or annotate parameters with '@${Name::class.java.canonicalName}' annotation.",
                                                 IllegalStateException("Found properties: ${methodDeclaration.parameters.map { "${it.type.canonicalName} ${it.name}" }}. Required: ${ctr.parameters.contentToString()}."))
 
                                     if (name == "cancelled"
