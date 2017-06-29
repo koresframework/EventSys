@@ -39,6 +39,10 @@ public class MyExtension {
         this.event = event;
     }
 
+    public int getChannel() {
+        return 0;
+    }
+
     public void transform(Function<String, String> transformer) {
         event.setMessage(((PrefixHolder) event).getPrefix() + transformer.apply(event.getMessage()));
     }

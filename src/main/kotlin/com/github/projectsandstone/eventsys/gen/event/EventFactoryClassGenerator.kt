@@ -163,7 +163,7 @@ internal object EventFactoryClassGenerator {
                                             ExtensionSpecification(factoryMethod, implement, extension)
                                         }
 
-                                val properties = EventClassGenerator.getProperties(eventType, emptyList(), extensions.map { it.implement }.filterNotNull())
+                                val properties = EventClassGenerator.getProperties(eventType, emptyList(), extensions)
                                 val additionalProperties = mutableListOf<PropertyInfo>()
 
                                 factoryMethod.parameters.forEachIndexed { i, parameter ->

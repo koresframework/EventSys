@@ -161,7 +161,7 @@ internal object EventClassGenerator {
             }
         }
 
-        val properties = this.getProperties(classType, additionalProperties, extensionImplementations)
+        val properties = this.getProperties(classType, additionalProperties, extensions)
 
         classDeclarationBuilder = classDeclarationBuilder.implementations(implementations)
 
@@ -670,18 +670,24 @@ internal object EventClassGenerator {
         }
     }
 
-    internal fun getProperties(type: Class<*>, additional: List<PropertyInfo>, extensionsImplementation: List<Class<*>>): List<PropertyInfo> {
+    internal fun getProperties(type: Class<*>, additional: List<PropertyInfo>, extensions: List<ExtensionSpecification>): List<PropertyInfo> {
         val list = mutableListOf<PropertyInfo>()
 
         val methods = type.methods
                 .filter { it.declaringClass != Any::class.java }
                 .toMutableList()
 
-        extensionsImplementation.forEach {
+        extensions.map { it.implement }.filterNotNull().forEach {
             methods += it.methods.filter { it.declaringClass != Any::class.java }
         }
 
+        val extensionClasses = extensions.map { it.extensionClass }.filterNotNull()
+
         methods.forEach { method ->
+
+            // Since: 1.1.2: Extensions are allowed to implement properties getter and setter.
+            if(extensionClasses.any { this.hasMethod(it, method) })
+                return@forEach
 
             val name = method.name
 

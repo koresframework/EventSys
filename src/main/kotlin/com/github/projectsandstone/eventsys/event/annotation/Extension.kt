@@ -39,6 +39,9 @@ import kotlin.reflect.KClass
  * If annotated in event interface or sub-classes, the event generated will always implement
  * extensions regardless the factory specification.
  *
+ * Since 1.1.2, extension classes can override properties getter and setter. And EventSys will not generate
+ * fields for properties where both getter and setter is override (or only the getter if property is immutable).
+ *
  * @property implement Interface which generated event class should implement.
  * @property extensionClass An extension class which implements functions of
  * [implement] interface and provide additional methods. All methods of [extensionClass]

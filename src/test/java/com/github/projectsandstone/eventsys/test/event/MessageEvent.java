@@ -42,6 +42,8 @@ public interface MessageEvent extends Event, Cancellable {
 
     String getMessage();
 
+    int getChannel();
+
     @Validate(NonNullValidator.class)
     void setMessage(String message);
 
