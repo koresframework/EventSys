@@ -39,9 +39,10 @@ import com.github.projectsandstone.eventsys.event.annotation.Extension
  */
 @Retention(AnnotationRetention.SOURCE)
 @Target(AnnotationTarget.CLASS)
+@Repeatable
 annotation class Factory(
         val factoryClass: String,
-        val extension: Array<Extension>
+        vararg val extension: Extension = emptyArray()
 )
 
 interface FactoryUnification : UnifiedAnnotation {

@@ -84,7 +84,6 @@ class AnnotationProcessor : AbstractProcessor() {
                         checkExtension(factoryAnnotation, it)
                         val properties = getProperties(factoryAnnotation, it)
                         propertiesToGen += FactoryInfo(codeType, factoryAnnotation, properties, it)
-                        processingEnv.messager.printMessage(Diagnostic.Kind.WARNING, "Properties: $properties")
                     }
                 }
             }
@@ -159,22 +158,25 @@ class AnnotationProcessor : AbstractProcessor() {
             val impl = it.extensionClass().concreteType
             val tp = impl.defaultResolver.resolve(impl)
 
-            if (tp is TypeElement) {
-                tp.enclosedElements.forEach {
-                    if (it is ExecutableElement) {
-                        if (it.kind == ElementKind.CONSTRUCTOR) {
-                            if (it.parameters.size == 1
-                                    && it.parameters.first().asType().getCodeType(processingEnv.elementUtils).let {
-                                paramType ->
-                                types.any { type -> type.`is`(paramType) }
-                            })
-                                found = true
+            if (!impl.`is`(Default::class.java)) {
+
+                if (tp is TypeElement) {
+                    tp.enclosedElements.forEach {
+                        if (it is ExecutableElement) {
+                            if (it.kind == ElementKind.CONSTRUCTOR) {
+                                if (it.parameters.size == 1
+                                        && it.parameters.first().asType().getCodeType(processingEnv.elementUtils).let {
+                                    paramType ->
+                                    types.any { type -> type.`is`(paramType) }
+                                })
+                                    found = true
+                            }
                         }
                     }
-                }
 
-                if (!found) {
-                    processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "Extension class requires at least a constructor with only one parameter of one of following types: ${types.joinToString { it.simpleName }}!")
+                    if (!found) {
+                        processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "Extension class '${impl.simpleName}' requires at least a constructor with only one parameter of one of following types: ${types.joinToString { it.simpleName }}!")
+                    }
                 }
             }
         }
@@ -197,7 +199,6 @@ class AnnotationProcessor : AbstractProcessor() {
     }
 
     fun getProperties(factoryUnification: FactoryUnification, element: TypeElement, list: MutableList<Pair<CodeType, String>>) {
-        // TODO: Test
         val codeType = element.getCodeType(processingEnv.elementUtils).concreteType
 
         if (codeType.concreteType.`is`(Default::class.java))
