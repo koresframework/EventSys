@@ -52,7 +52,7 @@ object FactoryInterfaceGenerator {
     }
 
     private fun createMethods(factoryInfoList: List<FactoryInfo>,
-                              names: MutableList<String> = mutableListOf()): List<MethodDeclaration> =
+                              descs: MutableList<MethodDesc> = mutableListOf()): List<MethodDeclaration> =
             factoryInfoList.map {
                 val annotations: List<Annotation> = it.factoryUnification.extensions()
                         .filter {
@@ -77,40 +77,46 @@ object FactoryInterfaceGenerator {
                                     .build()
                         }
 
-                val name = getUniqueName(it.name, names)
-                names += name
+                val parameters = it.properties.map {
+                    parameter(type = it.first, name = it.second, annotations = listOf(
+                            Annotation.Builder.builder()
+                                    .type(Name::class.java)
+                                    .visible(true)
+                                    .values(mapOf("value" to it.second))
+                                    .build()
+                    ))
+                }
+
+                val desc = MethodDesc(it.name, parameters.size)
+
+                val name = getUniqueName(desc, descs)
+                descs += desc
 
                 MethodDeclaration.Builder.builder()
                         .modifiers(CodeModifier.PUBLIC)
                         .annotations(annotations)
                         .name(name)
                         .returnType(it.type)
-                        .parameters(it.properties.map {
-                            parameter(type = it.first, name = it.second, annotations = listOf(
-                                    Annotation.Builder.builder()
-                                            .type(Name::class.java)
-                                            .visible(true)
-                                            .values(mapOf("value" to it.second))
-                                            .build()
-                            ))
-                        })
+                        .parameters(parameters)
                         .build()
             }
 
 }
 
-fun getUniqueName(name: String, names: List<String>): String {
-    if(!names.contains(name))
-        return name
+fun getUniqueName(method: MethodDesc, descs: List<MethodDesc>): String {
+    if(!descs.contains(method))
+        return method.name
 
     var i = 0
 
-    while (names.contains("$name$i")) {
+    while (descs.any { it.parameters == method.parameters && it.name == "${method.name}$i" }) {
         ++i
     }
 
-    return "$name$i"
+    return "${method.name}$i"
 }
+
+data class MethodDesc(val name: String, val parameters: Int)
 
 fun TypeElement.factoryName(): String = "create${this.name()}"
 
