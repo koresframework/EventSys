@@ -28,12 +28,16 @@
 package com.github.projectsandstone.eventsys.ap
 
 import com.github.jonathanxd.codeapi.extra.UnifiedAnnotation
+import com.github.jonathanxd.codeapi.extra.UnifiedAnnotationData
 import com.github.jonathanxd.codeapi.type.CodeType
+import com.github.jonathanxd.codeapi.util.codeType
 import com.github.projectsandstone.eventsys.event.annotation.Extension
 
 interface FactoryUnification : UnifiedAnnotation {
-    fun factoryClass(): String
+    fun value(): String
+    fun methodName(): String
     fun extensions(): Array<ExtensionUnification>
+    fun inheritProperties(): Boolean
 }
 
 interface FactoriesUnification : UnifiedAnnotation {

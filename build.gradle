@@ -51,8 +51,10 @@ dependencies {
 
     // Utilities
     compile 'com.github.JonathanxD:CodeAPI-SourceWriter:alpha-4.0.0-source-6'
-    compile 'com.github.JonathanxD:CodeAPI-BytecodeWriter:alpha-4.0.0-bytecode-9'
-    compile 'com.github.JonathanxD:CodeAPI-Extra:1.1-PRE2'
+    compile 'com.github.JonathanxD:CodeAPI-BytecodeWriter:alpha-4.0.0-bytecode-10'
+    compile('com.github.JonathanxD:CodeAPI-Extra:1.1-PRE2') {
+        exclude group: 'com.github.JonathanxD', module: 'CodeAPI'
+    }
     compile 'com.github.JonathanxD:JwIUtils:4.5.0-f'
     compile "io.github.lukehutch:fast-classpath-scanner:2.0.9"
 

@@ -43,6 +43,10 @@ public class MyExtension {
         return 0;
     }
 
+    public String getBa() {
+        return "a";
+    }
+
     public void transform(Function<String, String> transformer) {
         event.setMessage(((PrefixHolder) event).getPrefix() + transformer.apply(event.getMessage()));
     }

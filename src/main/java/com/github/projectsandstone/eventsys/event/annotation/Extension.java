@@ -25,9 +25,9 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.ap;
+package com.github.projectsandstone.eventsys.event.annotation;
 
-import com.github.projectsandstone.eventsys.event.annotation.Extension;
+import com.github.jonathanxd.iutils.object.Default;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Repeatable;
@@ -36,47 +36,36 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks an event which factory method should be generated.
+ * Defines the extension of a event class that will be created by the factory class.
+ *
+ * Since 1.1, event interfaces (and sub-classes) can be annotated with this. If annotated in event
+ * interface or sub-classes, the event generated will always implement extensions regardless the
+ * factory specification.
+ *
+ * Since 1.1.2, extension classes can override properties getter and setter. And EventSys will not
+ * generate fields for properties where both getter and setter is override (or only the getter if
+ * property is immutable).
  */
-@Retention(RetentionPolicy.SOURCE)
-@Target(ElementType.TYPE)
-@Repeatable(Factories.class)
-public @interface Factory {
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD, ElementType.TYPE})
+@Repeatable(Extensions.class)
+public @interface Extension {
+    /**
+     * Interface which generated event class should implement.
+     *
+     * @return Interface which generated event class should implement.
+     */
+    Class<?> implement() default Default.class;
 
     /**
-     * Name of target factory class which method should be added, if the class does not exists, it
-     * will be created.
+     * An extension class which implements functions of {@link #implement()} interface and provide
+     * additional methods. All methods of provided class is added to target event and is delegated
+     * to the class, which should have a single-arg constructor which accepts target event type (or
+     * a sub-type, it includes the {@link #implement()}).
      *
-     * @return Name of target factory class which method should be added, if the class does not
-     * exists, it will be created.
+     * Only non-static functions are added to target event.
+     *
+     * @return Extension class.
      */
-    String value();
-
-    /**
-     * Name of factory method. Default uses the type name.
-     *
-     * @return Name of factory method. Default uses the type name.
-     */
-    String methodName() default "";
-
-    /**
-     * True to inherit properties of sub-types.
-     *
-     * AnnotationProcessor will lookup for all sub-type annotations and will only
-     * inherit non duplicated properties.
-     *
-     * This property does not have deep effect, which means that super-classes which inherits annotated
-     * type will not inherit properties unless the annotation on the type specifies it.
-     *
-     * @return True to inherit properties of sub-types
-     */
-    boolean inheritProperties() default false;
-
-    /**
-     * Extensions specifications.
-     *
-     * @return Extensions specifications.
-     */
-    Extension[] extensions() default {};
-
+    Class<?> extensionClass() default Default.class;
 }

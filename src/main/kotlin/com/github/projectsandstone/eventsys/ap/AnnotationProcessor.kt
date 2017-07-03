@@ -43,10 +43,7 @@ import javax.annotation.processing.Filer
 import javax.annotation.processing.ProcessingEnvironment
 import javax.annotation.processing.RoundEnvironment
 import javax.lang.model.SourceVersion
-import javax.lang.model.element.AnnotationMirror
-import javax.lang.model.element.ElementKind
-import javax.lang.model.element.ExecutableElement
-import javax.lang.model.element.TypeElement
+import javax.lang.model.element.*
 import javax.lang.model.type.TypeKind
 import javax.lang.model.type.TypeMirror
 import javax.tools.Diagnostic
@@ -68,40 +65,35 @@ class AnnotationProcessor : AbstractProcessor() {
 
         elements.forEach {
             if (it is TypeElement) {
-                val all = it.annotationMirrors.filter {
-                    it.annotationType.getCodeType(processingEnv.elementUtils).concreteType.`is`(Factory::class.java)
-                }.toMutableList()
+                val all = getFactoryAnnotations(it).toMutableList()
 
-                it.annotationMirrors.filter {
-                    it.annotationType.getCodeType(processingEnv.elementUtils).concreteType.`is`(Factories::class.java)
-                }.forEach {
-                    it.elementValues.forEach { executableElement, annotationValue ->
-                        if(executableElement.simpleName.contentEquals("value")) {
-                            val value = annotationValue.value
-                            if (value is List<*>) {
-                                value.forEach {
-                                    if(it is AnnotationMirror)
-                                        all += it
-                                }
-                            }
+                if(all.isNotEmpty()) {
+                    val annotation = all.first()
+
+                    if (annotation.inheritProperties()) {
+                        val props = getSubTypesProperties(it, annotation)
+
+                        props.forEach { (_, lannotations) ->
+                            all += lannotations
                         }
                     }
                 }
 
                 all.forEach { annotation ->
-                    val factoryAnnotation = getUnificationInstance(
-                            annotation,
-                            FactoryUnification::class.java, {
-                        if (it.`is`(Extension::class.java))
-                            ExtensionUnification::class.java
-                        else null
-                    }, processingEnv.elementUtils)
 
                     val codeType = it.getCodeType(processingEnv.elementUtils).concreteType
                     if (!codeType.`is`(PropertyHolder::class.java)) {
-                        checkExtension(factoryAnnotation, it)
-                        val properties = getProperties(factoryAnnotation, it)
-                        propertiesToGen += FactoryInfo(codeType, factoryAnnotation, properties, it)
+                        checkExtension(annotation, it)
+                        val properties = getProperties(annotation, it).toMutableList()
+
+                        propertiesToGen += FactoryInfo(
+                                codeType,
+                                it,
+                                annotation,
+                                properties,
+                                if(annotation.methodName().isNotEmpty()) annotation.methodName() else it.factoryName(),
+                                it
+                        )
                     }
                 }
             }
@@ -111,7 +103,7 @@ class AnnotationProcessor : AbstractProcessor() {
         if (!propertiesToGen.isEmpty()) {
             val sourceGen = PlainSourceGenerator()
 
-            val grouped = propertiesToGen.groupBy { it.factoryUnification.factoryClass() }
+            val grouped = propertiesToGen.groupBy { it.factoryUnification.value() }
 
             grouped.forEach { name, factInf ->
                 val declaration = FactoryInterfaceGenerator.processNamed(name, factInf)
@@ -137,6 +129,84 @@ class AnnotationProcessor : AbstractProcessor() {
 
         return true
 
+    }
+
+    private fun getFactoryAnnotations(element: Element): List<FactoryUnification> {
+        val all = element.annotationMirrors.filter {
+            it.annotationType.getCodeType(processingEnv.elementUtils).concreteType.`is`(Factory::class.java)
+        }.toMutableList()
+
+        element.annotationMirrors.filter {
+            it.annotationType.getCodeType(processingEnv.elementUtils).concreteType.`is`(Factories::class.java)
+        }.forEach {
+            it.elementValues.forEach { executableElement, annotationValue ->
+                if(executableElement.simpleName.contentEquals("value")) {
+                    val value = annotationValue.value
+                    if (value is List<*>) {
+                        value.forEach {
+                            if(it is AnnotationMirror)
+                                all += it
+                        }
+                    }
+                }
+            }
+        }
+
+        return all.map {
+            getUnificationInstance(
+                    it,
+                    FactoryUnification::class.java, {
+                if (it.`is`(Extension::class.java))
+                    ExtensionUnification::class.java
+                else null
+            }, processingEnv.elementUtils)
+        }
+    }
+
+    private fun getSubTypesProperties(element: TypeElement,
+                                      current: FactoryUnification): List<FactoryAnnotatedElement> {
+
+        val all = mutableListOf<FactoryAnnotatedElement>()
+        val impls = current.extensions().map { it.implement() }
+        val exts = current.extensions().map { it.extensionClass() }
+
+        this.getSubTypesProperties0(element, all, false)
+
+        return all.map {
+            FactoryAnnotatedElement(it.typeElement, it.factoryAnnotations.filter {
+                it.extensions().isNotEmpty()
+                && it.extensions().none { out ->
+                    impls.any { out.implement().`is`(it) }
+                        || exts.any { out.extensionClass().`is`(it) }
+                }
+            })
+        }.filter { it.factoryAnnotations.isNotEmpty() }
+    }
+
+    private fun getSubTypesProperties0(element: TypeElement,
+                                       unificationList: MutableList<FactoryAnnotatedElement>,
+                                       instaInspect: Boolean = true) {
+
+        if(instaInspect)
+            unificationList += FactoryAnnotatedElement(element, getFactoryAnnotations(element))
+
+        if (element.superclass.kind != TypeKind.NONE) {
+            val type = element.superclass.getCodeType(processingEnv.elementUtils).concreteType
+            val resolve = type.defaultResolver.resolve(type)
+
+            if (resolve is TypeElement) {
+                getSubTypesProperties0(resolve, unificationList)
+            }
+        }
+
+        element.interfaces.forEach {
+            val type = it.getCodeType(processingEnv.elementUtils).concreteType
+            val resolve = type.defaultResolver.resolve(type)
+
+            if (resolve is TypeElement) {
+                getSubTypesProperties0(resolve, unificationList)
+            }
+        }
     }
 
     fun getTypes(element: TypeElement): Set<CodeType> {
@@ -200,23 +270,49 @@ class AnnotationProcessor : AbstractProcessor() {
         }
     }
 
-    fun getProperties(factoryUnification: FactoryUnification, element: TypeElement): List<Pair<CodeType, String>> {
+    fun getProperties(factoryUnification: FactoryUnification,
+                      element: TypeElement,
+                      extensionOnly: Boolean = false): List<Pair<CodeType, String>> {
         val list = mutableListOf<Pair<CodeType, String>>()
-        this.getProperties(factoryUnification, element, list)
+
+        if(!extensionOnly) {
+            this.getProperties(factoryUnification, element, list)
+
+            val types = mutableListOf<TypeMirror>()
+
+            if (element.superclass.kind != TypeKind.NONE) {
+                types += element.superclass
+            }
+
+            types += element.interfaces
+
+            val itfs = types.map { it.getCodeType(processingEnv.elementUtils).concreteType }.map {
+                it.defaultResolver.resolve(it)
+            }.toMutableList()
+
+            itfs.forEach {
+                if (it is TypeElement) {
+                    getProperties(factoryUnification, it, list)
+                }
+
+            }
+        }
 
         factoryUnification.extensions().forEach {
             val impl = it.implement().concreteType
             val tp = impl.defaultResolver.resolve(impl)
 
             if (tp is TypeElement) {
-                getProperties(factoryUnification, tp, list)
+                this.getProperties(factoryUnification, tp, list)
             }
         }
 
         return list
     }
 
-    fun getProperties(factoryUnification: FactoryUnification, element: TypeElement, list: MutableList<Pair<CodeType, String>>) {
+    fun getProperties(factoryUnification: FactoryUnification,
+                      element: TypeElement,
+                      list: MutableList<Pair<CodeType, String>>) {
         val codeType = element.getCodeType(processingEnv.elementUtils).concreteType
 
         if (codeType.concreteType.`is`(Default::class.java))
@@ -321,3 +417,4 @@ class AnnotationProcessor : AbstractProcessor() {
     }
 }
 
+data class FactoryAnnotatedElement(val typeElement: TypeElement, val factoryAnnotations: List<FactoryUnification>)

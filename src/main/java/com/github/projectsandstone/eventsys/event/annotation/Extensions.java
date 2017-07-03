@@ -25,16 +25,17 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-@file:Suppress("DEPRECATED_JAVA_ANNOTATION")
+package com.github.projectsandstone.eventsys.event.annotation;
 
-package com.github.projectsandstone.eventsys.event.annotation
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-/**
- * Defines multiple extensions.
- *
- * Since 1.1, event interfaces (and sub-classes) can be annotated with this.
- * @see Extension
- */
-@Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
-annotation class Extensions(vararg val value: Extension)
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD, ElementType.TYPE})
+public @interface Extensions {
+
+    Extension[] value();
+
+}

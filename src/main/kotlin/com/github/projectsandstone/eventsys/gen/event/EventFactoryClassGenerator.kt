@@ -150,12 +150,12 @@ internal object EventFactoryClassGenerator {
                                 val allExtensionAnnotations = mutableListOf<Extension>()
 
                                 allExtensionAnnotations += eventType.getAllAnnotationsOfType(Extension::class.java)
-                                allExtensionAnnotations += eventType.getAllAnnotationsOfType(Extensions::class.java)
-                                        .flatMap { it.value.toList() }
+                                /*allExtensionAnnotations += eventType.getAllAnnotationsOfType(Extensions::class.java)
+                                        .flatMap { it.value.toList() }*/
 
                                 allExtensionAnnotations += factoryMethod.getDeclaredAnnotationsByType(Extension::class.java)
-                                allExtensionAnnotations += factoryMethod.getDeclaredAnnotationsByType(Extensions::class.java)
-                                        .flatMap { it.value.toList() }
+                                /*allExtensionAnnotations += factoryMethod.getDeclaredAnnotationsByType(Extensions::class.java)
+                                        .flatMap { it.value.toList() }*/
 
                                 val extensions =
                                         allExtensionAnnotations.map {
