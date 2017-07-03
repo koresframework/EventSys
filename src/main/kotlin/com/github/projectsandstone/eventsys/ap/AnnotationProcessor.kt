@@ -27,6 +27,7 @@
  */
 package com.github.projectsandstone.eventsys.ap
 
+import com.github.jonathanxd.codeapi.Types
 import com.github.jonathanxd.codeapi.extra.getUnificationInstance
 import com.github.jonathanxd.codeapi.source.process.PlainSourceGenerator
 import com.github.jonathanxd.codeapi.type.CodeType
@@ -330,8 +331,14 @@ class AnnotationProcessor : AbstractProcessor() {
                                 (if (isGetOrSet) name.substring(3..name.length - 1) else name.substring(2..name.length - 1))
                                         .decapitalize()
 
-                        if (!containsMethod(it, factoryUnification)) {
-                            list += it.returnType.getCodeType(processingEnv.elementUtils) to propertyName
+                        val type = it.returnType.getCodeType(processingEnv.elementUtils)
+
+                        if (!type.`is`(Types.VOID)) {
+
+                            if (list.none { it.second == propertyName }
+                                    && !containsMethod(it, factoryUnification)) {
+                                list += type to propertyName
+                            }
                         }
 
                     }
