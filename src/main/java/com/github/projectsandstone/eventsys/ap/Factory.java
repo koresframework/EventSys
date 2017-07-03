@@ -25,16 +25,38 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.common
+package com.github.projectsandstone.eventsys.ap;
+
+import com.github.projectsandstone.eventsys.event.annotation.Extension;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Repeatable;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * Interface which all events that holds any extension extends.
+ * Marks an event which factory method should be generated.
  */
-interface ExtensionHolder {
+@Retention(RetentionPolicy.SOURCE)
+@Target(ElementType.TYPE)
+@Repeatable(Factories.class)
+public @interface Factory {
 
     /**
-     * Gets extension instance by [extensions class][extensionClass]. Returns null if extensions was not found.
+     * Name of target factory class which method should be added, if the class does not exists, it
+     * will be created.
+     *
+     * @return Name of target factory class which method should be added, if the class does not
+     * exists, it will be created.
      */
-    fun <T> getExtension(extensionClass: Class<T>): T?
+    String factoryClass();
+
+    /**
+     * Extensions specifications.
+     *
+     * @return Extensions specifications.
+     */
+    Extension[] extensions() default {};
 
 }

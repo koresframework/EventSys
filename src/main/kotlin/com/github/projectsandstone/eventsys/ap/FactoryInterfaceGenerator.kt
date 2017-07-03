@@ -51,7 +51,7 @@ object FactoryInterfaceGenerator {
     private fun createMethods(factoryInfoList: List<FactoryInfo>): List<MethodDeclaration> =
             factoryInfoList.map {
                 val annotations: List<Annotation> = it.factoryUnification
-                        .extension()
+                        .extensions()
                         .filter {
                             !it.implement().`is`(DEFAULT)
                                     || !it.extensionClass().`is`(DEFAULT)

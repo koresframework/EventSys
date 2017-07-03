@@ -43,6 +43,7 @@ import javax.annotation.processing.Filer
 import javax.annotation.processing.ProcessingEnvironment
 import javax.annotation.processing.RoundEnvironment
 import javax.lang.model.SourceVersion
+import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.ExecutableElement
 import javax.lang.model.element.TypeElement
@@ -61,18 +62,35 @@ class AnnotationProcessor : AbstractProcessor() {
     }
 
     override fun process(annotations: MutableSet<out TypeElement>, roundEnv: RoundEnvironment): Boolean {
-        val elements = roundEnv.getElementsAnnotatedWith(Factory::class.java)
+        val elements = roundEnv.getElementsAnnotatedWith(Factory::class.java) + roundEnv.getElementsAnnotatedWith(Factories::class.java)
+
         val propertiesToGen = mutableListOf<FactoryInfo>()
 
         elements.forEach {
             if (it is TypeElement) {
-                val first = it.annotationMirrors.firstOrNull {
+                val all = it.annotationMirrors.filter {
                     it.annotationType.getCodeType(processingEnv.elementUtils).concreteType.`is`(Factory::class.java)
+                }.toMutableList()
+
+                it.annotationMirrors.filter {
+                    it.annotationType.getCodeType(processingEnv.elementUtils).concreteType.`is`(Factories::class.java)
+                }.forEach {
+                    it.elementValues.forEach { executableElement, annotationValue ->
+                        if(executableElement.simpleName.contentEquals("value")) {
+                            val value = annotationValue.value
+                            if (value is List<*>) {
+                                value.forEach {
+                                    if(it is AnnotationMirror)
+                                        all += it
+                                }
+                            }
+                        }
+                    }
                 }
 
-                if (first != null) {
+                all.forEach { annotation ->
                     val factoryAnnotation = getUnificationInstance(
-                            first,
+                            annotation,
                             FactoryUnification::class.java, {
                         if (it.`is`(Extension::class.java))
                             ExtensionUnification::class.java
@@ -152,7 +170,7 @@ class AnnotationProcessor : AbstractProcessor() {
     fun checkExtension(factoryUnification: FactoryUnification, element: TypeElement) {
         val types = getTypes(element)
 
-        factoryUnification.extension().forEach {
+        factoryUnification.extensions().forEach {
             var found = false
 
             val impl = it.extensionClass().concreteType
@@ -186,7 +204,7 @@ class AnnotationProcessor : AbstractProcessor() {
         val list = mutableListOf<Pair<CodeType, String>>()
         this.getProperties(factoryUnification, element, list)
 
-        factoryUnification.extension().forEach {
+        factoryUnification.extensions().forEach {
             val impl = it.implement().concreteType
             val tp = impl.defaultResolver.resolve(impl)
 
@@ -269,7 +287,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
 
     fun containsMethod(executableElement: ExecutableElement, factoryUnification: FactoryUnification): Boolean {
-        val extensions = factoryUnification.extension()
+        val extensions = factoryUnification.extensions()
 
         extensions.forEach {
             val cl = it.extensionClass().concreteType
@@ -285,7 +303,7 @@ class AnnotationProcessor : AbstractProcessor() {
     }
 
     override fun getSupportedAnnotationTypes(): MutableSet<String> {
-        return mutableSetOf("com.github.projectsandstone.eventsys.ap.Factory")
+        return mutableSetOf("com.github.projectsandstone.eventsys.ap.Factory", "com.github.projectsandstone.eventsys.ap.Factories")
     }
 
     override fun getSupportedSourceVersion(): SourceVersion {

@@ -25,16 +25,15 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.common
+package com.github.projectsandstone.eventsys.ap;
 
-/**
- * Interface which all events that holds any extension extends.
- */
-interface ExtensionHolder {
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-    /**
-     * Gets extension instance by [extensions class][extensionClass]. Returns null if extensions was not found.
-     */
-    fun <T> getExtension(extensionClass: Class<T>): T?
-
+@Retention(RetentionPolicy.SOURCE)
+@Target(ElementType.TYPE)
+public @interface Factories {
+    Factory[] value();
 }

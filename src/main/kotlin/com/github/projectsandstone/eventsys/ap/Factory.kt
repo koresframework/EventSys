@@ -31,23 +31,13 @@ import com.github.jonathanxd.codeapi.extra.UnifiedAnnotation
 import com.github.jonathanxd.codeapi.type.CodeType
 import com.github.projectsandstone.eventsys.event.annotation.Extension
 
-/**
- * Marks an event which factory method should be generated.
- *
- * @property factoryClass Name of target factory class which method should be added, if the class does not exists, it will be created.
- * @property extension Extension specifications.
- */
-@Retention(AnnotationRetention.SOURCE)
-@Target(AnnotationTarget.CLASS)
-@Repeatable
-annotation class Factory(
-        val factoryClass: String,
-        vararg val extension: Extension = emptyArray()
-)
-
 interface FactoryUnification : UnifiedAnnotation {
     fun factoryClass(): String
-    fun extension(): Array<ExtensionUnification>
+    fun extensions(): Array<ExtensionUnification>
+}
+
+interface FactoriesUnification : UnifiedAnnotation {
+    fun value(): Array<FactoryUnification>
 }
 
 interface ExtensionUnification : UnifiedAnnotation {
