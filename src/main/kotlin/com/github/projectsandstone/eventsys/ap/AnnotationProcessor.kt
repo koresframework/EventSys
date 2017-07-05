@@ -29,11 +29,11 @@ package com.github.projectsandstone.eventsys.ap
 
 import com.github.jonathanxd.codeapi.Types
 import com.github.jonathanxd.codeapi.extra.getUnificationInstance
+import com.github.jonathanxd.codeapi.generic.GenericSignature
 import com.github.jonathanxd.codeapi.source.process.PlainSourceGenerator
 import com.github.jonathanxd.codeapi.type.CodeType
-import com.github.jonathanxd.codeapi.util.`is`
-import com.github.jonathanxd.codeapi.util.concreteType
-import com.github.jonathanxd.codeapi.util.getCodeType
+import com.github.jonathanxd.codeapi.type.GenericType
+import com.github.jonathanxd.codeapi.util.*
 import com.github.jonathanxd.iutils.`object`.Default
 import com.github.projectsandstone.eventsys.event.annotation.Extension
 import com.github.projectsandstone.eventsys.event.property.PropertyHolder
@@ -52,12 +52,6 @@ import javax.tools.FileObject
 import javax.tools.StandardLocation
 
 class AnnotationProcessor : AbstractProcessor() {
-    private lateinit var processingEnvironment: ProcessingEnvironment
-
-    override fun init(processingEnv: ProcessingEnvironment) {
-        super.init(processingEnv)
-        this.processingEnvironment = processingEnv
-    }
 
     override fun process(annotations: MutableSet<out TypeElement>, roundEnv: RoundEnvironment): Boolean {
         val elements = roundEnv.getElementsAnnotatedWith(Factory::class.java) + roundEnv.getElementsAnnotatedWith(Factories::class.java)
@@ -82,14 +76,35 @@ class AnnotationProcessor : AbstractProcessor() {
 
                 all.forEach { annotation ->
 
+                    val cTypeWithParams = it.getCodeTypeFromTypeParameters(processingEnv.elementUtils).asGeneric
                     val codeType = it.getCodeType(processingEnv.elementUtils).concreteType
                     if (!codeType.`is`(PropertyHolder::class.java)) {
                         checkExtension(annotation, it)
-                        val properties = getProperties(annotation, it).toMutableList()
+                        val properties = getProperties(annotation, it).map { prop ->
+                            val propWithParams =
+                                    prop.annotatedElement.getCodeTypeFromTypeParameters(processingEnv.elementUtils).asGeneric
+
+                            prop.copy(propertyType = inferType(prop.propertyType,
+                                    propWithParams,
+                                    cTypeWithParams,
+                                    codeType.defaultResolver,
+                                    ModelResolver(processingEnv.elementUtils))
+                            )
+                        }
+
+                        val params = it.getCodeTypeFromTypeParameters(processingEnv.elementUtils)
+
+                        val signature: GenericSignature =
+                                if(it.typeParameters.isEmpty()
+                                        || params !is GenericType
+                                        // \/ = Defensive check
+                                        || !params.bounds.all { it.type is GenericType }) GenericSignature.empty()
+                                else GenericSignature(params.bounds.map { it.type as GenericType }.toTypedArray())
 
                         propertiesToGen += FactoryInfo(
                                 codeType,
                                 it,
+                                signature,
                                 annotation,
                                 properties,
                                 if(annotation.methodName().isNotEmpty()) annotation.methodName() else it.factoryName(),
@@ -113,7 +128,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
                 file.ifPresent { it.delete() }
 
-                val classFile = processingEnvironment.filer.createSourceFile(declaration.qualifiedName,
+                val classFile = processingEnv.filer.createSourceFile(declaration.qualifiedName,
                         *factInf.map { it.origin }.toTypedArray())
 
                 val outputStream = classFile.openOutputStream()
@@ -273,8 +288,8 @@ class AnnotationProcessor : AbstractProcessor() {
 
     fun getProperties(factoryUnification: FactoryUnification,
                       element: TypeElement,
-                      extensionOnly: Boolean = false): List<Pair<CodeType, String>> {
-        val list = mutableListOf<Pair<CodeType, String>>()
+                      extensionOnly: Boolean = false): List<EventSysProperty> {
+        val list = mutableListOf<EventSysProperty>()
 
         if(!extensionOnly) {
             this.getProperties(factoryUnification, element, list)
@@ -313,7 +328,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
     fun getProperties(factoryUnification: FactoryUnification,
                       element: TypeElement,
-                      list: MutableList<Pair<CodeType, String>>) {
+                      list: MutableList<EventSysProperty>) {
         val codeType = element.getCodeType(processingEnv.elementUtils).concreteType
 
         if (codeType.concreteType.`is`(Default::class.java))
@@ -335,9 +350,9 @@ class AnnotationProcessor : AbstractProcessor() {
 
                         if (!type.`is`(Types.VOID)) {
 
-                            if (list.none { it.second == propertyName }
+                            if (list.none { it.propertyName == propertyName }
                                     && !containsMethod(it, factoryUnification)) {
-                                list += type to propertyName
+                                list += EventSysProperty(element, type, propertyName)
                             }
                         }
 

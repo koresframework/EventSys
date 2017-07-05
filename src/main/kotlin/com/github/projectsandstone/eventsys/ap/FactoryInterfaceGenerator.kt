@@ -30,13 +30,19 @@ package com.github.projectsandstone.eventsys.ap
 import com.github.jonathanxd.codeapi.base.*
 import com.github.jonathanxd.codeapi.base.Annotation
 import com.github.jonathanxd.codeapi.factory.parameter
+import com.github.jonathanxd.codeapi.generic.GenericSignature
 import com.github.jonathanxd.codeapi.type.CodeType
+import com.github.jonathanxd.codeapi.type.Generic
+import com.github.jonathanxd.codeapi.type.GenericType
 import com.github.jonathanxd.codeapi.util.codeType
+import com.github.jonathanxd.codeapi.util.eraseType
+import com.github.jonathanxd.codeapi.util.getCodeTypeFromTypeParameters
+import com.github.jonathanxd.codeapi.util.inferType
 import com.github.jonathanxd.iutils.`object`.Default
 import com.github.projectsandstone.eventsys.event.annotation.Extension
 import com.github.projectsandstone.eventsys.event.annotation.Name
+import java.lang.reflect.Type
 import javax.lang.model.element.Element
-import javax.lang.model.element.ElementKind
 import javax.lang.model.element.TypeElement
 
 object FactoryInterfaceGenerator {
@@ -78,11 +84,11 @@ object FactoryInterfaceGenerator {
                         }
 
                 val parameters = it.properties.map {
-                    parameter(type = it.first, name = it.second, annotations = listOf(
+                    parameter(type = it.propertyType, name = it.propertyName, annotations = listOf(
                             Annotation.Builder.builder()
                                     .type(Name::class.java)
                                     .visible(true)
-                                    .values(mapOf("value" to it.second))
+                                    .values(mapOf("value" to it.propertyName))
                                     .build()
                     ))
                 }
@@ -92,19 +98,23 @@ object FactoryInterfaceGenerator {
                 val name = getUniqueName(desc, descs)
                 descs += desc
 
+                val signature = it.signature
+
                 MethodDeclaration.Builder.builder()
-                        .modifiers(CodeModifier.PUBLIC)
                         .annotations(annotations)
+                        .modifiers(CodeModifier.PUBLIC)
+                        .genericSignature(it.signature)
                         .name(name)
-                        .returnType(it.type)
-                        .parameters(parameters)
+                        .returnType(eraseType(it.type, signature))
+                        .parameters(parameters.map { it.builder().type(eraseType(it.type, signature)).build() })
                         .build()
             }
 
 }
 
+
 fun getUniqueName(method: MethodDesc, descs: List<MethodDesc>): String {
-    if(!descs.contains(method))
+    if (!descs.contains(method))
         return method.name
 
     var i = 0
@@ -144,7 +154,10 @@ fun TypeElement.name(): String {
 
 class FactoryInfo(val type: CodeType,
                   val element: TypeElement,
+                  val signature: GenericSignature,
                   val factoryUnification: FactoryUnification,
-                  val properties: List<Pair<CodeType, String>>,
+                  val properties: List<EventSysProperty>,
                   val name: String,
                   val origin: Element)
+
+data class EventSysProperty(val annotatedElement: TypeElement, val propertyType: CodeType, val propertyName: String)
