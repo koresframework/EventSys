@@ -33,11 +33,22 @@ package com.github.projectsandstone.eventsys.logging
 interface LoggerInterface {
 
     /**
-     * Log message.
-     *
-     * @param message Message to log.
-     * @param throwable Cause of the error.
+     * Logs [message] of [messageType].
      */
-    fun error(message: String, throwable: Throwable)
+    fun log(message: String, messageType: MessageType)
 
+    /**
+     * Logs [message] of [messageType] with exception [throwable].
+     */
+    fun log(message: String, messageType: MessageType, throwable: Throwable)
+
+    /**
+     * Logs [messages] of [messageType].
+     */
+    fun log(messages: List<String>, messageType: MessageType)
+
+    /**
+     * Logs [messages] of [messageType] with exception [throwable].
+     */
+    fun log(messages: List<String>, messageType: MessageType, throwable: Throwable)
 }

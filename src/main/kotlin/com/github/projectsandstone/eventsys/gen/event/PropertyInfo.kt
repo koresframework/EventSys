@@ -32,7 +32,12 @@ import com.github.projectsandstone.eventsys.validation.Validator
 /**
  * Information about property.
  */
-data class PropertyInfo @JvmOverloads constructor(val propertyName: String, val getterName: String? = null, val setterName: String? = null, val type: Class<*>, val validator: Class<out Validator<out Any>>? = null) {
+data class PropertyInfo @JvmOverloads constructor(val propertyName: String,
+                                                  val getterName: String? = null,
+                                                  val setterName: String? = null,
+                                                  val type: Class<*>,
+                                                  val isNotNull: Boolean,
+                                                  val validator: Class<out Validator<out Any>>? = null) {
     fun hasGetter() = this.getterName != null
     fun hasSetter() = this.setterName != null
     fun isMutable() = this.setterName != null

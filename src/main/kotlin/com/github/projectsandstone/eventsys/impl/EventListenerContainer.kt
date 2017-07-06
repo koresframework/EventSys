@@ -31,4 +31,6 @@ import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
 
-internal data class EventListenerContainer<T : Event>(val owner: Any, val eventType: TypeInfo<T>, val eventListener: EventListener<T>)
+internal data class EventListenerContainer<T : Event>(val owner: Any,
+                                                      val eventType: TypeInfo<T>,
+                                                      val eventListener: EventListener<T>)

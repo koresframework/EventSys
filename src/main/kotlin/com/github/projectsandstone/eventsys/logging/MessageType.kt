@@ -25,25 +25,54 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.gen.event
-
-import com.github.jonathanxd.iutils.type.TypeInfo
-
-data class EventClassSpecification<T>(
-        val typeInfo: TypeInfo<T>,
-        val additionalProperties: List<PropertyInfo>,
-        val extensions: List<ExtensionSpecification>
-)
+package com.github.projectsandstone.eventsys.logging
 
 /**
- * Specifies extension.
+ * Message type.
  *
- * @property residence Location which this extension was specified. For annotations,
- * this will be the annotated elements. (may be [Unit])
- * @property implement Specifies the interface to add to event implementation.
- * @property extensionClass Specifies the extension class which implements the methods
- * of [implement] or provides additional features to the event. This class is instantiated in
- * event constructor and stored as variable, a single-arg constructor is required, the first argument must be
- * a type assignable to target event value.
+ * Exceptions which have [FATAL Level][Level.FATAL] will always fail after logging the message.
+ *
+ * @property level Level of the message.
  */
-data class ExtensionSpecification(val residence: Any, val implement: Class<*>?, val extensionClass: Class<*>?)
+enum class MessageType(val level: Level) {
+    /**
+     * Missing event method implementations.
+     */
+    IMPLEMENTATION_NOT_FOUND(Level.ERROR),
+
+    /**
+     * Extension is invalid if:
+     *
+     * - Does not provide a constructor with a single parameter of event type or super types of event value.
+     */
+    INVALID_EXTENSION(Level.FATAL),
+
+    /**
+     * A property method is missing.
+     */
+    MISSING_PROPERTY(Level.FATAL),
+
+    /**
+     * Factory class is invalid. A factory class is invalid if:
+     *
+     * - Is not an interface
+     * - Implements any type.
+     */
+    INVALID_FACTORY(Level.FATAL),
+
+    /**
+     * Factory method is invalid if:
+     *
+     * - Does not return a type which extends `Event`
+     * - Does not have name retention and does not provide names via `Name` annotation
+     * (obs: methods with name retention does not require `Name` annotation, but if present, it will
+     * override original name).
+     */
+    INVALID_FACTORY_METHOD(Level.FATAL),
+
+    /**
+     * Exception occurred inside an event listener method.
+     */
+    EXCEPTION_IN_LISTENER(Level.WARN),
+
+}

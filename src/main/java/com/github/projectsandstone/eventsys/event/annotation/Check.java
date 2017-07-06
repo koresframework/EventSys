@@ -25,25 +25,11 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.gen.event
+package com.github.projectsandstone.eventsys.event.annotation;
 
-import com.github.jonathanxd.iutils.type.TypeInfo
-
-data class EventClassSpecification<T>(
-        val typeInfo: TypeInfo<T>,
-        val additionalProperties: List<PropertyInfo>,
-        val extensions: List<ExtensionSpecification>
-)
-
-/**
- * Specifies extension.
- *
- * @property residence Location which this extension was specified. For annotations,
- * this will be the annotated elements. (may be [Unit])
- * @property implement Specifies the interface to add to event implementation.
- * @property extensionClass Specifies the extension class which implements the methods
- * of [implement] or provides additional features to the event. This class is instantiated in
- * event constructor and stored as variable, a single-arg constructor is required, the first argument must be
- * a type assignable to target event value.
- */
-data class ExtensionSpecification(val residence: Any, val implement: Class<*>?, val extensionClass: Class<*>?)
+public enum Check {
+    /**
+     * Phase of generation which generator check if all methods was implemented.
+     */
+    IMPLEMENTATION
+}

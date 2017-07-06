@@ -25,25 +25,13 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.gen.event
-
-import com.github.jonathanxd.iutils.type.TypeInfo
-
-data class EventClassSpecification<T>(
-        val typeInfo: TypeInfo<T>,
-        val additionalProperties: List<PropertyInfo>,
-        val extensions: List<ExtensionSpecification>
-)
+package com.github.projectsandstone.eventsys.event.annotation
 
 /**
- * Specifies extension.
+ * Annotation used by EventSys to generate non-null checks for properties in event implementation.
  *
- * @property residence Location which this extension was specified. For annotations,
- * this will be the annotated elements. (may be [Unit])
- * @property implement Specifies the interface to add to event implementation.
- * @property extensionClass Specifies the extension class which implements the methods
- * of [implement] or provides additional features to the event. This class is instantiated in
- * event constructor and stored as variable, a single-arg constructor is required, the first argument must be
- * a type assignable to target event value.
+ * If you're using IntelliJ, we heavily recommend you to add this annotation to `NotNull` annotations of `Inspections`
  */
-data class ExtensionSpecification(val residence: Any, val implement: Class<*>?, val extensionClass: Class<*>?)
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.VALUE_PARAMETER)
+annotation class NotNullValue

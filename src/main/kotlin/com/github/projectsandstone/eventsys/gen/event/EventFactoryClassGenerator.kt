@@ -53,9 +53,13 @@ import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.annotation.*
 import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
 import com.github.projectsandstone.eventsys.gen.save.ClassSaver
+import com.github.projectsandstone.eventsys.logging.LoggerInterface
+import com.github.projectsandstone.eventsys.logging.MessageType
 import com.github.projectsandstone.eventsys.reflect.findImplementation
 import com.github.projectsandstone.eventsys.reflect.getAllAnnotationsOfType
+import com.github.projectsandstone.eventsys.util.fail
 import com.github.projectsandstone.eventsys.util.toSimpleString
+import org.jetbrains.annotations.NotNull
 import java.lang.reflect.Parameter
 
 /**
@@ -75,18 +79,24 @@ internal object EventFactoryClassGenerator {
      * Create [factoryClass] instance invoking generated event classes constructor.
      */
     @Suppress("UNCHECKED_CAST")
-    internal fun <T : Any> create(eventGenerator: EventGenerator, factoryClass: Class<T>): T {
+    internal fun <T : Any> create(eventGenerator: EventGenerator,
+                                  factoryClass: Class<T>,
+                                  logger: LoggerInterface): T {
 
         if (this.cached.containsKey(factoryClass))
             return this.cached[factoryClass]!! as T
 
         val superClass = factoryClass.superclass
 
-        if (!factoryClass.isInterface)
-            throw IllegalArgumentException("Factory class must be an interface.")
+        if (!factoryClass.isInterface) {
+            logger.log("Factory class must be an interface.", MessageType.INVALID_FACTORY)
+            fail()
+        }
 
-        if (superClass != null && factoryClass != Any::class.java || factoryClass.interfaces.isNotEmpty())
-            throw IllegalArgumentException("Factory class must not extend any class.")
+        if (superClass != null && factoryClass != Any::class.java || factoryClass.interfaces.isNotEmpty()) {
+            logger.log("Factory class must not extend any class.", MessageType.INVALID_FACTORY)
+            fail()
+        }
 
         val declaration = ClassDeclaration.Builder.builder()
                 .modifiers(CodeModifier.PUBLIC)
@@ -137,8 +147,10 @@ internal object EventFactoryClassGenerator {
                                 val eventType = factoryMethod.returnType
                                 val ktNames by lazy { factoryMethod.parameterNames }
 
-                                if (!Event::class.java.isAssignableFrom(eventType))
-                                    throw IllegalArgumentException("Failed to generate implementation of method '$factoryMethod': event factory methods must return a type assignable to 'Event'.")
+                                if (!Event::class.java.isAssignableFrom(eventType)) {
+                                    logger.log("Failed to generate implementation of method '$factoryMethod': event factory methods must return a type assignable to 'Event'.", MessageType.INVALID_FACTORY_METHOD)
+                                    fail()
+                                }
 
                                 val parameterNames = factoryMethod.parameters.mapIndexed { i, it ->
                                     if (it.isAnnotationPresent(Name::class.java))
@@ -176,21 +188,23 @@ internal object EventFactoryClassGenerator {
                                         val getterName = "get${name.capitalize()}"
                                         val setterName = if (parameter.isAnnotationPresent(Mutable::class.java)) "set${name.capitalize()}" else null
 
-
                                         additionalProperties += PropertyInfo(
                                                 propertyName = name,
                                                 type = parameter.type,
                                                 getterName = getterName,
                                                 setterName = setterName,
-                                                validator = parameter.getDeclaredAnnotation(Validate::class.java)?.value?.java
+                                                validator = parameter.getDeclaredAnnotation(Validate::class.java)?.value?.java,
+                                                isNotNull = parameter.isAnnotationPresent(NotNullValue::class.java)
                                         )
                                     }
                                 }
 
                                 val eventTypeInfo = TypeUtil.toTypeInfo(factoryMethod.genericReturnType) as TypeInfo<Event>
 
-                                if (!Event::class.java.isAssignableFrom(eventTypeInfo.typeClass))
-                                    throw IllegalStateException("Factory method '$factoryMethod' present in factory class '${factoryClass.canonicalName}' must returns a class that extends 'Event' class (currentClass: ${eventTypeInfo.typeClass.canonicalName}).")
+                                if (!Event::class.java.isAssignableFrom(eventTypeInfo.typeClass)) {
+                                    logger.log("Factory method '$factoryMethod' present in factory class '${factoryClass.canonicalName}' must returns a class that extends 'Event' class (currentClass: ${eventTypeInfo.typeClass.canonicalName}).", MessageType.INVALID_FACTORY_METHOD)
+                                    fail()
+                                }
 
                                 val implClass = eventGenerator.createEventClass(eventTypeInfo, additionalProperties, extensions)
 
@@ -207,9 +221,14 @@ internal object EventFactoryClassGenerator {
                                     val name = it.getDeclaredAnnotation(Name::class.java)?.value
                                             ?: names[index] // Should we remove it?
 
-                                    if (!methodDeclaration.parameters.any { codeParameter -> codeParameter.name == it.name && codeParameter.type.canonicalName == it.type.canonicalName })
-                                        throw IllegalStateException("Cannot find property '[name: $name, type: ${it.type.canonicalName}]' in factory method '${factoryMethod.toSimpleString()}'. Please provide a parameter with this name, use '-parameters' javac option or annotate parameters with '@${Name::class.java.canonicalName}' annotation.",
+                                    if (!methodDeclaration.parameters.any { codeParameter ->
+                                        codeParameter.name == it.name
+                                                && codeParameter.type.canonicalName == it.type.canonicalName }) {
+                                        logger.log("Cannot find property '[name: $name, type: ${it.type.canonicalName}]' in factory method '${factoryMethod.toSimpleString()}'. Please provide a parameter with this name, use '-parameters' javac option to keep annotation names or annotate parameters with '@${Name::class.java.canonicalName}' annotation.",
+                                                MessageType.INVALID_FACTORY_METHOD,
                                                 IllegalStateException("Found properties: ${methodDeclaration.parameters.map { "${it.type.canonicalName} ${it.name}" }}. Required: ${ctr.parameters.contentToString()}."))
+                                        fail()
+                                    }
 
                                     if (name == "cancelled"
                                             && it.type == java.lang.Boolean.TYPE

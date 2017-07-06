@@ -36,7 +36,9 @@ import com.github.projectsandstone.eventsys.event.ListenerSpec
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.gen.event.CommonEventGenerator
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
+import com.github.projectsandstone.eventsys.logging.Level
 import com.github.projectsandstone.eventsys.logging.LoggerInterface
+import com.github.projectsandstone.eventsys.logging.MessageType
 import com.github.projectsandstone.eventsys.util.getEventType
 import com.github.projectsandstone.eventsys.util.mh.MethodDispatcher
 import java.lang.reflect.Method
@@ -107,10 +109,12 @@ open class CommonEventManager @JvmOverloads constructor(
         try {
             eventListenerContainer.eventListener.helpOnEvent(event, owner)
         } catch (throwable: Throwable) {
-            logger.error("Cannot dispatch event $event (type: $eventType) to listener " +
+            logger.log("Cannot dispatch event $event (type: $eventType) to listener " +
                     "${eventListenerContainer.eventListener} (of event type: ${eventListenerContainer.eventType}) of owner " +
                     "$owner. " +
-                    "(Source: $owner, phase: $phase)", throwable)
+                    "(Source: $owner, phase: $phase)",
+                    MessageType.EXCEPTION_IN_LISTENER,
+                    throwable)
 
         }
     }
@@ -226,17 +230,40 @@ open class CommonEventManager @JvmOverloads constructor(
 
 }
 
-class Default : CommonEventManager(true, COMMON_SORTER, COMMON_THREAD_FACTORY, COMMON_LOGGER, COMMON_EVENT_GENERATOR) {
+class DefaultEventManager : CommonEventManager(true, COMMON_SORTER, COMMON_THREAD_FACTORY, COMMON_LOGGER, COMMON_EVENT_GENERATOR) {
 
     companion object {
         private val COMMON_SORTER = Comparator.comparing(EventListener<*>::priority)
         private val COMMON_THREAD_FACTORY = Executors.defaultThreadFactory()
-        private val COMMON_LOGGER = object : LoggerInterface {
-            override fun error(message: String, throwable: Throwable) {
-                System.err.println(message)
-                throwable.printStackTrace()
-            }
+        private val COMMON_LOGGER = CommonLogger()
+        private val COMMON_EVENT_GENERATOR = CommonEventGenerator(COMMON_LOGGER)
+    }
+}
+
+class CommonLogger : LoggerInterface {
+    override fun log(messages: List<String>, messageType: MessageType) {
+        log(messages.joinToString("\n"), messageType)
+    }
+
+    override fun log(messages: List<String>, messageType: MessageType, throwable: Throwable) {
+        log(messages.joinToString("\n"), messageType, throwable)
+    }
+
+    override fun log(message: String, messageType: MessageType) {
+        if (messageType.level == Level.FATAL) {
+            throw IllegalStateException("Fatal error occurred: $message")
+        } else {
+            System.err.println(message)
         }
-        private val COMMON_EVENT_GENERATOR = CommonEventGenerator()
+    }
+
+    override fun log(message: String, messageType: MessageType, throwable: Throwable) {
+        System.err.println(message)
+
+        if (messageType.level == Level.FATAL) {
+            throw throwable
+        } else {
+            throwable.printStackTrace()
+        }
     }
 }

@@ -99,7 +99,7 @@ internal object MethodListenerGenerator {
 
         val eventType = listenerSpec.eventType
 
-        val (field, constructor, methods) = genBody(method, instance, listenerSpec);
+        val (field, constructor, methods) = genBody(method, instance, listenerSpec)
 
         val codeClass = ClassDeclaration.Builder.builder()
                 .modifiers(CodeModifier.PUBLIC)
@@ -207,6 +207,7 @@ internal object MethodListenerGenerator {
         }
 
         val onEvent = MethodDeclaration.Builder.builder()
+                .annotations(overrideAnnotation())
                 .modifiers(CodeModifier.PUBLIC)
                 .body(genOnEventBody())
                 .returnType(Types.VOID)
@@ -219,6 +220,7 @@ internal object MethodListenerGenerator {
         methods += onEvent
 
         val getPriorityMethod = MethodDeclaration.Builder.builder()
+                .annotations(overrideAnnotation())
                 .modifiers(CodeModifier.PUBLIC)
                 .body(source(
                         returnValue(EventPriority::class.java,
@@ -233,6 +235,7 @@ internal object MethodListenerGenerator {
 
         val getPhaseMethod = MethodDeclaration.Builder.builder()
                 .modifiers(CodeModifier.PUBLIC)
+                .annotations(overrideAnnotation())
                 .body(source(
                         returnValue(Types.INT, Literals.INT(listenerSpec.phase))
                 ))
@@ -243,6 +246,7 @@ internal object MethodListenerGenerator {
         methods += getPhaseMethod
 
         val ignoreCancelledMethod = MethodDeclaration.Builder.builder()
+                .annotations(overrideAnnotation())
                 .modifiers(CodeModifier.PUBLIC)
                 .body(source(
                         returnValue(Types.BOOLEAN, Literals.BOOLEAN(listenerSpec.ignoreCancelled))

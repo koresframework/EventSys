@@ -40,7 +40,7 @@ import java.util.concurrent.Future
 interface EventGenerator {
 
     /**
-     * Registers a [extension][extensionSpecification] for [event base class ][base].
+     * Registers a [extension][extensionSpecification] for [event base class][base].
      */
     fun registerExtension(base: Class<*>, extensionSpecification: ExtensionSpecification)
 

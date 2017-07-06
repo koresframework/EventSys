@@ -29,6 +29,9 @@ package com.github.projectsandstone.eventsys.test.event;
 
 import com.github.projectsandstone.eventsys.event.Cancellable;
 import com.github.projectsandstone.eventsys.event.Event;
+import com.github.projectsandstone.eventsys.event.annotation.Check;
+import com.github.projectsandstone.eventsys.event.annotation.NotNullValue;
+import com.github.projectsandstone.eventsys.event.annotation.SuppressCheck;
 import com.github.projectsandstone.eventsys.event.annotation.Validate;
 import com.github.projectsandstone.eventsys.event.property.Property;
 import com.github.projectsandstone.eventsys.validation.Validator;
@@ -44,19 +47,13 @@ public interface MessageEvent extends Event, Cancellable {
 
     int getChannel();
 
-    @Validate(NonNullValidator.class)
-    void setMessage(String message);
+    String getTest();
+
+    @SuppressCheck(Check.IMPLEMENTATION)
+    String getTest(int n);
+
+    void setMessage(@NotNullValue String message);
 
     void transform(Function<String, String> transformer);
 
-
-    class NonNullValidator implements Validator<String> {
-
-        public static final NonNullValidator INSTANCE = new NonNullValidator();
-
-        @Override
-        public void validate(String obj, @NotNull Property<String> property) {
-            Objects.requireNonNull(obj);
-        }
-    }
 }

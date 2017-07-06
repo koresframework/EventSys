@@ -32,12 +32,13 @@ import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
 import com.github.projectsandstone.eventsys.event.ListenerSpec
+import com.github.projectsandstone.eventsys.logging.LoggerInterface
 import java.lang.reflect.Method
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 
-class CommonEventGenerator : EventGenerator {
+class CommonEventGenerator(val logger: LoggerInterface) : EventGenerator {
 
     private val extensionMap = ListHashMap<Class<*>, ExtensionSpecification>()
     private val threadPool = Executors.newCachedThreadPool()
@@ -66,7 +67,7 @@ class CommonEventGenerator : EventGenerator {
     }
 
     override fun <T : Any> createFactory(factoryClass: Class<T>): T {
-        return EventFactoryClassGenerator.create(this, factoryClass)
+        return EventFactoryClassGenerator.create(this, factoryClass, this.logger)
     }
 
     override fun <T : Event> createEventClass(type: TypeInfo<T>, additionalProperties: List<PropertyInfo>, extensions: List<ExtensionSpecification>): Class<T> {
@@ -76,7 +77,8 @@ class CommonEventGenerator : EventGenerator {
         return EventClassGenerator.genImplementation(EventClassSpecification(
                 typeInfo = type,
                 additionalProperties = additionalProperties,
-                extensions = exts)
+                extensions = exts),
+                this.logger
         )
     }
 

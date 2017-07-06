@@ -25,58 +25,25 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.ap;
-
-import com.github.projectsandstone.eventsys.event.annotation.Extension;
+package com.github.projectsandstone.eventsys.event.annotation;
 
 import java.lang.annotation.ElementType;
-import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks an event which factory method should be generated.
+ * Suppress EventSys checks.
  */
-@Retention(RetentionPolicy.SOURCE)
-@Target(ElementType.TYPE)
-@Repeatable(Factories.class)
-public @interface Factory {
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface SuppressCheck {
 
     /**
-     * Name of target factory class which method should be added, if the class does not exists, it
-     * will be created.
+     * Type of check to suppress.
      *
-     * @return Name of target factory class which method should be added, if the class does not
-     * exists, it will be created.
+     * @return Type of check to suppress.
      */
-    String value();
-
-    /**
-     * Name of factory method. Default uses the type name.
-     *
-     * @return Name of factory method. Default uses the type name.
-     */
-    String methodName() default "";
-
-    /**
-     * True to inherit properties of sub-types.
-     *
-     * AnnotationProcessor will lookup for all sub-type annotations and will only
-     * inherit non duplicated properties.
-     *
-     * This property does not have deep effect, which means that super-classes which inherits annotated
-     * type will not inherit properties unless the annotation on the value specifies it.
-     *
-     * @return True to inherit properties of sub-types
-     */
-    boolean inheritProperties() default false;
-
-    /**
-     * Extensions specifications.
-     *
-     * @return Extensions specifications.
-     */
-    Extension[] extensions() default {};
+    Check[] value();
 
 }

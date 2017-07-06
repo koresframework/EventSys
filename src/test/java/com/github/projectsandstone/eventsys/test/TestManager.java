@@ -31,9 +31,13 @@ import com.github.projectsandstone.eventsys.event.EventListener;
 import com.github.projectsandstone.eventsys.event.EventManager;
 import com.github.projectsandstone.eventsys.gen.event.CommonEventGenerator;
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator;
+import com.github.projectsandstone.eventsys.gen.event.ExtensionSpecification;
 import com.github.projectsandstone.eventsys.impl.CommonEventManager;
+import com.github.projectsandstone.eventsys.impl.CommonLogger;
+import com.github.projectsandstone.eventsys.impl.DefaultEventManager;
 import com.github.projectsandstone.eventsys.logging.LoggerInterface;
 import com.github.projectsandstone.eventsys.test.event.MessageEvent;
+import com.github.projectsandstone.eventsys.test.extension.ProvidedExt;
 import com.github.projectsandstone.eventsys.test.listener.MyListener;
 
 import org.junit.Assert;
@@ -51,6 +55,9 @@ public class TestManager {
     public void test() {
 
         EventManager manager = new MyManager();
+
+        manager.getEventGenerator().registerExtension(MessageEvent.class,
+                new ExtensionSpecification(Unit.INSTANCE, null, ProvidedExt.class));
 
         Constant.initialize(manager);
 
@@ -73,11 +80,8 @@ public class TestManager {
 
         private static final Comparator<EventListener<?>> COMMON_SORTER = Comparator.comparing(EventListener::getPriority);
         private static final ThreadFactory COMMON_THREAD_FACTORY = Executors.defaultThreadFactory();
-        private static final LoggerInterface COMMON_LOGGER = (message, throwable) -> {
-            System.err.println(message);
-            throwable.printStackTrace();
-        };
-        private static final EventGenerator COMMON_EVENT_GENERATOR = new CommonEventGenerator();
+        private static final LoggerInterface COMMON_LOGGER = new CommonLogger();
+        private static final EventGenerator COMMON_EVENT_GENERATOR = new CommonEventGenerator(COMMON_LOGGER);
 
         MyManager() {
             super(true, COMMON_SORTER, COMMON_THREAD_FACTORY, COMMON_LOGGER, COMMON_EVENT_GENERATOR);
