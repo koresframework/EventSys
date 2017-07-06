@@ -19,7 +19,7 @@ plugins {
 }
 
 group 'com.github.projectsandstone'
-version '1.2'
+version '1.2.1'
 
 // IDE
 apply plugin: 'idea'
@@ -50,9 +50,9 @@ dependencies {
     compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
 
     // Utilities
-    compile 'com.github.JonathanxD:CodeAPI-SourceWriter:alpha-4.0.0-source-9'
-    compile 'com.github.JonathanxD:CodeAPI-BytecodeWriter:alpha-4.0.0-bytecode-13'
-    compile('com.github.JonathanxD:CodeAPI-Extra:1.1-PRE4')
+    compile 'com.github.JonathanxD:CodeAPI-SourceWriter:alpha-4.0.0-source-10'
+    compile 'com.github.JonathanxD:CodeAPI-BytecodeWriter:alpha-4.0.0-bytecode-14'
+    compile 'com.github.JonathanxD:CodeAPI-Extra:1.1-PRE5'
     compile 'com.github.JonathanxD:JwIUtils:4.6.0a'
     compile "io.github.lukehutch:fast-classpath-scanner:2.0.9"
 
