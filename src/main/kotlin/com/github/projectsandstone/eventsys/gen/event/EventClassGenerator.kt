@@ -27,6 +27,7 @@
  */
 package com.github.projectsandstone.eventsys.gen.event
 
+/*import com.github.jonathanxd.codeapi.util.conversion.*/
 import com.github.jonathanxd.codeapi.CodeInstruction
 import com.github.jonathanxd.codeapi.CodeSource
 import com.github.jonathanxd.codeapi.MutableCodeSource
@@ -49,7 +50,6 @@ import com.github.jonathanxd.codeapi.util.conversion.access
 import com.github.jonathanxd.codeapi.util.conversion.toInvocation
 import com.github.jonathanxd.codeapi.util.conversion.toVariableAccess
 import com.github.jonathanxd.codeapi.util.conversion.typeSpec
-/*import com.github.jonathanxd.codeapi.util.conversion.*/
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.Debug
 import com.github.projectsandstone.eventsys.common.ExtensionHolder
@@ -65,16 +65,14 @@ import com.github.projectsandstone.eventsys.gen.save.ClassSaver
 import com.github.projectsandstone.eventsys.reflect.findImplementation
 import com.github.projectsandstone.eventsys.reflect.getName
 import com.github.projectsandstone.eventsys.reflect.isEqual
-import com.github.projectsandstone.eventsys.reflect.parameterNames
 import com.github.projectsandstone.eventsys.util.BooleanConsumer
+import com.github.projectsandstone.eventsys.util.printErrorMessagesWithException
 import com.github.projectsandstone.eventsys.validation.Validator
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.lang.reflect.Type
-import java.util.Collections
-import java.util.EnumSet
-import java.util.HashMap
+import java.util.*
 import java.util.function.*
 
 /**
@@ -654,6 +652,7 @@ internal object EventClassGenerator {
 
     internal fun checkMethodImplementations(type: Class<*>, holder: ElementsHolder, extensions: List<ExtensionSpecification>) {
         val implementedMethods: List<MethodDeclaration> = holder.methods
+        val unimplMethods = mutableListOf<String>()
 
         type.methods.forEach { method ->
             val name = method.name
@@ -665,8 +664,22 @@ internal object EventClassGenerator {
             }
 
             if (!hasImpl && !method.isDefault) {
-                throw IllegalStateException("Cannot find implementation of method '$method'! Provide an extension that implements this method ${if (extensions.isNotEmpty()) "(Obs: none of provided extensions '$extensions' provides an implementation)" else ""}.")
+                unimplMethods += "$method"
             }
+        }
+
+        if (unimplMethods.isNotEmpty()) {
+            val classes = extensions.filter { it.extensionClass != null }.map { it.extensionClass!! }
+
+            val end = if (classes.isEmpty()) "\nProvide an extension which implement them"
+            else "\nProvide an extension which implement them or add implementation one of existing extensions:" +
+                    "\n  ${classes.joinToString { it.simpleName }}"
+
+            unimplMethods.add(0, "\nFollowing methods was not implemented:")
+
+            printErrorMessagesWithException(unimplMethods,
+                    end,
+                    ::IllegalStateException)
         }
     }
 
@@ -686,7 +699,7 @@ internal object EventClassGenerator {
         methods.forEach { method ->
 
             // Since: 1.1.2: Extensions are allowed to implement properties getter and setter.
-            if(extensionClasses.any { this.hasMethod(it, method) })
+            if (extensionClasses.any { this.hasMethod(it, method) })
                 return@forEach
 
             val name = method.name
@@ -760,7 +773,7 @@ internal object EventClassGenerator {
             val delegateClass = it.second.first
             val delegate = it.second.second
 
-            val parameters = base.parameters.mapIndexed {i, it ->
+            val parameters = base.parameters.mapIndexed { i, it ->
                 parameter(type = delegate.parameters[i + 1].type, name = "arg$i")
             }
 
