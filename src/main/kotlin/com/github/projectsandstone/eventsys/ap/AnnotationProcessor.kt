@@ -35,6 +35,7 @@ import com.github.jonathanxd.codeapi.type.CodeType
 import com.github.jonathanxd.codeapi.type.GenericType
 import com.github.jonathanxd.codeapi.util.*
 import com.github.jonathanxd.iutils.`object`.Default
+import com.github.projectsandstone.eventsys.event.Cancellable
 import com.github.projectsandstone.eventsys.event.annotation.Extension
 import com.github.projectsandstone.eventsys.event.property.PropertyHolder
 import java.io.IOException
@@ -331,15 +332,15 @@ class AnnotationProcessor : AbstractProcessor() {
                       list: MutableList<EventSysProperty>) {
         val codeType = element.getCodeType(processingEnv.elementUtils).concreteType
 
-        if (codeType.concreteType.`is`(Default::class.java))
+        if (codeType.`is`(Default::class.java))
             return
 
-        if (!codeType.`is`(PropertyHolder::class.java)) {
+        if (!codeType.`is`(PropertyHolder::class.java) && !codeType.`is`(Cancellable::class.java)) {
             element.enclosedElements.forEach {
                 if (it is ExecutableElement) {
                     val name = it.simpleName.toString()
-                    val isGetOrSet = (name.startsWith("get") && it.parameters.isEmpty())
-                            || (name.startsWith("set") && it.parameters.size == 1)
+                    val isSet = (name.startsWith("set") && it.parameters.size == 1)
+                    val isGetOrSet = (name.startsWith("get") && it.parameters.isEmpty()) || isSet
                     val isIs = name.startsWith("is") && it.parameters.isEmpty()
 
                     if (isGetOrSet || isIs) {
@@ -347,7 +348,8 @@ class AnnotationProcessor : AbstractProcessor() {
                                 (if (isGetOrSet) name.substring(3..name.length - 1) else name.substring(2..name.length - 1))
                                         .decapitalize()
 
-                        val type = it.returnType.getCodeType(processingEnv.elementUtils)
+                        val type = if(isSet) it.parameters.first().asType().getCodeType(processingEnv.elementUtils)
+                        else it.returnType.getCodeType(processingEnv.elementUtils)
 
                         if (!type.`is`(Types.VOID)) {
 
