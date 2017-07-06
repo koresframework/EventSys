@@ -338,8 +338,9 @@ class AnnotationProcessor : AbstractProcessor() {
             element.enclosedElements.forEach {
                 if (it is ExecutableElement) {
                     val name = it.simpleName.toString()
-                    val isGetOrSet = name.startsWith("get") || name.startsWith("set")
-                    val isIs = name.startsWith("is")
+                    val isGetOrSet = (name.startsWith("get") && it.parameters.isEmpty())
+                            || (name.startsWith("set") && it.parameters.size == 1)
+                    val isIs = name.startsWith("is") && it.parameters.isEmpty()
 
                     if (isGetOrSet || isIs) {
                         val propertyName =
