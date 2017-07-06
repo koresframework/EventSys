@@ -704,9 +704,9 @@ internal object EventClassGenerator {
 
             val name = method.name
 
-            val isGet = name.startsWith("get")
-            val isIs = name.startsWith("is")
-            val isSet = name.startsWith("set")
+            val isGet = name.startsWith("get") && method.parameterCount == 0
+            val isIs = name.startsWith("is") && method.parameterCount == 0
+            val isSet = name.startsWith("set") && method.parameterCount == 1
 
             // Skip PropertyHolder methods
             // We could use method.declaringClass == PropertyHolder::class.java
