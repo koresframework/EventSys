@@ -25,37 +25,45 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.event.annotation;
+package com.github.projectsandstone.eventsys.gen.check
 
-import com.github.projectsandstone.eventsys.gen.check.CheckHandler;
-import com.github.projectsandstone.eventsys.gen.event.EventGenerator;
-import com.github.projectsandstone.eventsys.gen.event.EventGeneratorOptions;
-
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import com.github.jonathanxd.codeapi.base.MethodDeclaration
+import com.github.projectsandstone.eventsys.gen.event.EventGenerator
+import com.github.projectsandstone.eventsys.gen.event.ExtensionSpecification
+import java.lang.reflect.Constructor
+import java.lang.reflect.Type
 
 /**
- * Suppress EventSys checks.
+ * Handler which checks the generated code.
  *
- * Suppression are disabled by default, to enable you should set {@link
- * EventGeneratorOptions#ENABLE_SUPPRESSION} to {@code true} in {@link
- * EventGenerator#getOptions()}.
+ * This class checks for:
  *
- * This annotation is commonly used in test environment to suppress checks on methods which will be
- * implemented in another project. Note that you can also suppress checks using a wrapper {@link
- * CheckHandler} and defining it with {@link EventGenerator#setCheckHandler(CheckHandler)}.
+ * - Duplicated methods
+ * - Missing implementation
  */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface SuppressCheck {
+interface CheckHandler {
 
     /**
-     * Type of check to suppress.
-     *
-     * @return Type of check to suppress.
+     * Check if [implementedMethods] contains all non implemented methods of [type].
      */
-    Check[] value();
+    fun checkImplementation(implementedMethods: List<MethodDeclaration>,
+                            type: Class<*>,
+                            extensions: List<ExtensionSpecification>,
+                            eventGenerator: EventGenerator)
 
+    /**
+     * Checks if [methods] has duplicated methods.
+     */
+    fun checkDuplicatedMethods(methods: List<MethodDeclaration>)
+
+    /**
+     * Validates [extension] specification. Valid extensions are those which has
+     * an constructor of the same type as event or a super type.
+     *
+     * This function should also return valid constructor.
+     */
+    fun validateExtension(extension: ExtensionSpecification,
+                          extensionClass: Class<*>,
+                          type: Type,
+                          eventGenerator: EventGenerator): Constructor<*>
 }

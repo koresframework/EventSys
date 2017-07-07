@@ -28,20 +28,27 @@
 package com.github.projectsandstone.eventsys.gen.event
 
 import com.github.jonathanxd.iutils.map.ListHashMap
+import com.github.jonathanxd.iutils.option.Options
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
 import com.github.projectsandstone.eventsys.event.ListenerSpec
+import com.github.projectsandstone.eventsys.gen.check.CheckHandler
+import com.github.projectsandstone.eventsys.gen.check.DefaultCheckHandler
+import com.github.projectsandstone.eventsys.gen.check.SuppressCapableCheckHandler
 import com.github.projectsandstone.eventsys.logging.LoggerInterface
 import java.lang.reflect.Method
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 
-class CommonEventGenerator(val logger: LoggerInterface) : EventGenerator {
+class CommonEventGenerator(override val logger: LoggerInterface) : EventGenerator {
 
     private val extensionMap = ListHashMap<Class<*>, ExtensionSpecification>()
     private val threadPool = Executors.newCachedThreadPool()
+
+    override val options: Options = Options()
+    override var checkHandler: CheckHandler = DefaultCheckHandler()
 
     override fun <T : Any> createFactoryAsync(factoryClass: Class<T>): Future<T> =
             threadPool.submit(Callable<T> {
@@ -66,6 +73,10 @@ class CommonEventGenerator(val logger: LoggerInterface) : EventGenerator {
         this.extensionMap.putToList(base, extensionSpecification)
     }
 
+    override fun <T : Event> registerEventImplementation(eventClassSpecification: EventClassSpecification<T>, implementation: Class<T>) {
+        EventClassGenerator.cache(eventClassSpecification, implementation)
+    }
+
     override fun <T : Any> createFactory(factoryClass: Class<T>): T {
         return EventFactoryClassGenerator.create(this, factoryClass, this.logger)
     }
@@ -78,7 +89,7 @@ class CommonEventGenerator(val logger: LoggerInterface) : EventGenerator {
                 typeInfo = type,
                 additionalProperties = additionalProperties,
                 extensions = exts),
-                this.logger
+                this
         )
     }
 

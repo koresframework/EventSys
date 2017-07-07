@@ -27,14 +27,18 @@
  */
 package com.github.projectsandstone.eventsys.test;
 
+import com.github.jonathanxd.iutils.description.Description;
+import com.github.jonathanxd.iutils.description.DescriptionUtil;
 import com.github.projectsandstone.eventsys.event.EventListener;
 import com.github.projectsandstone.eventsys.event.EventManager;
+import com.github.projectsandstone.eventsys.gen.check.CheckHandler;
+import com.github.projectsandstone.eventsys.gen.check.SuppressCapableCheckHandler;
 import com.github.projectsandstone.eventsys.gen.event.CommonEventGenerator;
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator;
+import com.github.projectsandstone.eventsys.gen.event.EventGeneratorOptions;
 import com.github.projectsandstone.eventsys.gen.event.ExtensionSpecification;
 import com.github.projectsandstone.eventsys.impl.CommonEventManager;
 import com.github.projectsandstone.eventsys.impl.CommonLogger;
-import com.github.projectsandstone.eventsys.impl.DefaultEventManager;
 import com.github.projectsandstone.eventsys.logging.LoggerInterface;
 import com.github.projectsandstone.eventsys.test.event.MessageEvent;
 import com.github.projectsandstone.eventsys.test.extension.ProvidedExt;
@@ -52,12 +56,23 @@ import kotlin.Unit;
 public class TestManager {
 
     @Test
-    public void test() {
+    public void test() throws NoSuchMethodException {
 
         EventManager manager = new MyManager();
 
+        CheckHandler checkHandler = manager.getEventGenerator().getCheckHandler();
+
+        manager.getEventGenerator().getOptions().set(EventGeneratorOptions.ENABLE_SUPPRESSION, true);
+
         manager.getEventGenerator().registerExtension(MessageEvent.class,
                 new ExtensionSpecification(Unit.INSTANCE, null, ProvidedExt.class));
+
+
+        if (checkHandler instanceof SuppressCapableCheckHandler) {
+            Description from = DescriptionUtil.from(MessageEvent.class.getDeclaredMethod("getTest", int.class));
+
+            ((SuppressCapableCheckHandler) checkHandler).addSuppression(from);
+        }
 
         Constant.initialize(manager);
 
@@ -73,6 +88,11 @@ public class TestManager {
 
         Assert.assertEquals("[TAG] hello world", messageEvent.getMessage());
 
+        ProvidedExt extension = messageEvent.getExtension(ProvidedExt.class);
+
+        Assert.assertTrue(extension != null);
+        Assert.assertEquals("_OK_", extension.getTest());
+
     }
 
 
@@ -87,4 +107,6 @@ public class TestManager {
             super(true, COMMON_SORTER, COMMON_THREAD_FACTORY, COMMON_LOGGER, COMMON_EVENT_GENERATOR);
         }
     }
+
+
 }

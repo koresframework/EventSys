@@ -45,10 +45,7 @@ import com.github.jonathanxd.codeapi.type.CodeType
 import com.github.jonathanxd.codeapi.type.Generic
 import com.github.jonathanxd.codeapi.type.PlainCodeType
 import com.github.jonathanxd.codeapi.util.*
-import com.github.jonathanxd.codeapi.util.conversion.access
-import com.github.jonathanxd.codeapi.util.conversion.toInvocation
-import com.github.jonathanxd.codeapi.util.conversion.toVariableAccess
-import com.github.jonathanxd.codeapi.util.conversion.typeSpec
+import com.github.jonathanxd.codeapi.util.conversion.*
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.Debug
 import com.github.projectsandstone.eventsys.common.ExtensionHolder
@@ -68,12 +65,34 @@ import com.github.projectsandstone.eventsys.reflect.isEqual
 import com.github.projectsandstone.eventsys.util.BooleanConsumer
 import com.github.projectsandstone.eventsys.util.fail
 import com.github.projectsandstone.eventsys.validation.Validator
-import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.lang.reflect.Type
 import java.util.*
 import java.util.function.*
+import kotlin.collections.List
+import kotlin.collections.Map
+import kotlin.collections.MutableMap
+import kotlin.collections.any
+import kotlin.collections.contains
+import kotlin.collections.emptyList
+import kotlin.collections.filter
+import kotlin.collections.filterNotNull
+import kotlin.collections.firstOrNull
+import kotlin.collections.forEach
+import kotlin.collections.isEmpty
+import kotlin.collections.isNotEmpty
+import kotlin.collections.joinToString
+import kotlin.collections.listOf
+import kotlin.collections.map
+import kotlin.collections.mapIndexed
+import kotlin.collections.mapOf
+import kotlin.collections.mutableListOf
+import kotlin.collections.mutableMapOf
+import kotlin.collections.plus
+import kotlin.collections.plusAssign
+import kotlin.collections.set
+import kotlin.collections.toMutableList
 
 /**
  * Generates [Event] class implementation.
@@ -117,8 +136,16 @@ internal object EventClassGenerator {
         }
     }
 
+    fun <T : Event> cache(eventClassSpecification: EventClassSpecification<T>, klass: Class<T>) {
+        this.cached[eventClassSpecification] = klass
+    }
+
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> genImplementation(eventClassSpecification: EventClassSpecification<T>, logger: LoggerInterface): Class<T> {
+    fun <T : Event> genImplementation(eventClassSpecification: EventClassSpecification<T>,
+                                      eventGenerator: EventGenerator): Class<T> {
+
+        val logger = eventGenerator.logger
+        val checker = eventGenerator.checkHandler
 
         if (cached.containsKey(eventClassSpecification)) {
             return cached[eventClassSpecification]!! as Class<T>
@@ -169,10 +196,10 @@ internal object EventClassGenerator {
                 superinterfaces_ = { classDeclarationBuilder.implementations })
 
         classDeclarationBuilder = classDeclarationBuilder
-                .fields(this.genFields(properties, extensions, plain, logger))
+                .fields(this.genFields(properties, extensions, plain, eventGenerator))
                 .constructors(this.genConstructor(classType, properties))
 
-        val methods = this.genMethods(classType, properties, logger).toMutableList()
+        val methods = this.genMethods(properties).toMutableList()
 
         extensions.forEach { ext ->
             ext.extensionClass?.let {
@@ -186,11 +213,13 @@ internal object EventClassGenerator {
         // Gen getProperties & getProperty & hasProperty
         methods += this.genPropertyHolderMethods()
 
+        methods += this.genDefaultMethodsImpl(classType, methods)
+
         val classDeclaration = classDeclarationBuilder.methods(methods).build()
 
-        this.checkDuplicates(classDeclaration)
-        this.validateExtensions(extensions, classDeclaration, logger)
-        this.checkMethodImplementations(classType, classDeclaration, extensions, logger)
+        checker.checkDuplicatedMethods(classDeclaration.methods)
+        this.validateExtensions(extensions, classDeclaration, eventGenerator)
+        checker.checkImplementation(classDeclaration.methods, classType, extensions, eventGenerator)
 
 
         val generator = BytecodeProcessor()
@@ -258,7 +287,7 @@ internal object EventClassGenerator {
                         && outer.returnType.`is`(it.returnType)
                         && outer.parameters.map { it.type } == it.parameters.map { it.type }
             })
-                // I will not use logging here, class loader will fail if duplicated methods are found
+            // I will not use logging here, class loader will fail if duplicated methods are found
                 throw IllegalStateException("Duplicated method: ${outer.name}")
             else
                 methodList += outer
@@ -268,7 +297,7 @@ internal object EventClassGenerator {
     private fun genFields(properties: List<PropertyInfo>,
                           extensions: List<ExtensionSpecification>,
                           type: Type,
-                          logger: LoggerInterface): List<FieldDeclaration> {
+                          eventGenerator: EventGenerator): List<FieldDeclaration> {
         return properties.map {
             val name = it.propertyName
 
@@ -279,7 +308,7 @@ internal object EventClassGenerator {
             }
 
             fieldDec().modifiers(modifiers).type(it.type).name(name).build()
-        } + genPropertyField() + genExtensionsFields(extensions, type, logger)
+        } + genPropertyField() + genExtensionsFields(extensions, type, eventGenerator)
 
 
     }
@@ -297,13 +326,14 @@ internal object EventClassGenerator {
 
     private fun genExtensionsFields(extensions: List<ExtensionSpecification>,
                                     type: Type,
-                                    logger: LoggerInterface): List<FieldDeclaration> =
+                                    eventGenerator: EventGenerator): List<FieldDeclaration> =
             extensions
                     .filter { it.extensionClass != null }
                     .map {
                         it.extensionClass!! // Safe: null filtered above
                         val ref = this.getExtensionFieldRef(it)!!
-                        val ctr = findConstructor(it, it.extensionClass, type, logger)
+                        val ctr = eventGenerator.checkHandler
+                                .validateExtension(it, it.extensionClass, type, eventGenerator)
                         fieldDec()
                                 .modifiers(CodeModifier.PRIVATE, CodeModifier.FINAL)
                                 .type(ref.type)
@@ -465,13 +495,9 @@ internal object EventClassGenerator {
                 .build()
     }
 
-    private fun genMethods(type: Class<*>,
-                           properties: List<PropertyInfo>,
-                           logger: LoggerInterface): List<MethodDeclaration> {
+    private fun genMethods(properties: List<PropertyInfo>): List<MethodDeclaration> {
 
         val methods = mutableListOf<MethodDeclaration>()
-
-        methods += genDefaultMethodsImpl(type)
 
         properties.map {
             if (it.hasGetter()) {
@@ -534,7 +560,7 @@ internal object EventClassGenerator {
 
         val castType = this.getCastType(fieldType)
 
-        val ret: CodeInstruction = if(!fieldType.isPrimitive && property.isNotNull)
+        val ret: CodeInstruction = if (!fieldType.isPrimitive && property.isNotNull)
             returnValue(castType, cast(Types.OBJECT, castType,
                     Objects::class.java.invokeStatic(
                             "requireNonNull",
@@ -542,7 +568,6 @@ internal object EventClassGenerator {
                             listOf(accessThisField(fieldType, name))
                     )
             ))
-
         else
             returnValue(castType,
                     cast(fieldType, castType, accessThisField(fieldType, name))
@@ -662,39 +687,20 @@ internal object EventClassGenerator {
 
     private fun validateExtensions(extensions: List<ExtensionSpecification>,
                                    type: CodeType,
-                                   logger: LoggerInterface) {
+                                   eventGenerator: EventGenerator) {
+
         extensions.forEach { extension ->
             extension.extensionClass?.let {
-                findConstructor(extension, it, type, logger)
+                eventGenerator.checkHandler.validateExtension(extension, it, type, eventGenerator)
             }
         }
-    }
-
-    private fun findConstructor(extension: ExtensionSpecification,
-                                extensionClass: Class<*>,
-                                type: Type,
-                                logger: LoggerInterface): Constructor<*> {
-
-        val resolver = type.defaultResolver
-        val foundsCtr = mutableListOf<Constructor<*>>()
-
-        extensionClass.declaredConstructors.forEach {
-            if (it.parameterCount == 1) {
-                if (resolver.isAssignableFrom(it.parameterTypes.single(), type))
-                    return it
-                else
-                    foundsCtr += it
-            }
-        }
-
-        logger.log("Provided extension class '${extensionClass.canonicalName}' (spec: '$extension') does not have a single-arg constructor with an argument which receives a '${type.canonicalName}' (or a super type). Found single-arg constructors: ${foundsCtr.joinToString { it.parameterTypes.joinToString(prefix = "(", postfix = ")") { it.simpleName } }}.", MessageType.INVALID_EXTENSION)
-        fail()
     }
 
     internal fun checkMethodImplementations(type: Class<*>,
                                             holder: ElementsHolder,
                                             extensions: List<ExtensionSpecification>,
-                                            logger: LoggerInterface) {
+                                            logger: LoggerInterface,
+                                            eventGenerator: EventGenerator) {
         val implementedMethods: List<MethodDeclaration> = holder.methods
         val unimplMethods = mutableListOf<String>()
 
@@ -709,10 +715,12 @@ internal object EventClassGenerator {
 
             if (!hasImpl && !method.isDefault) {
 
-                if(!method.isAnnotationPresent(SuppressCheck::class.java)
+
+                if (!eventGenerator.options[EventGeneratorOptions.ENABLE_SUPPRESSION]
+                        || !method.isAnnotationPresent(SuppressCheck::class.java)
                         || !method.getDeclaredAnnotation(SuppressCheck::class.java)
                         .value.contains(Check.IMPLEMENTATION))
-                unimplMethods += "$method"
+                    unimplMethods += "$method"
             }
         }
 
@@ -824,9 +832,17 @@ internal object EventClassGenerator {
         }
     }
 
-    internal fun genDefaultMethodsImpl(baseClass: Class<*>): List<MethodDeclaration> {
+    internal fun TypeSpec.concrete() =
+            this.copy(returnType = this.returnType.concreteType,
+                    parameterTypes = this.parameterTypes.map { it.concreteType })
+
+    internal fun genDefaultMethodsImpl(baseClass: Class<*>, methods: List<MethodDeclaration>): List<MethodDeclaration> {
         val funcs = baseClass.methods.map { base ->
-            findImplementation(baseClass, base)?.let { Pair(base, it) }
+            val spec = base.methodTypeSpec.typeSpec
+
+            if(methods.any { base.name == it.name
+                    && it.typeSpec.concrete() == spec }) null
+            else findImplementation(baseClass, base)?.let { Pair(base, it) }
         }.filterNotNull()
 
         return funcs.map {

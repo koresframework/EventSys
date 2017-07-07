@@ -27,10 +27,13 @@
  */
 package com.github.projectsandstone.eventsys.gen.event
 
+import com.github.jonathanxd.iutils.option.Options
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
 import com.github.projectsandstone.eventsys.event.ListenerSpec
+import com.github.projectsandstone.eventsys.gen.check.CheckHandler
+import com.github.projectsandstone.eventsys.logging.LoggerInterface
 import java.lang.reflect.Method
 import java.util.concurrent.Future
 
@@ -40,9 +43,45 @@ import java.util.concurrent.Future
 interface EventGenerator {
 
     /**
+     * Options of generator.
+     *
+     * @see EventGeneratorOptions
+     */
+    val options: Options
+
+    /**
+     * Logger of this generator
+     */
+    val logger: LoggerInterface
+
+    /**
+     * Check handler
+     */
+    var checkHandler: CheckHandler
+
+    /**
      * Registers a [extension][extensionSpecification] for [event base class][base].
      */
     fun registerExtension(base: Class<*>, extensionSpecification: ExtensionSpecification)
+
+    /**
+     * Registers an [implementation] of a [eventClassSpecification].
+     *
+     * Note that the [implementation] should follow some rules:
+     *
+     * - Provide a constructor which receive properties values and is annotated with `Name`, which will
+     * provide the name of properties.
+     * - Properly implement `getProperties` and `getExtension` (if applicable). `getProperties` should return an
+     * immutable map.
+     * - Properly register properties in the map, no one property should have null getter or setter, always
+     * use specialized properties.
+     *
+     * Note that registered event implementation will only be used if the [eventClassSpecification]
+     * is the same as expected specification, if a class requires an extension, the class need to be
+     * generated (unless you specify your own implementation with the extension).
+     */
+    fun <T : Event> registerEventImplementation(eventClassSpecification: EventClassSpecification<T>,
+                                                implementation: Class<T>)
 
     /**
      * Creates event factory class.

@@ -25,26 +25,15 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.test.event;
+package com.github.projectsandstone.eventsys.gen.event
 
-import com.github.projectsandstone.eventsys.event.Cancellable;
-import com.github.projectsandstone.eventsys.event.Event;
-import com.github.projectsandstone.eventsys.event.annotation.NotNullValue;
+import com.github.jonathanxd.iutils.option.Option
 
-import java.util.function.Function;
+object EventGeneratorOptions {
 
-public interface MessageEvent extends Event, Cancellable {
-
-    String getMessage();
-
-    void setMessage(@NotNullValue String message);
-
-    int getChannel();
-
-    String getTest();
-
-    String getTest(int n);
-
-    void transform(Function<String, String> transformer);
-
+    /**
+     * True to enable suppression of checks. This is disabled by default.
+     */
+    @JvmField
+    val ENABLE_SUPPRESSION = Option(false)
 }

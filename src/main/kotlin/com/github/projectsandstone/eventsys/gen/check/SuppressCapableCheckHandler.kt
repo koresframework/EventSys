@@ -25,26 +25,31 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.test.event;
+package com.github.projectsandstone.eventsys.gen.check
 
-import com.github.projectsandstone.eventsys.event.Cancellable;
-import com.github.projectsandstone.eventsys.event.Event;
-import com.github.projectsandstone.eventsys.event.annotation.NotNullValue;
+import com.github.jonathanxd.iutils.description.Description
+import com.github.projectsandstone.eventsys.gen.event.EventGenerator
+import com.github.projectsandstone.eventsys.gen.event.ExtensionSpecification
+import java.lang.reflect.Method
 
-import java.util.function.Function;
+/**
+ * Type of check handler which supports suppression.
+ */
+interface SuppressCapableCheckHandler : CheckHandler {
 
-public interface MessageEvent extends Event, Cancellable {
+    /**
+     * Adds [elementDescription] to be suppressed.
+     *
+     * @see Description
+     */
+    fun addSuppression(elementDescription: Description)
 
-    String getMessage();
-
-    void setMessage(@NotNullValue String message);
-
-    int getChannel();
-
-    String getTest();
-
-    String getTest(int n);
-
-    void transform(Function<String, String> transformer);
+    /**
+     * Returns true when implementation check against [method] should be suppressed.
+     */
+    fun shouldSuppressImplementationCheck(method: Method,
+                                          type: Class<*>,
+                                          extensions: List<ExtensionSpecification>,
+                                          eventGenerator: EventGenerator): Boolean
 
 }
