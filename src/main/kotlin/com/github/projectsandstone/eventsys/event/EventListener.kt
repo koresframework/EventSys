@@ -35,7 +35,7 @@ package com.github.projectsandstone.eventsys.event
  *
  * This class can generated via [com.github.projectsandstone.eventsys.gen.event.EventGenerator.createMethodListener]
  */
-interface EventListener<in T : Event> : Comparable<EventListener<*>> {
+interface EventListener<in T : Event> {
 
     /**
      * Called when the [event] is dispatched in [EventManager].
@@ -65,9 +65,4 @@ interface EventListener<in T : Event> : Comparable<EventListener<*>> {
     val ignoreCancelled
         get() = false
 
-    override fun compareTo(other: EventListener<*>): Int {
-        val compare = this.priority.compareTo(other.priority)
-
-        return if (compare == 0) -1 else compare
-    }
 }

@@ -65,7 +65,11 @@ open class CommonEventManager @JvmOverloads constructor(
         override val eventGenerator: EventGenerator) : EventManager {
 
     private val listeners: MutableSet<EventListenerContainer<*>> = TreeSet(Comparator { o1, o2 ->
-        sorter.compare(o1.eventListener, o2.eventListener)
+        val sort = sorter.compare(o1.eventListener, o2.eventListener)
+
+        if (sort == 0)
+            -1
+        else sort
     })
 
     private val executor = Executors.newCachedThreadPool(threadFactory)
@@ -74,10 +78,11 @@ open class CommonEventManager @JvmOverloads constructor(
         this.dispatch_(event, owner, phase, isAsync = false)
     }
 
-    protected fun <T : Event> dispatch_(event: T, owner: Any, phase: Int, isAsync: Boolean) {
+    override fun <T : Event> dispatch(event: T, typeInfo: TypeInfo<T>, owner: Any, phase: Int) {
+        this.dispatchWithType(event, typeInfo, owner, phase, isAsync = false)
+    }
 
-        val eventType = getEventType(event)
-
+    protected fun <T : Event> dispatchWithType(event: T, eventType: TypeInfo<T>, owner: Any, phase: Int, isAsync: Boolean) {
         fun <T : Event> tryDispatch(eventListenerContainer: EventListenerContainer<*>,
                                     event: T,
                                     owner: Any,
@@ -97,6 +102,13 @@ open class CommonEventManager @JvmOverloads constructor(
         }.forEach {
             tryDispatch(it, event, owner, phase)
         }
+    }
+
+    protected fun <T : Event> dispatch_(event: T, owner: Any, phase: Int, isAsync: Boolean) {
+
+        val eventType = getEventType(event)
+
+        return this.dispatchWithType(event, eventType.cast(), owner, phase, isAsync)
 
     }
 
@@ -135,6 +147,10 @@ open class CommonEventManager @JvmOverloads constructor(
 
     override fun <T : Event> dispatchAsync(event: T, owner: Any, phase: Int) {
         this.dispatch_(event, owner, phase, isAsync = true)
+    }
+
+    override fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, owner: Any, phase: Int) {
+        this.dispatchWithType(event, typeInfo, owner, phase, isAsync = true)
     }
 
     override fun getListeners(): Set<Pair<TypeInfo<*>, EventListener<*>>> {

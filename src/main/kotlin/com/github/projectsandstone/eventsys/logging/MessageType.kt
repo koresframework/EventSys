@@ -67,6 +67,7 @@ enum class MessageType(val level: Level) {
      * - Does not have name retention and does not provide names via `Name` annotation
      * (obs: methods with name retention does not require `Name` annotation, but if present, it will
      * override original name).
+     * - The event is generic and no one parameter of type `TypeInfo` is annotated with `TypeParam`
      */
     INVALID_FACTORY_METHOD(Level.FATAL),
 

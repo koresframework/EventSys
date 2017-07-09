@@ -52,5 +52,23 @@ fun <T : Event> getEventTypes(event: T): List<TypeInfo<*>> {
     return types
 }
 
-fun <T : Event> getEventType(event: T): TypeInfo<*> =
-        TypeUtil.toTypeInfo(event.javaClass)
+/*fun <T : Event> getEventType(event: T): TypeInfo<*> =
+        TypeUtil.toTypeInfo(event.javaClass)*/
+
+fun <T : Event> getEventType(event: T): TypeInfo<*> {
+    val jClass = event::class.java
+
+    val info = TypeUtil.toTypeInfo(jClass.genericSuperclass)
+
+    if (info.related.isNotEmpty())
+        return info
+
+    jClass.genericInterfaces.forEach {
+        val info2 = TypeUtil.toTypeInfo(it)
+
+        if (info2.related.isNotEmpty())
+            return info2
+    }
+
+    return TypeUtil.toTypeInfo(jClass)
+}

@@ -25,25 +25,11 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.test.factory;
+package com.github.projectsandstone.eventsys.event.annotation
 
-import com.github.jonathanxd.iutils.type.TypeInfo;
-import com.github.projectsandstone.eventsys.event.annotation.Extension;
-import com.github.projectsandstone.eventsys.event.annotation.Name;
-import com.github.projectsandstone.eventsys.event.annotation.TypeParam;
-import com.github.projectsandstone.eventsys.test.KtEvent;
-import com.github.projectsandstone.eventsys.test.event.MessageEvent;
-import com.github.projectsandstone.eventsys.test.event.MyGenericEvent;
-import com.github.projectsandstone.eventsys.test.extension.MyExtension;
-import com.github.projectsandstone.eventsys.test.extension.PrefixHolder;
-
-public interface MyFactory {
-
-    @Extension(extensionClass = MyExtension.class, implement = PrefixHolder.class)
-    MessageEvent createMessageEvent(@Name("message") String message, @Name("prefix") String prefix);
-
-    KtEvent createKtEvent(@Name("name") String name);
-
-    <T> MyGenericEvent<T> createMyGenericEvent(@TypeParam TypeInfo<T> type, @Name("obj") T obj);
-
-}
+/**
+ * Marks the factory parameter as a `TypeInfo` provider, this is required for generic events.
+ */
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.VALUE_PARAMETER)
+annotation class TypeParam

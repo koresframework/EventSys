@@ -36,4 +36,25 @@ object EventGeneratorOptions {
      */
     @JvmField
     val ENABLE_SUPPRESSION = Option(false)
+
+    /**
+     * Mode of generation of generic event classes on factory classes.
+     */
+    @JvmField
+    val GENERIC_EVENT_GENERATION_MODE = Option(GenericGenerationMode.BOOTSTRAP)
+
+    enum class GenericGenerationMode {
+        /**
+         * Delegates the generation to [com.github.projectsandstone.eventsys.bootstrap.FactoryBootstrap].
+         */
+        BOOTSTRAP,
+
+        /**
+         * Uses reflection on call site of method to invoke constructor of events.
+         *
+         * Because of the complexity of sorting code, it will not be generated (because will be hard to maintain),
+         * sorting is delegated to [com.github.projectsandstone.eventsys.reflect.PropertiesSort].
+         */
+        REFLECTION
+    }
 }

@@ -29,6 +29,8 @@ package com.github.projectsandstone.eventsys.test;
 
 import com.github.jonathanxd.iutils.description.Description;
 import com.github.jonathanxd.iutils.description.DescriptionUtil;
+import com.github.jonathanxd.iutils.type.AbstractTypeInfo;
+import com.github.jonathanxd.iutils.type.TypeInfo;
 import com.github.projectsandstone.eventsys.event.EventListener;
 import com.github.projectsandstone.eventsys.event.EventManager;
 import com.github.projectsandstone.eventsys.gen.check.CheckHandler;
@@ -41,6 +43,7 @@ import com.github.projectsandstone.eventsys.impl.CommonEventManager;
 import com.github.projectsandstone.eventsys.impl.CommonLogger;
 import com.github.projectsandstone.eventsys.logging.LoggerInterface;
 import com.github.projectsandstone.eventsys.test.event.MessageEvent;
+import com.github.projectsandstone.eventsys.test.event.MyGenericEvent;
 import com.github.projectsandstone.eventsys.test.extension.ProvidedExt;
 import com.github.projectsandstone.eventsys.test.listener.MyListener;
 
@@ -63,6 +66,8 @@ public class TestManager {
         CheckHandler checkHandler = manager.getEventGenerator().getCheckHandler();
 
         manager.getEventGenerator().getOptions().set(EventGeneratorOptions.ENABLE_SUPPRESSION, true);
+        manager.getEventGenerator().getOptions().set(EventGeneratorOptions.GENERIC_EVENT_GENERATION_MODE,
+                EventGeneratorOptions.GenericGenerationMode.REFLECTION);
 
         manager.getEventGenerator().registerExtension(MessageEvent.class,
                 new ExtensionSpecification(Unit.INSTANCE, null, ProvidedExt.class));
@@ -85,6 +90,15 @@ public class TestManager {
         manager.dispatch(ktEvent, this);
 
         ktEvent.reset();
+
+        MyGenericEvent<String> a = Constant.getMyFactoryInstance()
+                .createMyGenericEvent(new AbstractTypeInfo<String>() {}, "A");
+        MyGenericEvent<Integer> b = Constant.getMyFactoryInstance()
+                .createMyGenericEvent(new AbstractTypeInfo<Integer>() {}, 1);
+
+        manager.dispatch(a, this);
+        manager.dispatch(b, this);
+
 
         Assert.assertEquals("[TAG] hello world", messageEvent.getMessage());
 

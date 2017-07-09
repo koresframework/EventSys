@@ -118,6 +118,37 @@ interface EventManager {
         this.dispatch(event, owner, -1)
     }
 
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] and specified [listening phase][phase].
+     *
+     * This dispatch also includes [generic type information][typeInfo], normally EventSys infer the type
+     * from generated event class, but if inference fails, or the class does not have generic information,
+     * you need to use this method to dispatch events.
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param typeInfo Information of generic event type.
+     * @param owner Owner of the [event].
+     * @param phase Phase of the dispatch, only listeners that listen to this phase will be called.
+     */
+    fun <T : Event> dispatch(event: T, typeInfo: TypeInfo<T>, owner: Any, phase: Int)
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] (ignore phases).
+     *
+     * This dispatch also includes [generic type information][typeInfo], normally EventSys infer the type
+     * from generated event class, but if inference fails, or the class does not have generic information,
+     * you need to use this method to dispatch events.
+     *
+     * All listeners will be called (no matter the phase it listen).
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param typeInfo Information of generic event type.
+     * @param owner Instance of the [event].
+     */
+    fun <T : Event> dispatch(event: T, typeInfo: TypeInfo<T>, owner: Any) {
+        this.dispatch(event, typeInfo, owner, -1)
+    }
+
     //////////// Async
 
     /**
@@ -145,6 +176,43 @@ interface EventManager {
     @Suppress("UNCHECKED_CAST")
     fun <T : Event> dispatchAsync(event: T, owner: Any) {
         this.dispatchAsync(event, owner, -1)
+    }
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] and specified [listening phase][phase].
+     *
+     * This dispatch also includes [generic type information][typeInfo], normally EventSys infer the type
+     * from generated event class, but if inference fails, or the class does not have generic information,
+     * you need to use this method to dispatch events.
+     *
+     * Asynchronous dispatch.
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param typeInfo Information of generic event type.
+     * @param owner Owner of the [event].
+     * @param phase Phase of the dispatch, only listeners that listen to this phase will be called.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, owner: Any, phase: Int)
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event].
+     *
+     * This dispatch also includes [generic type information][typeInfo], normally EventSys infer the type
+     * from generated event class, but if inference fails, or the class does not have generic information,
+     * you need to use this method to dispatch events.
+     *
+     * Asynchronous dispatch
+     *
+     * All listeners will be called (no matter the phase it listen).
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param typeInfo Information of generic event type.
+     * @param owner Owner of the [event].
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, owner: Any) {
+        this.dispatchAsync(event, typeInfo, owner, -1)
     }
 
     //////////// /Async

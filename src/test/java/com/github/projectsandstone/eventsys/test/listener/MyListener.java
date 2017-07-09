@@ -29,6 +29,7 @@ package com.github.projectsandstone.eventsys.test.listener;
 
 import com.github.projectsandstone.eventsys.event.annotation.Listener;
 import com.github.projectsandstone.eventsys.test.event.MessageEvent;
+import com.github.projectsandstone.eventsys.test.event.MyGenericEvent;
 
 import kotlin.Unit;
 
@@ -37,6 +38,20 @@ public class MyListener {
     @Listener
     public void listen(MessageEvent messageEvent) {
         messageEvent.transform(String::toLowerCase);
+    }
+
+    @Listener
+    public void listen(MyGenericEvent<String> event) {
+        String obj = event.getObj();
+
+        System.out.println(obj);
+    }
+
+    @Listener
+    public void listen2(MyGenericEvent<Integer> event) {
+        Integer obj = event.getObj();
+
+        System.out.println("i"+obj);
     }
 
 }
