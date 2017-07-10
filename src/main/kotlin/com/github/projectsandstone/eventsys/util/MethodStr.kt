@@ -1,5 +1,5 @@
 /*
- *      EventImpl - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
  *
@@ -30,4 +30,4 @@ package com.github.projectsandstone.eventsys.util
 import java.lang.reflect.Method
 
 fun Method.toSimpleString() =
-        "${this.declaringClass.simpleName} ${this.returnType.simpleName} ${this.name}(${this.parameterTypes.joinToString { it.simpleName }})"
+        "${this.declaringClass.simpleName}.${this.returnType.simpleName} ${this.name}(${this.parameterTypes.joinToString { it.simpleName }})"

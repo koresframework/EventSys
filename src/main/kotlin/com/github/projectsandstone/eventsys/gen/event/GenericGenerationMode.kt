@@ -25,24 +25,21 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.util
+package com.github.projectsandstone.eventsys.gen.event
 
-import com.github.jonathanxd.codeapi.type.Generic
-import com.github.jonathanxd.codeapi.util.codeType
-import com.github.jonathanxd.iutils.type.TypeInfo
+enum class GenericGenerationMode {
 
-/**
- * Convert type info to CodeAPI [Generic].
- */
-fun <T: Any> TypeInfo<T>.toGeneric(): Generic {
-    val aClass = this.typeClass
-    val related = this.related
+    /**
+     * Delegates the generation to [com.github.projectsandstone.eventsys.bootstrap.FactoryBootstrap].
+     */
+    BOOTSTRAP,
 
-    var generic = Generic.type(aClass.codeType)
+    /**
+     * Uses reflection on call site of method to invoke constructor of events.
+     *
+     * Because of the complexity of sorting code, it will not be generated (because will be hard to maintain),
+     * sorting is delegated to [com.github.projectsandstone.eventsys.reflect.PropertiesSort].
+     */
+    REFLECTION
 
-    if (related.isNotEmpty()) {
-        generic = generic.of(*related.map { it.toGeneric() }.toTypedArray())
-    }
-
-    return generic
 }

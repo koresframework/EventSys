@@ -1,5 +1,5 @@
 /*
- *      EventImpl - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
  *
@@ -27,7 +27,10 @@
  */
 package com.github.projectsandstone.eventsys.gen.event
 
-import com.github.jonathanxd.codeapi.*
+import com.github.jonathanxd.codeapi.CodeInstruction
+import com.github.jonathanxd.codeapi.CodeSource
+import com.github.jonathanxd.codeapi.MutableCodeSource
+import com.github.jonathanxd.codeapi.Types
 import com.github.jonathanxd.codeapi.base.*
 import com.github.jonathanxd.codeapi.bytecode.VISIT_LINES
 import com.github.jonathanxd.codeapi.bytecode.VisitLineType
@@ -54,6 +57,7 @@ import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
 import com.github.projectsandstone.eventsys.gen.save.ClassSaver
 import com.github.projectsandstone.eventsys.reflect.getName
 import com.github.projectsandstone.eventsys.util.toGeneric
+import com.github.projectsandstone.eventsys.util.toSimpleString
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
@@ -184,12 +188,21 @@ internal object MethodListenerGenerator {
                     val typeInfo = param.type
 
                     val toAdd: CodeInstruction = if (typeInfo.typeClass == Property::class.java && typeInfo.related.isNotEmpty()) {
-                        this.callGetPropertyDirectOn(accessEventVar, name, typeInfo.related[0].typeClass, true, param.isNullable)
+                        this.callGetPropertyDirectOn(accessEventVar,
+                                name, typeInfo.related[0].typeClass,
+                                true,
+                                param.isNullable,
+                                param.isErased)
                     } else {
-                        this.callGetPropertyDirectOn(accessEventVar, name, typeInfo.typeClass, false, param.isNullable)
+                        this.callGetPropertyDirectOn(accessEventVar,
+                                name,
+                                typeInfo.typeClass,
+                                false,
+                                param.isNullable,
+                                param.isErased)
                     }
 
-                    arguments.add(toAdd)
+                    arguments.add(cast(Types.OBJECT, param.type.typeClass, toAdd))
                 }
             }
 
@@ -257,6 +270,20 @@ internal object MethodListenerGenerator {
 
         methods += ignoreCancelledMethod
 
+        val toStringMethod = MethodDeclaration.Builder.builder()
+                .annotations(overrideAnnotation())
+                .modifiers(CodeModifier.PUBLIC)
+                .body(source(
+                        returnValue(Types.STRING,
+                                Literals.STRING("GeneratedMethodListener[\"${method.toSimpleString()}\"]")
+                        )
+                ))
+                .name("toString")
+                .returnType(Types.STRING)
+                .build()
+
+        methods += toStringMethod
+
         return methods
     }
 
@@ -264,11 +291,15 @@ internal object MethodListenerGenerator {
                                         name: String,
                                         type: Class<*>,
                                         propertyOnly: Boolean,
-                                        isNullable: Boolean): CodeInstruction {
+                                        isNullable: Boolean,
+                                        isErased: Boolean): CodeInstruction {
 
         val getPropertyMethod = invokeInterface(PropertyHolder::class.java, target,
-                if (propertyOnly) "getProperty" else "getGetterProperty",
-                typeSpec(if (propertyOnly) Property::class.java else GetterProperty::class.java, Class::class.java, String::class.java),
+                if (isErased) "lookup"
+                else if (propertyOnly) "getProperty" else "getGetterProperty",
+                typeSpec(if (propertyOnly || isErased) Property::class.java else GetterProperty::class.java,
+                        Class::class.java,
+                        String::class.java),
                 listOf(Literals.CLASS(type), Literals.STRING(name))
         )
 

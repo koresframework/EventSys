@@ -25,24 +25,23 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.util
+package com.github.projectsandstone.eventsys.test.event;
 
-import com.github.jonathanxd.codeapi.type.Generic
-import com.github.jonathanxd.codeapi.util.codeType
-import com.github.jonathanxd.iutils.type.TypeInfo
+import com.github.projectsandstone.eventsys.event.Event;
+import com.github.projectsandstone.eventsys.event.annotation.NotNullValue;
 
-/**
- * Convert type info to CodeAPI [Generic].
- */
-fun <T: Any> TypeInfo<T>.toGeneric(): Generic {
-    val aClass = this.typeClass
-    val related = this.related
+import java.util.function.IntUnaryOperator;
 
-    var generic = Generic.type(aClass.codeType)
+public interface TestEvent extends Event {
 
-    if (related.isNotEmpty()) {
-        generic = generic.of(*related.map { it.toGeneric() }.toTypedArray())
+    @NotNullValue
+    String getName();
+
+    int getAmount();
+
+    void setAmount(int amount);
+
+    default void applyToAmount(IntUnaryOperator operator) {
+        this.setAmount(operator.applyAsInt(this.getAmount()));
     }
-
-    return generic
 }

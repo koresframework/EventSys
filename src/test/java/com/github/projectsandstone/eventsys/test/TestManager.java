@@ -1,5 +1,5 @@
 /*
- *      EventImpl - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
  *
@@ -39,6 +39,7 @@ import com.github.projectsandstone.eventsys.gen.event.CommonEventGenerator;
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator;
 import com.github.projectsandstone.eventsys.gen.event.EventGeneratorOptions;
 import com.github.projectsandstone.eventsys.gen.event.ExtensionSpecification;
+import com.github.projectsandstone.eventsys.gen.event.GenericGenerationMode;
 import com.github.projectsandstone.eventsys.impl.CommonEventManager;
 import com.github.projectsandstone.eventsys.impl.CommonLogger;
 import com.github.projectsandstone.eventsys.logging.LoggerInterface;
@@ -67,7 +68,7 @@ public class TestManager {
 
         manager.getEventGenerator().getOptions().set(EventGeneratorOptions.ENABLE_SUPPRESSION, true);
         manager.getEventGenerator().getOptions().set(EventGeneratorOptions.GENERIC_EVENT_GENERATION_MODE,
-                EventGeneratorOptions.GenericGenerationMode.REFLECTION);
+                GenericGenerationMode.REFLECTION);
 
         manager.getEventGenerator().registerExtension(MessageEvent.class,
                 new ExtensionSpecification(Unit.INSTANCE, null, ProvidedExt.class));
@@ -96,9 +97,25 @@ public class TestManager {
         MyGenericEvent<Integer> b = Constant.getMyFactoryInstance()
                 .createMyGenericEvent(new AbstractTypeInfo<Integer>() {}, 1);
 
-        manager.dispatch(a, this);
-        manager.dispatch(b, this);
+        MyGenericEvent<Object> c = Constant.getMyFactoryInstance()
+                .createMyGenericEvent(new AbstractTypeInfo<Object>() {}, "Y");
 
+        MyGenericEvent<Object> d = Constant.getMyFactoryInstance()
+                .createMyGenericEvent(new AbstractTypeInfo<Object>() {}, 7);
+
+        manager.dispatch(a, this);  // Will call *listen4*
+        manager.dispatch(b, this);
+        manager.dispatch(c, this);  // Will not call *listen4*
+        manager.dispatch(d, this);  // Will not call *listen4*
+
+        // Will call *listen4* because c has a 'obj' property value assignable `String`
+        manager.dispatch(c, new AbstractTypeInfo<MyGenericEvent<String>>() {}.cast(), this);
+
+        // Will not call *listen4* because c has not a 'obj' property value assignable `String` (this is Integer)
+        // And will throw an exception on *listen* because `Integer` is not assignable to `String`
+        manager.dispatch(d, new AbstractTypeInfo<MyGenericEvent<String>>() {}.cast(), this);
+
+        Constant.getMyFactoryInstance().createMyTestEvent("Cup", 100);
 
         Assert.assertEquals("[TAG] hello world", messageEvent.getMessage());
 

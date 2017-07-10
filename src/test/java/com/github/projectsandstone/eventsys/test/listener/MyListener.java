@@ -1,5 +1,5 @@
 /*
- *      EventImpl - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
  *
@@ -27,11 +27,12 @@
  */
 package com.github.projectsandstone.eventsys.test.listener;
 
+import com.github.projectsandstone.eventsys.event.EventPriority;
+import com.github.projectsandstone.eventsys.event.annotation.Erased;
 import com.github.projectsandstone.eventsys.event.annotation.Listener;
+import com.github.projectsandstone.eventsys.event.annotation.Name;
 import com.github.projectsandstone.eventsys.test.event.MessageEvent;
 import com.github.projectsandstone.eventsys.test.event.MyGenericEvent;
-
-import kotlin.Unit;
 
 public class MyListener {
 
@@ -51,7 +52,21 @@ public class MyListener {
     public void listen2(MyGenericEvent<Integer> event) {
         Integer obj = event.getObj();
 
-        System.out.println("i"+obj);
+        System.out.println("i" + obj);
     }
 
+    @Listener
+    public void listen2(MyGenericEvent<Integer> event, @Name("obj") Integer i) {
+        System.out.println("i: " + i);
+    }
+
+    @Listener(ignoreCancelled = true, priority = EventPriority.HIGHEST)
+    public void listen3(MyGenericEvent<Integer> event, @Name("obj") Integer i) {
+        System.out.println("i: " + i);
+    }
+
+    @Listener
+    public void listen4(MyGenericEvent<String> event, @Name("obj") @Erased String s) {
+        System.out.println("str: " + s+"m ev: "+event.getClass());
+    }
 }

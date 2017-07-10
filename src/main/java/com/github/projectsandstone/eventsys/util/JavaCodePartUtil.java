@@ -25,24 +25,25 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.util
+package com.github.projectsandstone.eventsys.util;
 
-import com.github.jonathanxd.codeapi.type.Generic
-import com.github.jonathanxd.codeapi.util.codeType
-import com.github.jonathanxd.iutils.type.TypeInfo
+import com.github.jonathanxd.codeapi.CodeInstruction;
+import com.github.jonathanxd.codeapi.factory.Factories;
+import com.github.jonathanxd.codeapi.factory.InvocationFactory;
+import com.github.jonathanxd.codeapi.type.CodeType;
+import com.github.jonathanxd.codeapi.util.CodeTypes;
+import com.github.jonathanxd.iutils.collection.Collections3;
 
-/**
- * Convert type info to CodeAPI [Generic].
- */
-fun <T: Any> TypeInfo<T>.toGeneric(): Generic {
-    val aClass = this.typeClass
-    val related = this.related
+import java.lang.reflect.Type;
 
-    var generic = Generic.type(aClass.codeType)
+public class JavaCodePartUtil {
 
-    if (related.isNotEmpty()) {
-        generic = generic.of(*related.map { it.toGeneric() }.toTypedArray())
+
+    public static CodeInstruction callGetCodeType(CodeInstruction instruction) {
+        return InvocationFactory.invokeStatic(CodeTypes.class, "getCodeType",
+                Factories.typeSpec(CodeType.class, Type.class),
+                Collections3.listOf(instruction)
+        );
     }
 
-    return generic
 }

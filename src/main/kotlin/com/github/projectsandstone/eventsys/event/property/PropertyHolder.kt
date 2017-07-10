@@ -1,5 +1,5 @@
 /*
- *      EventImpl - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
  *
@@ -36,14 +36,53 @@ import com.github.projectsandstone.eventsys.event.property.primitive.*
 interface PropertyHolder {
 
     /**
-     * Gets the property of type [type] and name [name]
+     * Gets the property of name [name] and return it only if the value
+     * is assignable to [type].
+     *
+     * Only works with [GetterProperties][GetterProperty].
+     *
+     * If [name] is null, then first property with value assignable to [type] will be returned.
      *
      * @param type Type of property type.
      * @param name Name of property.
+     * @return Property with a value assignable to [type], or null if the property does not
+     * exists or does not have a value which is instance of [type].
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <R> lookup(type: Class<R>, name: String?): Property<R>? {
+        if(name != null) {
+            val property = this.getProperties()[name]
+
+            if (property is GetterProperty<*>) {
+                val get = property.getValue()
+
+                if (type.isInstance(get))
+                    return property as Property<R>
+            }
+        } else {
+            this.getProperties().forEach { (_, property) ->
+                if (property is GetterProperty<*>) {
+                    val get = property.getValue()
+
+                    if (type.isInstance(get))
+                        return property as Property<R>
+                }
+            }
+        }
+
+
+        return null
+    }
+
+    /**
+     * Gets the property of type [type] and name [name]
+     *
+     * @param type Type of property type.
+     * @param name Name of property. If null, returns first property which have same type as provided [type]
      * @return Property, if exists, or null otherwise.
      */
-    fun <R> getProperty(type: Class<R>, name: String): Property<R>? {
-        val property = this.getProperties()[name]
+    @Suppress("UNCHECKED_CAST")
+    fun <R> getProperty(type: Class<R>, name: String?): Property<R>? {
         // type.isAssignableFrom(propertyType)
         fun checkTypeCompatibility(propType: Class<*>, reqType: Class<*>) =
                 reqType.isAssignableFrom(propType) ||
@@ -56,8 +95,20 @@ interface PropertyHolder {
                         || reqType == java.lang.Float.TYPE)
                         && propType == java.lang.Double.TYPE)
 
-        @Suppress("UNCHECKED_CAST")
-        return if (property != null && checkTypeCompatibility(property.type, type)) property as Property<R> else null
+        if (name == null) {
+            this.getProperties().forEach { (_, property) ->
+                if (checkTypeCompatibility(property.type, type))
+                    return property as Property<R>
+            }
+        } else {
+
+            val property = this.getProperties()[name]
+
+            @Suppress("UNCHECKED_CAST")
+            return if (property != null && checkTypeCompatibility(property.type, type)) property as Property<R> else null
+        }
+
+        return null
     }
 
     /**

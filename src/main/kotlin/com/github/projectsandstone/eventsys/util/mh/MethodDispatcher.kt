@@ -1,5 +1,5 @@
 /*
- *      EventImpl - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
  *
@@ -34,6 +34,7 @@ import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
 import com.github.projectsandstone.eventsys.event.EventPriority
 import com.github.projectsandstone.eventsys.event.ListenerSpec
+import com.github.projectsandstone.eventsys.event.annotation.Erased
 import com.github.projectsandstone.eventsys.event.annotation.Name
 import java.lang.invoke.MethodHandle
 import java.lang.invoke.MethodHandles
@@ -74,14 +75,14 @@ open class MethodDispatcher(
 
     val parameters: Array<TypeInfo<*>> = method.genericParameterTypes.map { TypeUtil.toTypeInfo(it) }.toTypedArray()
 
-    internal val namedParameters: Array<com.github.jonathanxd.iutils.`object`.Named<TypeInfo<*>>> =
+    internal val namedParameters: Array<Param> =
             method.parameters.map {
                 val typeInfo = TypeUtil.toTypeInfo(it.parameterizedType)
 
                 val name: String? = it.getDeclaredAnnotation(Named::class.java)?.value
                         ?: it.getDeclaredAnnotation(Name::class.java)?.value
 
-                return@map com.github.jonathanxd.iutils.`object`.Named(name, typeInfo)
+                return@map Param(name, typeInfo, it.isAnnotationPresent(Erased::class.java))
 
             }.toTypedArray()
 
@@ -90,6 +91,8 @@ open class MethodDispatcher(
             throw IllegalArgumentException("Invalid Method: '$method'. (No Parameters)")
         }
     }
+
+    data class Param(val name: String?, val type: TypeInfo<*>, val erased: Boolean)
 
     override fun onEvent(event: Event, owner: Any) {
 
@@ -102,9 +105,11 @@ open class MethodDispatcher(
             this.namedParameters.forEachIndexed { i, named ->
                 if (i > 0) {
                     val name = named.name
-                    val typeInfo = named.value
+                    val typeInfo = named.type
 
-                    args += event.getProperty(typeInfo.typeClass, name)
+                    args += if (named.erased)
+                        event.lookup(typeInfo.typeClass, name)
+                    else event.getProperty(typeInfo.typeClass, name)
                 }
             }
 

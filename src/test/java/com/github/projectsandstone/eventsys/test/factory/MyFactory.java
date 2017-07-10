@@ -1,5 +1,5 @@
 /*
- *      EventImpl - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
  *
@@ -34,6 +34,7 @@ import com.github.projectsandstone.eventsys.event.annotation.TypeParam;
 import com.github.projectsandstone.eventsys.test.KtEvent;
 import com.github.projectsandstone.eventsys.test.event.MessageEvent;
 import com.github.projectsandstone.eventsys.test.event.MyGenericEvent;
+import com.github.projectsandstone.eventsys.test.event.MyTestEvent;
 import com.github.projectsandstone.eventsys.test.extension.MyExtension;
 import com.github.projectsandstone.eventsys.test.extension.PrefixHolder;
 
@@ -44,6 +45,8 @@ public interface MyFactory {
 
     KtEvent createKtEvent(@Name("name") String name);
 
-    <T> MyGenericEvent<T> createMyGenericEvent(@TypeParam TypeInfo<T> type, @Name("obj") T obj);
+    <T> MyGenericEvent<T> createMyGenericEvent(@TypeParam TypeInfo<T> type,
+                                               @Name("obj") T obj);
 
+    MyTestEvent createMyTestEvent(@Name("name") String name, @Name("amount") int amount);
 }

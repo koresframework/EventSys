@@ -1,5 +1,5 @@
 /*
- *      EventImpl - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
  *
@@ -31,6 +31,7 @@ import com.github.jonathanxd.codeapi.util.conversion.kotlinParameters
 import com.github.jonathanxd.iutils.annotation.Named
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeUtil
+import com.github.projectsandstone.eventsys.event.annotation.Erased
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.event.annotation.Name
 import com.github.projectsandstone.eventsys.event.annotation.NullableProperty
@@ -74,7 +75,11 @@ data class ListenerSpec(
          */
         val phase: Int) {
 
-    data class LParameter internal constructor(val name: String, val annotations: List<Annotation>, val type: TypeInfo<*>, val isNullable: Boolean)
+    data class LParameter internal constructor(val name: String,
+                                               val annotations: List<Annotation>,
+                                               val type: TypeInfo<*>,
+                                               val isNullable: Boolean,
+                                               val isErased: Boolean)
 
     companion object {
 
@@ -98,7 +103,11 @@ data class ListenerSpec(
 
                 val name: String? = it.getDeclaredAnnotation(Name::class.java)?.value ?: ktParameters?.get(i)?.name
 
-                return@mapIndexed LParameter(name ?: it.name, it.annotations.toList(), typeInfo, it.isAnnotationPresent(NullableProperty::class.java) || isNullable)
+                return@mapIndexed LParameter(name ?: it.name,
+                        it.annotations.toList(),
+                        typeInfo,
+                        it.isAnnotationPresent(NullableProperty::class.java) || isNullable,
+                        it.isAnnotationPresent(Erased::class.java))
 
             }.toList()
 

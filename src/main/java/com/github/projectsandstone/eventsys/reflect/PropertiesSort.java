@@ -1,5 +1,5 @@
 /*
- *      EventImpl - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
  *
@@ -35,7 +35,6 @@ import java.lang.reflect.Parameter;
 import java.util.Arrays;
 
 public class PropertiesSort {
-
 
     public static Object[] sort(Constructor<?> constructor, String[] names, Object[] args) {
         Object[] sorted = new Object[args.length];

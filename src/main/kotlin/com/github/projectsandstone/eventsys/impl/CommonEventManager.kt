@@ -1,5 +1,5 @@
 /*
- *      EventImpl - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
  *
@@ -121,7 +121,7 @@ open class CommonEventManager @JvmOverloads constructor(
         try {
             eventListenerContainer.eventListener.helpOnEvent(event, owner)
         } catch (throwable: Throwable) {
-            logger.log("Cannot dispatch event $event (type: $eventType) to listener " +
+            logger.log("Cannot dispatch event $event (with provided type: $eventType) to listener " +
                     "${eventListenerContainer.eventListener} (of event type: ${eventListenerContainer.eventType}) of owner " +
                     "$owner. " +
                     "(Source: $owner, phase: $phase)",

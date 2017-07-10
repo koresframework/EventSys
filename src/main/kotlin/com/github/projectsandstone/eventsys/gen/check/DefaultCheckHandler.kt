@@ -1,5 +1,5 @@
 /*
- *      EventImpl - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
  *
@@ -33,6 +33,8 @@ import com.github.jonathanxd.codeapi.util.concreteType
 import com.github.jonathanxd.codeapi.util.defaultResolver
 import com.github.jonathanxd.iutils.description.Description
 import com.github.jonathanxd.iutils.description.DescriptionUtil
+import com.github.jonathanxd.iutils.type.TypeInfo
+import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.annotation.Check
 import com.github.projectsandstone.eventsys.event.annotation.SuppressCheck
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
@@ -42,6 +44,7 @@ import com.github.projectsandstone.eventsys.logging.MessageType
 import com.github.projectsandstone.eventsys.util.fail
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
+import java.lang.reflect.Parameter
 import java.lang.reflect.Type
 
 class DefaultCheckHandler : SuppressCapableCheckHandler {
@@ -151,5 +154,56 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
 
         logger.log("Provided extension class '${extensionClass.canonicalName}' (spec: '$extension') does not have a single-arg constructor with an argument which receives a '${type.canonicalName}' (or a super type). Found single-arg constructors: ${foundsCtr.joinToString { it.parameterTypes.joinToString(prefix = "(", postfix = ")") { it.simpleName } }}.", MessageType.INVALID_EXTENSION)
         fail()
+    }
+
+
+    // Factory
+
+    override fun validateFactoryClass(type: Class<*>, eventGenerator: EventGenerator) {
+        val logger = eventGenerator.logger
+        val superClass = type.superclass
+
+        if (!type.isInterface) {
+            logger.log("Factory class must be an interface.", MessageType.INVALID_FACTORY)
+            fail()
+        }
+
+        if (superClass != null && type != Any::class.java || type.interfaces.isNotEmpty()) {
+            logger.log("Factory class must not extend any class.", MessageType.INVALID_FACTORY)
+            fail()
+        }
+    }
+
+    override fun validateEventClass(type: Class<*>,
+                                    factoryMethod: Method,
+                                    eventGenerator: EventGenerator) {
+        val logger = eventGenerator.logger
+
+        if (!Event::class.java.isAssignableFrom(type)) {
+            logger.log("Failed to generate implementation of method '$factoryMethod': event factory methods must return a type assignable to 'Event'.", MessageType.INVALID_FACTORY_METHOD)
+            fail()
+        }
+    }
+
+    override fun validateTypeProvider(providerParams: List<Parameter>,
+                                      factoryMethod: Method,
+                                      eventGenerator: EventGenerator) {
+        val logger = eventGenerator.logger
+        val factoryClass = factoryMethod.declaringClass
+
+        if (providerParams.isEmpty()) {
+            logger.log("Factory method '$factoryMethod' present in factory class '${factoryClass.canonicalName}' must have a parameter of type 'TypeInfo' annotated with @TypeParam.", MessageType.INVALID_FACTORY_METHOD)
+            fail()
+        }
+
+        if (providerParams.size != 1) {
+            logger.log("Factory method '$factoryMethod' present in factory class '${factoryClass.canonicalName}' must have only one parameter of type 'TypeInfo' annotated with @TypeParam.", MessageType.INVALID_FACTORY_METHOD)
+            fail()
+        }
+
+        if (providerParams.single().type != TypeInfo::class.java) {
+            logger.log("@TypeParam should be only annotated in parameter of 'TypeInfo' type. Factory method: '$factoryMethod'. Factory class '${factoryClass.canonicalName}'.", MessageType.INVALID_FACTORY_METHOD)
+            fail()
+        }
     }
 }

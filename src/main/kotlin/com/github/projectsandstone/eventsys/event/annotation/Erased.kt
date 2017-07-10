@@ -25,24 +25,13 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.util
-
-import com.github.jonathanxd.codeapi.type.Generic
-import com.github.jonathanxd.codeapi.util.codeType
-import com.github.jonathanxd.iutils.type.TypeInfo
+package com.github.projectsandstone.eventsys.event.annotation
 
 /**
- * Convert type info to CodeAPI [Generic].
+ * Marks listener parameter as [Erased], which will change the behavior of event destruction,
+ * instead of looking up the property based on type and name, it will lookup for first property
+ * of a type which is assignable to parameter type.
  */
-fun <T: Any> TypeInfo<T>.toGeneric(): Generic {
-    val aClass = this.typeClass
-    val related = this.related
-
-    var generic = Generic.type(aClass.codeType)
-
-    if (related.isNotEmpty()) {
-        generic = generic.of(*related.map { it.toGeneric() }.toTypedArray())
-    }
-
-    return generic
-}
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.VALUE_PARAMETER)
+annotation class Erased

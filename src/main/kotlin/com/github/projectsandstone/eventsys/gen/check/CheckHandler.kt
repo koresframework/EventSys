@@ -1,5 +1,5 @@
 /*
- *      EventImpl - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
  *
@@ -31,15 +31,12 @@ import com.github.jonathanxd.codeapi.base.MethodDeclaration
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
 import com.github.projectsandstone.eventsys.gen.event.ExtensionSpecification
 import java.lang.reflect.Constructor
+import java.lang.reflect.Method
+import java.lang.reflect.Parameter
 import java.lang.reflect.Type
 
 /**
  * Handler which checks the generated code.
- *
- * This class checks for:
- *
- * - Duplicated methods
- * - Missing implementation
  */
 interface CheckHandler {
 
@@ -66,4 +63,28 @@ interface CheckHandler {
                           extensionClass: Class<*>,
                           type: Type,
                           eventGenerator: EventGenerator): Constructor<*>
+
+    // Factory
+
+    /**
+     * Validates factory class. Valid factories are those which are interfaces
+     * which does not extends any other class.
+     */
+    fun validateFactoryClass(type: Class<*>,
+                             eventGenerator: EventGenerator)
+
+    /**
+     * Validates event class.
+     */
+    fun validateEventClass(type: Class<*>,
+                           factoryMethod: Method,
+                           eventGenerator: EventGenerator)
+
+    /**
+     * Validate type provider parameters.
+     */
+    fun validateTypeProvider(providerParams: List<Parameter>,
+                             factoryMethod: Method,
+                             eventGenerator: EventGenerator)
+
 }

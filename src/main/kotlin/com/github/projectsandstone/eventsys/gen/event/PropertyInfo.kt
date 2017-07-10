@@ -1,5 +1,5 @@
 /*
- *      EventImpl - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
  *
@@ -27,18 +27,27 @@
  */
 package com.github.projectsandstone.eventsys.gen.event
 
+import com.github.jonathanxd.codeapi.generic.GenericSignature
+import com.github.jonathanxd.codeapi.type.GenericType
 import com.github.projectsandstone.eventsys.validation.Validator
+import java.lang.reflect.Type
 
 /**
  * Information about property.
  */
-data class PropertyInfo @JvmOverloads constructor(val propertyName: String,
+data class PropertyInfo @JvmOverloads constructor(val declaringType: Class<*>,
+                                                  val propertyName: String,
                                                   val getterName: String? = null,
                                                   val setterName: String? = null,
                                                   val type: Class<*>,
                                                   val isNotNull: Boolean,
-                                                  val validator: Class<out Validator<out Any>>? = null) {
+                                                  val validator: Class<out Validator<out Any>>? = null,
+                                                  val propertyTypeInfo: PropertyTypeInfo,
+                                                  val inferredType: Type = type) {
     fun hasGetter() = this.getterName != null
     fun hasSetter() = this.setterName != null
     fun isMutable() = this.setterName != null
 }
+
+data class PropertyTypeInfo(val type: GenericType,
+                            val definedParams: GenericSignature)

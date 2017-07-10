@@ -1,5 +1,5 @@
 /*
- *      EventImpl - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of CodeAPI
  *
  *         The MIT License (MIT)
  *
@@ -27,7 +27,6 @@
  */
 package com.github.projectsandstone.eventsys.event.property
 
-import com.github.projectsandstone.eventsys.event.property.Property
 import java.util.function.Supplier
 
 /**

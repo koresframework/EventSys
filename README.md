@@ -8,6 +8,14 @@ Property based event class generator.
 
 Event Sys generate event class, event factories and method event listeners at runtime, the first generation may be slow (because of class loading), consequent generations are faster.
 
+## Why do we use code generation
+
+First, I started writing an event system in `SandstoneAPI` ([first commit](https://github.com/ProjectSandstone/SandstoneAPI/commit/df938d487d6dc8e405acadf2d43fc58bc219b634)), and then it was moved from `SandstoneAPI` project to a separated project.
+
+I used `Class Generation` because instead of having to write a bunch of event classes only to extend `PlayerEvent` was not a good idea. (And yes, it would be more faster than writing an event generator, but I like to take longer to finish things `:P`), I also used class generation to generate faster listener invocations instead of using `Reflect` or `MethodHandle API`, to generate factory interface implementation, and recently written an Annotation Processor to generate factory interface for events.
+
+**Note: First implementation was written using CodeAPI 1.14, we are currently on CodeAPI 4.0-ALPHA, and between these two versions, CodeAPI was rewritten 3 times**
+
 # Base event interfaces
 
 All event interfaces must extend `Event` interface, EventSys uses a property system to provide values regardless the event type.
@@ -188,9 +196,7 @@ eventManager.registerListener(this /* owner of registration */, PersonRegisterEv
 
 ## Extension
 
-Sometimes you need to provide a implementation of a method but you don't want to write this on the interface, to solve this you can use `Extension`s.
- 
-*EventSys Extension* is like a trait, a `Extension` can provide a interface to implement and the implementation of methods.
+Sometimes you want to provide additional properties to the event but does not want to write a specialized version of the event, in this case you can use `Extension`, `Extension` may also be used to provide implementation of event methods.
 
 You could specify extensions in factory class or register in `EventGenerator` using `EventGenerator.registerExtension(Class, ExtensionSpecification)`
 
@@ -204,8 +210,14 @@ public interface PlayerJoinEvent extends Event {
 }
 
 public class PlayerJoinEventExtension {
-    public void kick(PlayerJoinEvent event) {
-        event.getPlayer().kick();
+    private final PlayerJoinEvent event;
+    
+    public PlayerJoinEventExtension(PlayerJoinEvent event) {
+        this.event = event;
+    }
+    
+    public void kick() {
+        this.event.getPlayer().kick();
     }
 }
 ```
@@ -224,8 +236,13 @@ class PlayerJoinEventExtension(val event: PlayerJoinEvent) {
 
 # Performance
 
-Measures points that `Kotlin Reflect` takes too much time to get function names, this can be resolved using only Java classes. 
+Measures points that `Kotlin Reflect` takes too much time to get function names, EventSys does not call `Kotlin Reflect` unless you use a `Kotlin` class or if the parameters have `@Name` annotation. 
 
 **If (and only if), JetBrains enables Java 8 parameters emission by default ([KT-15346](https://youtrack.jetbrains.com/issue/KT-15346)), we will change te code to use annotations or Java 8 parameter names.** 
 
 This is not a `Major` problem because JIT may (and will) optimize this.
+
+
+# Internals
+
+See [Internals](INTERNALS.md) for implementation details.
