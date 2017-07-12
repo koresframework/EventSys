@@ -562,7 +562,7 @@ internal object EventClassGenerator {
 
         val toReturn: CodeInstruction = if (isSpecialized)
             getEventTypeInfoSignature(typeInfo).let { accessThisField(it, eventTypeInfoFieldName) }
-        else createTypeInfo(typeInfo.typeClass, null)
+        else createTypeInfo(typeInfo.typeClass)
 
         methods += MethodDeclaration.Builder.builder()
                 .annotations(overrideAnnotation())

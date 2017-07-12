@@ -30,7 +30,6 @@ package com.github.projectsandstone.eventsys.test;
 import com.github.jonathanxd.iutils.description.Description;
 import com.github.jonathanxd.iutils.description.DescriptionUtil;
 import com.github.jonathanxd.iutils.type.AbstractTypeInfo;
-import com.github.jonathanxd.iutils.type.TypeInfo;
 import com.github.projectsandstone.eventsys.event.EventListener;
 import com.github.projectsandstone.eventsys.event.EventManager;
 import com.github.projectsandstone.eventsys.gen.check.CheckHandler;
@@ -93,27 +92,30 @@ public class TestManager {
         ktEvent.reset();
 
         MyGenericEvent<String> a = Constant.getMyFactoryInstance()
-                .createMyGenericEvent(new AbstractTypeInfo<String>() {}, "A");
+                .createMyGenericEvent(new AbstractTypeInfo<MyGenericEvent<String>>() {
+                }, "A");
         MyGenericEvent<Integer> b = Constant.getMyFactoryInstance()
-                .createMyGenericEvent(new AbstractTypeInfo<Integer>() {}, 1);
+                .createMyGenericEvent(new AbstractTypeInfo<MyGenericEvent<Integer>>() {
+                }, 1);
 
         MyGenericEvent<Object> c = Constant.getMyFactoryInstance()
-                .createMyGenericEvent(new AbstractTypeInfo<Object>() {}, "Y");
+                .createMyGenericEvent(new AbstractTypeInfo<MyGenericEvent<Object>>() {
+                }, "Y");
 
         MyGenericEvent<Object> d = Constant.getMyFactoryInstance()
-                .createMyGenericEvent(new AbstractTypeInfo<Object>() {}, 7);
+                .createMyGenericEvent(new AbstractTypeInfo<MyGenericEvent<Object>>() {
+                }, 7);
 
-        manager.dispatch(a, this);  // Will call *listen4*
+        manager.dispatch(a, this);
         manager.dispatch(b, this);
-        manager.dispatch(c, this);  // Will not call *listen4*
-        manager.dispatch(d, this);  // Will not call *listen4*
+        manager.dispatch(c, this);
+        manager.dispatch(d, this);
 
-        // Will call *listen4* because c has a 'obj' property value assignable `String`
-        manager.dispatch(c, new AbstractTypeInfo<MyGenericEvent<String>>() {}.cast(), this);
+        manager.dispatch(c, new AbstractTypeInfo<MyGenericEvent<String>>() {
+        }.cast(), this);
 
-        // Will not call *listen4* because c has not a 'obj' property value assignable `String` (this is Integer)
-        // And will throw an exception on *listen* because `Integer` is not assignable to `String`
-        manager.dispatch(d, new AbstractTypeInfo<MyGenericEvent<String>>() {}.cast(), this);
+        manager.dispatch(d, new AbstractTypeInfo<MyGenericEvent<String>>() {
+        }.cast(), this);
 
         Constant.getMyFactoryInstance().createMyTestEvent("Cup", 100);
         Constant.getMyFactoryInstance().createMyTestEvent2("Cup", 100);
@@ -130,9 +132,9 @@ public class TestManager {
 
     private static class MyManager extends CommonEventManager {
 
+        static final ThreadFactory COMMON_THREAD_FACTORY = Executors.defaultThreadFactory();
+        static final LoggerInterface COMMON_LOGGER = new CommonLogger();
         private static final Comparator<EventListener<?>> COMMON_SORTER = Comparator.comparing(EventListener::getPriority);
-        private static final ThreadFactory COMMON_THREAD_FACTORY = Executors.defaultThreadFactory();
-        private static final LoggerInterface COMMON_LOGGER = new CommonLogger();
         private static final EventGenerator COMMON_EVENT_GENERATOR = new CommonEventGenerator(COMMON_LOGGER);
 
         MyManager() {

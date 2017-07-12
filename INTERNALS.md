@@ -207,10 +207,10 @@ public interface MyGenericEvent<T> extends Event {
 And following factory:
 
 ```java
-<T> MyGenericEvent<T> createMyGenericEvent(@TypeParam TypeInfo<T> type, @Name("obj") T obj);
+<T> MyGenericEvent<T> createMyGenericEvent(@TypeParam TypeInfo<MyGenericEvent<T>> type, @Name("obj") T obj);
 ```
 
-Following event class will be generated to `createMyGenericEvent(TypeInfo.of(String.class), "A")`:
+Following event class will be generated to `createMyGenericEvent(new AbstractTypeInfo<MyGenericEvent<String>>(){}, "A")`:
 
 ```java
 public class MyGenericEventImpl implements MyGenericEvent {
@@ -250,7 +250,7 @@ public class MyGenericEventImpl implements MyGenericEvent {
 }
 ```
 
-Yes, you need to provide a `TypeInfo<T>` for event construction, you can also construct the event without the type information, but `dispatch` methods will only dispatch for listeners which listen to event without the type or with bound type, for example, if you construct `MyGenericEvent` without type information and `dispatch` it without `TypeInfo`, only listeners which listen to `MyGenericEvent` and `MyGenericEvent<Object>` will be invoked. If you `dispatch` the event with `TypeInfo` event will be also be dispatched correctly.
+Yes, you need to provide a `TypeInfo<...>` for event construction, you can also construct the event without the type information, but `dispatch` methods will only dispatch for listeners which listen to event without the type or with bound type, for example, if you construct `MyGenericEvent` without type information and `dispatch` it without `TypeInfo`, only listeners which listen to `MyGenericEvent` and `MyGenericEvent<Object>` will be invoked. If you `dispatch` the event with `TypeInfo` event will be also be dispatched correctly.
 
 **Since 1.3**
 
@@ -275,7 +275,7 @@ The second delegate the call to `FactoryBootstrap`, which implements the generat
 public MyGenericEvent createMyGenericEvent(TypeInfo eventTypeInfo, Object obj) {
     Class eventClass = this.eventGenerator.createEventClass(TypeInfo.of(MyGenericEvent.class), Collections3.listOf(new Object[0]), Collections3.listOf(new Object[0]));
     Constructor ctr = eventClass.getDeclaredConstructors()[0];
-    Object[] sorted = PropertiesSort.sort(ctr, new String[]{"eventTypeInfo", "obj"}, new Object[]{(Object)TypeInfo.builderOf(MyGenericEvent.class).of(new TypeInfo[]{eventTypeInfo}).build(), obj});
+    Object[] sorted = PropertiesSort.sort(ctr, new String[]{"eventTypeInfo", "obj"}, new Object[]{(Object)eventTypeInfo, obj});
     return (MyGenericEvent)ctr.newInstance(sorted);
 }
 ```
@@ -287,74 +287,65 @@ public com.github.projectsandstone.eventsys.test.event.MyGenericEvent createMyGe
 descriptor: (Lcom/github/jonathanxd/iutils/type/TypeInfo;Ljava/lang/Object;)Lcom/github/projectsandstone/eventsys/test/event/MyGenericEvent;
 flags: ACC_PUBLIC
 Code:
-  stack=10, locals=6, args_size=3
+  stack=6, locals=6, args_size=3
      0: aload_0
      1: getfield      #16                 // Field eventGenerator:Lcom/github/projectsandstone/eventsys/gen/event/EventGenerator;
-     4: ldc           #42                 // class com/github/projectsandstone/eventsys/test/event/MyGenericEvent
-     6: invokestatic  #48                 // Method com/github/jonathanxd/iutils/type/TypeInfo.of:(Ljava/lang/Class;)Lcom/github/jonathanxd/iutils/type/TypeInfo;
+     4: ldc           #33                 // class com/github/projectsandstone/eventsys/test/event/MyGenericEvent
+     6: invokestatic  #39                 // Method com/github/jonathanxd/iutils/type/TypeInfo.of:(Ljava/lang/Class;)Lcom/github/jonathanxd/iutils/type/TypeInfo;
      9: iconst_0
     10: anewarray     #4                  // class java/lang/Object
-    13: invokestatic  #54                 // Method com/github/jonathanxd/iutils/collection/Collections3.listOf:([Ljava/lang/Object;)Ljava/util/List;
+    13: invokestatic  #45                 // Method com/github/jonathanxd/iutils/collection/Collections3.listOf:([Ljava/lang/Object;)Ljava/util/List;
     16: iconst_0
     17: anewarray     #4                  // class java/lang/Object
-    20: invokestatic  #54                 // Method com/github/jonathanxd/iutils/collection/Collections3.listOf:([Ljava/lang/Object;)Ljava/util/List;
-    23: invokeinterface #60,  4           // InterfaceMethod com/github/projectsandstone/eventsys/gen/event/EventGenerator.createEventClass:(Lcom/github/jonathanxd/iutils/type/TypeInfo;Ljava/util/List;Ljava/util/List;)Ljava/lang/Class;
+    20: invokestatic  #45                 // Method com/github/jonathanxd/iutils/collection/Collections3.listOf:([Ljava/lang/Object;)Ljava/util/List;
+    23: invokeinterface #51,  4           // InterfaceMethod com/github/projectsandstone/eventsys/gen/event/EventGenerator.createEventClass:(Lcom/github/jonathanxd/iutils/type/TypeInfo;Ljava/util/List;Ljava/util/List;)Ljava/lang/Class;
     28: astore_3
     29: aload_3
-    30: invokevirtual #66                 // Method java/lang/Class.getDeclaredConstructors:()[Ljava/lang/reflect/Constructor;
+    30: invokevirtual #57                 // Method java/lang/Class.getDeclaredConstructors:()[Ljava/lang/reflect/Constructor;
     33: iconst_0
     34: aaload
     35: astore        4
     37: aload         4
     39: iconst_2
-    40: anewarray     #68                 // class java/lang/String
+    40: anewarray     #59                 // class java/lang/String
     43: dup
     44: iconst_0
-    45: ldc           #69                 // String eventTypeInfo
+    45: ldc           #60                 // String eventTypeInfo
     47: aastore
     48: dup
     49: iconst_1
-    50: ldc           #70                 // String obj
+    50: ldc           #61                 // String obj
     52: aastore
     53: iconst_2
     54: anewarray     #4                  // class java/lang/Object
     57: dup
     58: iconst_0
-    59: ldc           #42                 // class com/github/projectsandstone/eventsys/test/event/MyGenericEvent
-    61: invokestatic  #74                 // Method com/github/jonathanxd/iutils/type/TypeInfo.builderOf:(Ljava/lang/Class;)Lcom/github/jonathanxd/iutils/type/TypeInfoBuilder;
-    64: iconst_1
-    65: anewarray     #44                 // class com/github/jonathanxd/iutils/type/TypeInfo
-    68: dup
-    69: iconst_0
-    70: aload_1
-    71: aastore
-    72: invokevirtual #79                 // Method com/github/jonathanxd/iutils/type/TypeInfoBuilder.of:([Lcom/github/jonathanxd/iutils/type/TypeInfo;)Lcom/github/jonathanxd/iutils/type/TypeInfoBuilder;
-    75: invokevirtual #83                 // Method com/github/jonathanxd/iutils/type/TypeInfoBuilder.build:()Lcom/github/jonathanxd/iutils/type/TypeInfo;
-    78: checkcast     #4                  // class java/lang/Object
-    81: aastore
-    82: dup
-    83: iconst_1
-    84: aload_2
-    85: aastore
-    86: invokestatic  #89                 // Method com/github/projectsandstone/eventsys/reflect/PropertiesSort.sort:(Ljava/lang/reflect/Constructor;[Ljava/lang/String;[Ljava/lang/Object;)[Ljava/lang/Object;
-    89: astore        5
-    91: aload         4
-    93: aload         5
-    95: invokevirtual #95                 // Method java/lang/reflect/Constructor.newInstance:([Ljava/lang/Object;)Ljava/lang/Object;
-    98: areturn
+    59: aload_1
+    60: checkcast     #4                  // class java/lang/Object
+    63: aastore
+    64: dup
+    65: iconst_1
+    66: aload_2
+    67: aastore
+    68: invokestatic  #67                 // Method com/github/projectsandstone/eventsys/reflect/PropertiesSort.sort:(Ljava/lang/reflect/Constructor;[Ljava/lang/String;[Ljava/lang/Object;)[Ljava/lang/Object;
+    71: astore        5
+    73: aload         4
+    75: aload         5
+    77: invokevirtual #73                 // Method java/lang/reflect/Constructor.newInstance:([Ljava/lang/Object;)Ljava/lang/Object;
+    80: areturn
   LocalVariableTable:
     Start  Length  Slot  Name   Signature
-       89      10     5 sorted   [Ljava/lang/Object;
-       35      64     4   ctr   Ljava/lang/reflect/Constructor;
-       28      71     3 eventClass   Ljava/lang/Class;
-        0      99     2   obj   Ljava/lang/Object;
-        0      99     1 eventTypeInfo   Lcom/github/jonathanxd/iutils/type/TypeInfo;
-        0      99     0  this   Lcom/github/projectsandstone/eventsys/test/factory/MyFactory$Impl;
+       71      10     5 sorted   [Ljava/lang/Object;
+       35      46     4   ctr   Ljava/lang/reflect/Constructor;
+       28      53     3 eventClass   Ljava/lang/Class;
+        0      81     2   obj   Ljava/lang/Object;
+        0      81     1 eventTypeInfo   Lcom/github/jonathanxd/iutils/type/TypeInfo;
+        0      81     0  this   Lcom/github/projectsandstone/eventsys/test/factory/MyFactory$Impl;
   LineNumberTable:
-    line 4: 0
-    line 5: 29
-    line 6: 37
-    line 7: 91
+    line 3: 0
+    line 4: 29
+    line 5: 37
+    line 6: 73
 MethodParameters:
   Name                           Flags
   eventTypeInfo
@@ -365,7 +356,7 @@ MethodParameters:
 
 ```java
 public MyGenericEvent createMyGenericEvent(TypeInfo eventTypeInfo, Object obj) {
-    return this.eventGenerator.create<invokedynamic>(this.eventGenerator, TypeInfo.of(MyGenericEvent.class), Collections3.listOf(new Object[0]), Collections3.listOf(new Object[0]), new String[]{"eventTypeInfo", "obj"}, new Object[]{(Object)TypeInfo.builderOf(MyGenericEvent.class).of(new TypeInfo[]{eventTypeInfo}).build(), obj});
+    return this.eventGenerator.create<invokedynamic>(this.eventGenerator, TypeInfo.of(MyGenericEvent.class), Collections3.listOf(new Object[0]), Collections3.listOf(new Object[0]), new String[]{"eventTypeInfo", "obj"}, new Object[]{(Object)eventTypeInfo, obj});
 }
 ```
 
@@ -375,63 +366,54 @@ public com.github.projectsandstone.eventsys.test.event.MyGenericEvent createMyGe
 descriptor: (Lcom/github/jonathanxd/iutils/type/TypeInfo;Ljava/lang/Object;)Lcom/github/projectsandstone/eventsys/test/event/MyGenericEvent;
 flags: ACC_PUBLIC
 Code:
-  stack=13, locals=3, args_size=3
+  stack=9, locals=3, args_size=3
      0: aload_0
      1: getfield      #16                 // Field eventGenerator:Lcom/github/projectsandstone/eventsys/gen/event/EventGenerator;
-     4: ldc           #86                 // class com/github/projectsandstone/eventsys/test/event/MyGenericEvent
-     6: invokestatic  #38                 // Method com/github/jonathanxd/iutils/type/TypeInfo.of:(Ljava/lang/Class;)Lcom/github/jonathanxd/iutils/type/TypeInfo;
+     4: ldc           #24                 // class com/github/projectsandstone/eventsys/test/event/MyGenericEvent
+     6: invokestatic  #30                 // Method com/github/jonathanxd/iutils/type/TypeInfo.of:(Ljava/lang/Class;)Lcom/github/jonathanxd/iutils/type/TypeInfo;
      9: iconst_0
     10: anewarray     #4                  // class java/lang/Object
-    13: invokestatic  #44                 // Method com/github/jonathanxd/iutils/collection/Collections3.listOf:([Ljava/lang/Object;)Ljava/util/List;
+    13: invokestatic  #36                 // Method com/github/jonathanxd/iutils/collection/Collections3.listOf:([Ljava/lang/Object;)Ljava/util/List;
     16: iconst_0
     17: anewarray     #4                  // class java/lang/Object
-    20: invokestatic  #44                 // Method com/github/jonathanxd/iutils/collection/Collections3.listOf:([Ljava/lang/Object;)Ljava/util/List;
+    20: invokestatic  #36                 // Method com/github/jonathanxd/iutils/collection/Collections3.listOf:([Ljava/lang/Object;)Ljava/util/List;
     23: iconst_2
-    24: anewarray     #46                 // class java/lang/String
+    24: anewarray     #38                 // class java/lang/String
     27: dup
     28: iconst_0
-    29: ldc           #87                 // String eventTypeInfo
+    29: ldc           #39                 // String eventTypeInfo
     31: aastore
     32: dup
     33: iconst_1
-    34: ldc           #88                 // String obj
+    34: ldc           #40                 // String obj
     36: aastore
     37: iconst_2
     38: anewarray     #4                  // class java/lang/Object
     41: dup
     42: iconst_0
-    43: ldc           #86                 // class com/github/projectsandstone/eventsys/test/event/MyGenericEvent
-    45: invokestatic  #92                 // Method com/github/jonathanxd/iutils/type/TypeInfo.builderOf:(Ljava/lang/Class;)Lcom/github/jonathanxd/iutils/type/TypeInfoBuilder;
-    48: iconst_1
-    49: anewarray     #34                 // class com/github/jonathanxd/iutils/type/TypeInfo
-    52: dup
-    53: iconst_0
-    54: aload_1
-    55: aastore
-    56: invokevirtual #97                 // Method com/github/jonathanxd/iutils/type/TypeInfoBuilder.of:([Lcom/github/jonathanxd/iutils/type/TypeInfo;)Lcom/github/jonathanxd/iutils/type/TypeInfoBuilder;
-    59: invokevirtual #101                // Method com/github/jonathanxd/iutils/type/TypeInfoBuilder.build:()Lcom/github/jonathanxd/iutils/type/TypeInfo;
-    62: checkcast     #4                  // class java/lang/Object
-    65: aastore
-    66: dup
-    67: iconst_1
-    68: aload_2
-    69: aastore
-    70: invokedynamic #104,  0            // InvokeDynamic #0:create:(Lcom/github/projectsandstone/eventsys/gen/event/EventGenerator;Lcom/github/jonathanxd/iutils/type/TypeInfo;Ljava/util/List;Ljava/util/List;[Ljava/lang/String;[Ljava/lang/Object;)Lcom/github/projectsandstone/eventsys/test/event/MyGenericEvent;
-    75: areturn
+    43: aload_1
+    44: checkcast     #4                  // class java/lang/Object
+    47: aastore
+    48: dup
+    49: iconst_1
+    50: aload_2
+    51: aastore
+    52: invokedynamic #51,  0             // InvokeDynamic #0:create:(Lcom/github/projectsandstone/eventsys/gen/event/EventGenerator;Lcom/github/jonathanxd/iutils/type/TypeInfo;Ljava/util/List;Ljava/util/List;[Ljava/lang/String;[Ljava/lang/Object;)Lcom/github/projectsandstone/eventsys/test/event/MyGenericEvent;
+    57: areturn
   LocalVariableTable:
     Start  Length  Slot  Name   Signature
-        0      76     2   obj   Ljava/lang/Object;
-        0      76     1 eventTypeInfo   Lcom/github/jonathanxd/iutils/type/TypeInfo;
-        0      76     0  this   Lcom/github/projectsandstone/eventsys/test/factory/MyFactory$Impl;
+        0      58     2   obj   Ljava/lang/Object;
+        0      58     1 eventTypeInfo   Lcom/github/jonathanxd/iutils/type/TypeInfo;
+        0      58     0  this   Lcom/github/projectsandstone/eventsys/test/factory/MyFactory$Impl;
   LineNumberTable:
-    line 6: 0
+    line 2: 0
 MethodParameters:
   Name                           Flags
   eventTypeInfo
   obj
 
 BootstrapMethods:
-  0: #60 invokestatic com/github/projectsandstone/eventsys/bootstrap/FactoryBootstrap.factoryBootstrap:(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;
+  0: #87 invokestatic com/github/projectsandstone/eventsys/bootstrap/FactoryBootstrap.factoryBootstrap:(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;
     Method arguments:
 ```
 

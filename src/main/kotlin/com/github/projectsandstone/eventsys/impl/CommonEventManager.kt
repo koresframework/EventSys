@@ -30,6 +30,7 @@ package com.github.projectsandstone.eventsys.impl
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeUtil
 import com.github.projectsandstone.eventsys.event.*
+import com.github.projectsandstone.eventsys.event.EventListener
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.gen.event.CommonEventGenerator
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
@@ -39,8 +40,7 @@ import com.github.projectsandstone.eventsys.logging.MessageType
 import com.github.projectsandstone.eventsys.util.getEventType
 import com.github.projectsandstone.eventsys.util.mh.MethodDispatcher
 import java.lang.reflect.Method
-import java.util.Comparator
-import java.util.TreeSet
+import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadFactory
 
@@ -61,6 +61,10 @@ open class CommonEventManager @JvmOverloads constructor(
         val logger: LoggerInterface,
         override val eventGenerator: EventGenerator) : EventManager {
 
+    override val eventDispatcher: EventDispatcher = CommonEventDispatcher(threadFactory, logger) {
+        this.unmodListeners
+    }
+
     private val listeners: MutableSet<EventListenerContainer<*>> = TreeSet(Comparator { o1, o2 ->
         val sort = sorter.compare(o1.eventListener, o2.eventListener)
 
@@ -69,86 +73,9 @@ open class CommonEventManager @JvmOverloads constructor(
         else sort
     })
 
-    private val executor = Executors.newCachedThreadPool(threadFactory)
+    private val unmodListeners = Collections.unmodifiableSet(this.listeners)
 
-    override fun <T : Event> dispatch(event: T, owner: Any, channel: Int) {
-        this.dispatch_(event, owner, channel, isAsync = false)
-    }
-
-    override fun <T : Event> dispatch(event: T, typeInfo: TypeInfo<T>, owner: Any, channel: Int) {
-        this.dispatchWithType(event, typeInfo, owner, channel, isAsync = false)
-    }
-
-    protected fun <T : Event> dispatchWithType(event: T, eventType: TypeInfo<T>, owner: Any, phase: Int, isAsync: Boolean) {
-        fun <T : Event> tryDispatch(eventListenerContainer: EventListenerContainer<*>,
-                                    event: T,
-                                    owner: Any,
-                                    phase: Int) {
-
-            if (isAsync) {
-                executor.execute {
-                    dispatchDirect(eventListenerContainer, event, eventType, owner, phase)
-                }
-            } else {
-                dispatchDirect(eventListenerContainer, event, eventType, owner, phase)
-            }
-        }
-
-        listeners.filter {
-            this.check(container = it, eventType = eventType, phase = phase)
-        }.forEach {
-            tryDispatch(it, event, owner, phase)
-        }
-    }
-
-    protected fun <T : Event> dispatch_(event: T, owner: Any, phase: Int, isAsync: Boolean) {
-
-        val eventType = getEventType(event)
-
-        return this.dispatchWithType(event, eventType.cast(), owner, phase, isAsync)
-
-    }
-
-    @Suppress("NOTHING_TO_INLINE")
-    private inline fun <T : Event> dispatchDirect(eventListenerContainer: EventListenerContainer<*>,
-                                                  event: T,
-                                                  eventType: TypeInfo<*>,
-                                                  owner: Any,
-                                                  phase: Int) {
-        try {
-            eventListenerContainer.eventListener.helpOnEvent(event, owner)
-        } catch (throwable: Throwable) {
-            logger.log("Cannot dispatch event $event (with provided type: $eventType) to listener " +
-                    "${eventListenerContainer.eventListener} (of event type: ${eventListenerContainer.eventType}) of owner " +
-                    "$owner. " +
-                    "(Source: $owner, phase: $phase)",
-                    MessageType.EXCEPTION_IN_LISTENER,
-                    throwable)
-
-        }
-    }
-
-    private fun check(container: EventListenerContainer<*>, eventType: TypeInfo<*>, phase: Int): Boolean {
-
-        fun checkType(): Boolean {
-            return container.eventType.isAssignableFrom(eventType)
-                    ||
-                    (container.eventType.related.isEmpty()
-                            && container.eventType.typeClass.isAssignableFrom(eventType.typeClass))
-        }
-
-        val listenerPhase = container.eventListener.channel
-
-        return checkType() && (listenerPhase < 0 || phase < 0 || listenerPhase == phase)
-    }
-
-    override fun <T : Event> dispatchAsync(event: T, owner: Any, channel: Int) {
-        this.dispatch_(event, owner, channel, isAsync = true)
-    }
-
-    override fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, owner: Any, channel: Int) {
-        this.dispatchWithType(event, typeInfo, owner, channel, isAsync = true)
-    }
+    override fun getListenersContainers(): Set<EventListenerContainer<*>> = unmodListeners
 
     override fun getListeners(): Set<Pair<TypeInfo<*>, EventListener<*>>> {
         return this.listeners

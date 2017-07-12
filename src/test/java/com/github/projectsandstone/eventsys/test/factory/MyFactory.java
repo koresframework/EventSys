@@ -46,7 +46,8 @@ public interface MyFactory {
 
     KtEvent createKtEvent(@Name("name") String name);
 
-    <T> MyGenericEvent<T> createMyGenericEvent(@TypeParam TypeInfo<T> type,
+    @LazyGeneration
+    <T> MyGenericEvent<T> createMyGenericEvent(@TypeParam TypeInfo<MyGenericEvent<T>> type,
                                                @Name("obj") T obj);
 
     <T> MyGenericEvent<T> createMyGenericEventGeneric(@Name("obj") T obj);

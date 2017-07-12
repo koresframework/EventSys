@@ -149,8 +149,6 @@ internal object EventFactoryClassGenerator {
 
                                 val eventTypeInfo = TypeInfo.of(eventType) as TypeInfo<Event>
 
-                                val eventGenericType = factoryMethod.genericReturnType.getType()
-
                                 val isLazyGen = factoryMethod.isAnnotationPresent(LazyGeneration::class.java)
 
                                 val provider = factoryMethod.parameters
@@ -357,10 +355,9 @@ internal object EventFactoryClassGenerator {
 
             if (it.isAnnotationPresent(TypeParam::class.java)) {
                 return@map if (specParam != null)
-                    createTypeInfo(eventTypeInfo.typeClass,
-                            accessVariable(Generic.type(TypeInfo::class.java), eventTypeInfoFieldName))
+                    accessVariable(Generic.type(TypeInfo::class.java), eventTypeInfoFieldName)
                 else
-                    createTypeInfo(eventTypeInfo.typeClass, null)
+                    createTypeInfo(eventTypeInfo.typeClass)
             }
 
             val name = it.getDeclaredAnnotation(Name::class.java)?.value
@@ -413,7 +410,7 @@ internal object EventFactoryClassGenerator {
                                         Array<String>::class.java,
                                         Array<Any>::class.java)),
                         listOf(accessThisField(EventGenerator::class.java, eventGeneratorParam),
-                                createTypeInfo(evType, null),
+                                createTypeInfo(evType),
                                 additionalProperties.asArgs(),
                                 extensions.asArgs(),
                                 paramNames,
@@ -443,7 +440,7 @@ internal object EventFactoryClassGenerator {
                                 "createEventClass",
                                 // eventType, additionalParameters, extensions
                                 TypeSpec(Types.CLASS, listOf(TypeInfo::class.java, List::class.java, List::class.java)),
-                                listOf(createTypeInfo(evType, null),
+                                listOf(createTypeInfo(evType),
                                         additionalProperties.asArgs(),
                                         extensions.asArgs()
                                 )
@@ -487,9 +484,6 @@ internal object EventFactoryClassGenerator {
 
     fun getNamesAndArgs(evType: Class<*>, params: List<CodeParameter>, single: Parameter?) =
             params.map { Literals.STRING(it.name) } to params.map {
-                if (single != null && it.name == eventTypeInfoFieldName)
-                    createTypeInfo(evType, it.toVariableAccess())
-                else
                     it.toVariableAccess()
             }
 
@@ -619,14 +613,6 @@ fun CodeType.toArg(): CodeInstruction =
         else
             Literals.CLASS(this).callGetCodeType()
 
-/*
-PropertyTypeInfo(
-                            parameter.parameterizedType.codeType.asGeneric,
-                            GenericSignature.create(*factoryMethod.typeParameters
-                            .map { it.codeType.asGeneric }.toTypedArray())
-                    )
- */
-
 fun ExtensionSpecification.asArg(): CodeInstruction {
     return ExtensionSpecification::class.java.invokeConstructor(
             // residence, implement, extensionClass
@@ -649,32 +635,9 @@ fun CodeType.usesParameters(parameters: Array<TypeVariable<Method>>): Boolean {
 }
 
 
-fun createTypeInfo(evType: Class<*>, parameter: Parameter?): CodeInstruction {
-    if (parameter == null)
-        return TypeInfo::class.java.invokeStatic("of",
+fun createTypeInfo(evType: Class<*>): CodeInstruction =
+        TypeInfo::class.java.invokeStatic("of",
                 TypeSpec(TypeInfo::class.java, listOf(Class::class.java)),
                 listOf(Literals.CLASS(evType))
         )
 
-    return TypeInfo::class.java.invokeStatic("builderOf",
-            TypeSpec(TypeInfoBuilder::class.java, listOf(Class::class.java)),
-            listOf(Literals.CLASS(evType))
-    ).invokeVirtual(TypeInfoBuilder::class.java, "of",
-            TypeSpec(TypeInfoBuilder::class.java, listOf(TypeInfo::class.java.codeType.toArray(1))),
-            listOf(createArray(TypeInfo::class.java.codeType.toArray(1), listOf(Literals.INT(1)),
-                    listOf(parameter.toVariableAccess().builder().name(eventTypeInfoFieldName).build())
-            ))
-    ).invokeVirtual(TypeInfoBuilder::class.java, "build", TypeSpec(TypeInfo::class.java), emptyList())
-}
-
-fun createTypeInfo(evType: Class<*>, access: CodeInstruction): CodeInstruction {
-    return TypeInfo::class.java.invokeStatic("builderOf",
-            TypeSpec(TypeInfoBuilder::class.java, listOf(Class::class.java)),
-            listOf(Literals.CLASS(evType))
-    ).invokeVirtual(TypeInfoBuilder::class.java, "of",
-            TypeSpec(TypeInfoBuilder::class.java, listOf(TypeInfo::class.java.codeType.toArray(1))),
-            listOf(createArray(TypeInfo::class.java.codeType.toArray(1), listOf(Literals.INT(1)),
-                    listOf(access)
-            ))
-    ).invokeVirtual(TypeInfoBuilder::class.java, "build", TypeSpec(TypeInfo::class.java), emptyList())
-}

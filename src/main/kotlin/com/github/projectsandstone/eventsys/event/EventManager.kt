@@ -31,6 +31,8 @@ import com.github.jonathanxd.iutils.type.AbstractTypeInfo
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
+import com.github.projectsandstone.eventsys.impl.EventListenerContainer
+import com.github.projectsandstone.eventsys.util.getEventType
 import java.lang.reflect.Method
 
 /**
@@ -49,6 +51,11 @@ interface EventManager {
     val eventGenerator: EventGenerator
 
     /**
+     * Event dispatcher
+     */
+    val eventDispatcher: EventDispatcher
+
+    /**
      * Register a [EventListener] for a [Event].
      *
      * If you wan't to register an instance as [EventListener] use [registerListeners].
@@ -59,9 +66,8 @@ interface EventManager {
      * @see [registerListeners]
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> registerListener(owner: Any, eventType: Class<T>, eventListener: EventListener<T>) {
+    fun <T : Event> registerListener(owner: Any, eventType: Class<T>, eventListener: EventListener<T>) =
         this.registerListener(owner, TypeInfo.of(eventType), eventListener)
-    }
 
     /**
      * Register a [EventListener] for a [Event].
@@ -104,7 +110,8 @@ interface EventManager {
      * @param owner Owner of the [event].
      * @param channel Channel of listeners to receive event.
      */
-    fun <T : Event> dispatch(event: T, owner: Any, channel: Int)
+    fun <T : Event> dispatch(event: T, owner: Any, channel: Int) =
+        this.dispatch(event, getEventType(event).cast(), owner, channel)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
@@ -114,9 +121,9 @@ interface EventManager {
      * @param event [Event] to dispatch do listeners.
      * @param owner Instance of the [event].
      */
-    fun <T : Event> dispatch(event: T, owner: Any) {
+    fun <T : Event> dispatch(event: T, owner: Any) =
         this.dispatch(event, owner, -1)
-    }
+
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
@@ -130,7 +137,8 @@ interface EventManager {
      * @param owner Owner of the [event].
      * @param channel Channel of listeners to receive event.
      */
-    fun <T : Event> dispatch(event: T, typeInfo: TypeInfo<T>, owner: Any, channel: Int)
+    fun <T : Event> dispatch(event: T, typeInfo: TypeInfo<T>, owner: Any, channel: Int) =
+        this.eventDispatcher.dispatch(event, typeInfo, owner, channel, false)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
@@ -161,7 +169,9 @@ interface EventManager {
      * @param owner Instance of the [event].
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, owner: Any, channel: Int)
+    fun <T : Event> dispatchAsync(event: T, owner: Any, channel: Int) {
+        this.dispatchAsync(event, getEventType(event).cast(), owner, channel)
+    }
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
@@ -174,9 +184,9 @@ interface EventManager {
      * @param owner Owner of the [event].
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, owner: Any) {
+    fun <T : Event> dispatchAsync(event: T, owner: Any) =
         this.dispatchAsync(event, owner, -1)
-    }
+
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
@@ -193,7 +203,8 @@ interface EventManager {
      * @param channel Channel to dispatch event.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, owner: Any, channel: Int)
+    fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, owner: Any, channel: Int) =
+        this.eventDispatcher.dispatch(event, typeInfo, owner, channel, false)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event].
@@ -211,9 +222,9 @@ interface EventManager {
      * @param owner Owner of the [event].
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, owner: Any) {
+    fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, owner: Any) =
         this.dispatchAsync(event, typeInfo, owner, -1)
-    }
+
 
     //////////// /Async
 
@@ -229,7 +240,27 @@ interface EventManager {
      * Gets all listeners of events
      */
     fun getListeners(): Set<Pair<TypeInfo<*>, EventListener<*>>>
+
+    /**
+     * Gets all containers of listeners (immutable).
+     */
+    fun getListenersContainers(): Set<EventListenerContainer<*>>
 }
+
+/**
+ * Dispatcher of events. Dispatcher is the class which implements the dispatch logic,
+ * listeners should be registered through [EventManager].
+ */
+interface EventDispatcher {
+
+    /**
+     * Dispatch [event] to all listeners which listen to [event] in [channel] (negative channel for
+     * all listeners), if [isAsync] is true, each listener may be called on different threads,
+     * the behavior depends on implementation, but the dispatch will never block current thread.
+     */
+    fun <T: Event> dispatch(event: T, eventType: TypeInfo<T>, owner: Any, channel: Int, isAsync: Boolean)
+}
+
 
 /**
  * Register the listener to [Event] [T].

@@ -92,7 +92,7 @@ object FactoryInterfaceGenerator {
 
                 val parameters = mutableListOf<CodeParameter>()
 
-                val gT = Generic.type(TypeInfo::class.java).of(*it.signature.types)
+                val gT = Generic.type(TypeInfo::class.java).of(it.type)
 
                 if (it.element.typeParameters.isNotEmpty() && !it.factoryUnification.omitTypeParam())
                     parameters += parameter(type = gT, name = eventTypeInfoFieldName, annotations = listOf(
