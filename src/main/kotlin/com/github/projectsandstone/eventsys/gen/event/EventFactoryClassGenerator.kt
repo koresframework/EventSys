@@ -68,7 +68,6 @@ import com.github.projectsandstone.eventsys.reflect.findImplementation
 import com.github.projectsandstone.eventsys.reflect.getAllAnnotationsOfType
 import com.github.projectsandstone.eventsys.util.JavaCodePartUtil
 import com.github.projectsandstone.eventsys.util.fail
-import com.github.projectsandstone.eventsys.util.isAnnotationPresent2
 import com.github.projectsandstone.eventsys.util.toSimpleString
 import java.lang.reflect.*
 

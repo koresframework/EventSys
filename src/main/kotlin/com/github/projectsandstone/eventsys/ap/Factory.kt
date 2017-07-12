@@ -39,6 +39,7 @@ interface FactoryUnification : UnifiedAnnotation {
     fun extensions(): Array<ExtensionUnification>
     fun inheritProperties(): Boolean
     fun omitTypeParam(): Boolean
+    fun lazy(): Boolean
 }
 
 interface FactoriesUnification : UnifiedAnnotation {

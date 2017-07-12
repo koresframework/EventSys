@@ -29,6 +29,7 @@ package com.github.projectsandstone.eventsys.ap;
 
 import com.github.projectsandstone.eventsys.event.annotation.Extension;
 import com.github.projectsandstone.eventsys.event.annotation.TypeParam;
+import com.github.projectsandstone.eventsys.event.annotation.LazyGeneration;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Repeatable;
@@ -86,4 +87,11 @@ public @interface Factory {
      * @return True to omit {@link TypeParam} from factory method of generic events.
      */
     boolean omitTypeParam() default false;
+
+    /**
+     * True to annotated factory method with {@link LazyGeneration}.
+     *
+     * @return True to annotated factory method with {@link LazyGeneration}.
+     */
+    boolean lazy() default false;
 }

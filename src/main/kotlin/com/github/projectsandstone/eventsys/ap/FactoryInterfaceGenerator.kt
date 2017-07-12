@@ -33,18 +33,15 @@ import com.github.jonathanxd.codeapi.factory.parameter
 import com.github.jonathanxd.codeapi.generic.GenericSignature
 import com.github.jonathanxd.codeapi.type.CodeType
 import com.github.jonathanxd.codeapi.type.Generic
-import com.github.jonathanxd.codeapi.type.GenericType
 import com.github.jonathanxd.codeapi.util.codeType
 import com.github.jonathanxd.codeapi.util.eraseType
-import com.github.jonathanxd.codeapi.util.getCodeTypeFromTypeParameters
-import com.github.jonathanxd.codeapi.util.inferType
 import com.github.jonathanxd.iutils.`object`.Default
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.event.annotation.Extension
+import com.github.projectsandstone.eventsys.event.annotation.LazyGeneration
 import com.github.projectsandstone.eventsys.event.annotation.Name
 import com.github.projectsandstone.eventsys.event.annotation.TypeParam
 import com.github.projectsandstone.eventsys.gen.event.eventTypeInfoFieldName
-import java.lang.reflect.Type
 import javax.lang.model.element.Element
 import javax.lang.model.element.TypeElement
 
@@ -63,7 +60,7 @@ object FactoryInterfaceGenerator {
     private fun createMethods(factoryInfoList: List<FactoryInfo>,
                               descs: MutableList<MethodDesc> = mutableListOf()): List<MethodDeclaration> =
             factoryInfoList.map {
-                val annotations: List<Annotation> = it.factoryUnification.extensions()
+                val annotations: MutableList<Annotation> = it.factoryUnification.extensions()
                         .filter {
                             !it.implement().`is`(DEFAULT)
                                     || !it.extensionClass().`is`(DEFAULT)
@@ -85,6 +82,13 @@ object FactoryInterfaceGenerator {
                                     .values(values)
                                     .build()
                         }
+                        .toMutableList()
+
+                if (it.factoryUnification.lazy())
+                    annotations += Annotation.Builder.builder()
+                            .visible(true)
+                            .type(LazyGeneration::class.java)
+                            .build()
 
                 val parameters = mutableListOf<CodeParameter>()
 

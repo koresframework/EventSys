@@ -83,6 +83,8 @@ class AnnotationProcessor : AbstractProcessor() {
                     if (!codeType.`is`(PropertyHolder::class.java)
                             && !codeType.`is`(Event::class.java)) {
                         checkExtension(annotation, it)
+                        val genericCodeType = it.asType().getCodeType(processingEnv.elementUtils)
+
                         val properties = getProperties(annotation, it).map { prop ->
                             val propWithParams =
                                     prop.annotatedElement.getCodeTypeFromTypeParameters(processingEnv.elementUtils).asGeneric
@@ -105,7 +107,7 @@ class AnnotationProcessor : AbstractProcessor() {
                                 else GenericSignature(params.bounds.map { it.type as GenericType }.toTypedArray())
 
                         propertiesToGen += FactoryInfo(
-                                codeType,
+                                genericCodeType,
                                 it,
                                 signature,
                                 annotation,
