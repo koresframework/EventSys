@@ -28,6 +28,7 @@
 package com.github.projectsandstone.eventsys.ap;
 
 import com.github.projectsandstone.eventsys.event.annotation.Extension;
+import com.github.projectsandstone.eventsys.event.annotation.TypeParam;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Repeatable;
@@ -62,11 +63,11 @@ public @interface Factory {
     /**
      * True to inherit properties of sub-types.
      *
-     * AnnotationProcessor will lookup for all sub-type annotations and will only
-     * inherit non duplicated properties.
+     * AnnotationProcessor will lookup for all sub-type annotations and will only inherit non
+     * duplicated properties.
      *
-     * This property does not have deep effect, which means that super-classes which inherits annotated
-     * type will not inherit properties unless the annotation on the value specifies it.
+     * This property does not have deep effect, which means that super-classes which inherits
+     * annotated type will not inherit properties unless the annotation on the value specifies it.
      *
      * @return True to inherit properties of sub-types
      */
@@ -79,4 +80,10 @@ public @interface Factory {
      */
     Extension[] extensions() default {};
 
+    /**
+     * True to omit {@link TypeParam} from factory method of generic events.
+     *
+     * @return True to omit {@link TypeParam} from factory method of generic events.
+     */
+    boolean omitTypeParam() default false;
 }

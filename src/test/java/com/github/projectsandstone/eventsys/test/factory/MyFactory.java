@@ -29,6 +29,7 @@ package com.github.projectsandstone.eventsys.test.factory;
 
 import com.github.jonathanxd.iutils.type.TypeInfo;
 import com.github.projectsandstone.eventsys.event.annotation.Extension;
+import com.github.projectsandstone.eventsys.event.annotation.LazyGeneration;
 import com.github.projectsandstone.eventsys.event.annotation.Name;
 import com.github.projectsandstone.eventsys.event.annotation.TypeParam;
 import com.github.projectsandstone.eventsys.test.KtEvent;
@@ -48,5 +49,10 @@ public interface MyFactory {
     <T> MyGenericEvent<T> createMyGenericEvent(@TypeParam TypeInfo<T> type,
                                                @Name("obj") T obj);
 
+    <T> MyGenericEvent<T> createMyGenericEventGeneric(@Name("obj") T obj);
+
     MyTestEvent createMyTestEvent(@Name("name") String name, @Name("amount") int amount);
+
+    @LazyGeneration
+    MyTestEvent createMyTestEvent2(@Name("name") String name, @Name("amount") int amount);
 }

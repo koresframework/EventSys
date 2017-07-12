@@ -304,8 +304,4 @@ interface PropertyHolder {
     fun getLongGSProperty(name: String): LongGSProperty? =
             this.getProperty(java.lang.Long.TYPE, name) as? LongGSProperty
 
-    /**
-     * Gets the extension of [type] if available.
-     */
-    fun <T> getExtension(type: Class<T>): T? = null
 }

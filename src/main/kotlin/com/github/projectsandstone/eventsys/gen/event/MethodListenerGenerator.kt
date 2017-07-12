@@ -192,14 +192,14 @@ internal object MethodListenerGenerator {
                                 name, typeInfo.related[0].typeClass,
                                 true,
                                 param.isNullable,
-                                param.isErased)
+                                param.shouldLookup)
                     } else {
                         this.callGetPropertyDirectOn(accessEventVar,
                                 name,
                                 typeInfo.typeClass,
                                 false,
                                 param.isNullable,
-                                param.isErased)
+                                param.shouldLookup)
                     }
 
                     arguments.add(cast(Types.OBJECT, param.type.typeClass, toAdd))
@@ -250,9 +250,9 @@ internal object MethodListenerGenerator {
                 .modifiers(CodeModifier.PUBLIC)
                 .annotations(overrideAnnotation())
                 .body(source(
-                        returnValue(Types.INT, Literals.INT(listenerSpec.phase))
+                        returnValue(Types.INT, Literals.INT(listenerSpec.channel))
                 ))
-                .name("getPhase")
+                .name("getChannel")
                 .returnType(Types.INT)
                 .build()
 
@@ -292,12 +292,12 @@ internal object MethodListenerGenerator {
                                         type: Class<*>,
                                         propertyOnly: Boolean,
                                         isNullable: Boolean,
-                                        isErased: Boolean): CodeInstruction {
+                                        shouldLookup: Boolean): CodeInstruction {
 
         val getPropertyMethod = invokeInterface(PropertyHolder::class.java, target,
-                if (isErased) "lookup"
+                if (shouldLookup) "lookup"
                 else if (propertyOnly) "getProperty" else "getGetterProperty",
-                typeSpec(if (propertyOnly || isErased) Property::class.java else GetterProperty::class.java,
+                typeSpec(if (propertyOnly || shouldLookup) Property::class.java else GetterProperty::class.java,
                         Class::class.java,
                         String::class.java),
                 listOf(Literals.CLASS(type), Literals.STRING(name))

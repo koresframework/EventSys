@@ -34,7 +34,6 @@ import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
 import com.github.projectsandstone.eventsys.event.EventPriority
 import com.github.projectsandstone.eventsys.event.ListenerSpec
-import com.github.projectsandstone.eventsys.event.annotation.Erased
 import com.github.projectsandstone.eventsys.event.annotation.Name
 import java.lang.invoke.MethodHandle
 import java.lang.invoke.MethodHandles
@@ -82,7 +81,7 @@ open class MethodDispatcher(
                 val name: String? = it.getDeclaredAnnotation(Named::class.java)?.value
                         ?: it.getDeclaredAnnotation(Name::class.java)?.value
 
-                return@map Param(name, typeInfo, it.isAnnotationPresent(Erased::class.java))
+                return@map Param(name, typeInfo, eventType.typeClass.typeParameters.isNotEmpty())
 
             }.toTypedArray()
 
@@ -92,7 +91,7 @@ open class MethodDispatcher(
         }
     }
 
-    data class Param(val name: String?, val type: TypeInfo<*>, val erased: Boolean)
+    data class Param(val name: String?, val type: TypeInfo<*>, val lookup: Boolean)
 
     override fun onEvent(event: Event, owner: Any) {
 
@@ -107,7 +106,7 @@ open class MethodDispatcher(
                     val name = named.name
                     val typeInfo = named.type
 
-                    args += if (named.erased)
+                    args += if (named.lookup)
                         event.lookup(typeInfo.typeClass, name)
                     else event.getProperty(typeInfo.typeClass, name)
                 }
@@ -120,8 +119,8 @@ open class MethodDispatcher(
     override val priority: EventPriority
         get() = this.listenerSpec.priority
 
-    override val phase: Int
-        get() = this.listenerSpec.phase
+    override val channel: Int
+        get() = this.listenerSpec.channel
 
     override val ignoreCancelled: Boolean
         get() = this.listenerSpec.ignoreCancelled

@@ -45,6 +45,7 @@ import com.github.jonathanxd.codeapi.helper.ConcatHelper
 import com.github.jonathanxd.codeapi.literal.Literals
 import com.github.jonathanxd.codeapi.type.CodeType
 import com.github.jonathanxd.codeapi.type.Generic
+import com.github.jonathanxd.codeapi.type.GenericType
 import com.github.jonathanxd.codeapi.util.*
 import com.github.jonathanxd.codeapi.util.conversion.*
 import com.github.jonathanxd.iutils.type.TypeInfo
@@ -52,9 +53,7 @@ import com.github.projectsandstone.eventsys.Debug
 import com.github.projectsandstone.eventsys.common.ExtensionHolder
 import com.github.projectsandstone.eventsys.event.Cancellable
 import com.github.projectsandstone.eventsys.event.Event
-import com.github.projectsandstone.eventsys.event.annotation.Name
-import com.github.projectsandstone.eventsys.event.annotation.NotNullValue
-import com.github.projectsandstone.eventsys.event.annotation.Validate
+import com.github.projectsandstone.eventsys.event.annotation.*
 import com.github.projectsandstone.eventsys.event.property.*
 import com.github.projectsandstone.eventsys.event.property.primitive.*
 import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
@@ -64,6 +63,7 @@ import com.github.projectsandstone.eventsys.reflect.findImplementation
 import com.github.projectsandstone.eventsys.reflect.getName
 import com.github.projectsandstone.eventsys.reflect.isEqual
 import com.github.projectsandstone.eventsys.util.BooleanConsumer
+import com.github.projectsandstone.eventsys.util.toGeneric
 import com.github.projectsandstone.eventsys.validation.Validator
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -121,12 +121,10 @@ internal object EventClassGenerator {
     @Suppress("UNCHECKED_CAST")
     fun <T : Event> genImplementation(eventClassSpecification: EventClassSpecification<T>,
                                       eventGenerator: EventGenerator): Class<T> {
-
-        val logger = eventGenerator.logger
         val checker = eventGenerator.checkHandler
 
-        if (cached.containsKey(eventClassSpecification)) {
-            return cached[eventClassSpecification]!! as Class<T>
+        if (this.cached.containsKey(eventClassSpecification)) {
+            return this.cached[eventClassSpecification]!! as Class<T>
         }
 
         val typeInfo = eventClassSpecification.typeInfo
@@ -138,6 +136,7 @@ internal object EventClassGenerator {
 
         val typeInfoLiter = typeInfo.toStr()
         val isSpecialized = typeInfo.related.isNotEmpty()
+        val requiresTypeInfo = classType.typeParameters.isNotEmpty()
 
         val name = getName("${typeInfoLiter}Impl")
 
@@ -168,56 +167,19 @@ internal object EventClassGenerator {
 
         classDeclarationBuilder = classDeclarationBuilder.implementations(implementations)
 
-        val plain = classDeclarationBuilder.build()/*PlainCodeType(type = name,
-                isInterface = false,
-                superclass_ = { classDeclarationBuilder.superClass },
-                superinterfaces_ = { classDeclarationBuilder.implementations })*/
+        val plain = classDeclarationBuilder.build()
 
         val properties = this.getProperties(classType, additionalProperties, extensions).map {
             it.copy(inferredType = getPropInferredType(it, isSpecialized, plain))
         }
 
         classDeclarationBuilder = classDeclarationBuilder
-                .fields(this.genFields(properties, extensions, plain, eventGenerator))
-                .constructors(this.genConstructor(classType, properties))
+                .fields(this.genFields(properties, extensions, plain, typeInfo, requiresTypeInfo, eventGenerator))
+                .constructors(this.genConstructor(classType, typeInfo, requiresTypeInfo, properties))
 
-        val methods = this.genMethods(properties).toMutableList()
+        val methods = this.genMethods(typeInfo, requiresTypeInfo, properties).toMutableList()
 
-        methods += MethodDeclaration.Builder.builder()
-                .annotations(overrideAnnotation())
-                .modifiers(CodeModifier.PUBLIC)
-                .body(source(
-                        returnValue(Types.STRING,
-                                ConcatHelper.builder()
-                                        .concat("{")
-                                        .concat(Literals.STRING("class="))
-                                        .concat(invokeVirtual(
-                                                Class::class.java,
-                                                invokeVirtual(Object::class.java, Access.THIS,
-                                                        "getClass",
-                                                        TypeSpec(Class::class.java),
-                                                        listOf()),
-                                                "getSimpleName",
-                                                TypeSpec(String::class.java),
-                                                listOf()
-                                        ))
-                                        .concat(Literals.STRING(","))
-                                        .concat(Literals.STRING("type=$typeInfo"))
-                                        .concat(Literals.STRING(","))
-                                        .concat(Literals.STRING("properties=${properties
-                                                .joinToString(prefix = "[", postfix="]") { it.propertyName }}"
-                                        ))
-                                        .concat(Literals.STRING(","))
-                                        .concat(Literals.STRING("extensions=${extensions
-                                                .joinToString(prefix = "[", postfix="]") { "impl=${it.implement},ext=${it.extensionClass},res=${it.residence}" }}"))
-                                        .concat("}")
-                                        .build()
-
-                        )
-                ))
-                .name("toString")
-                .returnType(Types.STRING)
-                .build()
+        methods += this.genToStringMethod(typeInfo, properties, extensions)
 
         extensions.forEach { ext ->
             ext.extensionClass?.let {
@@ -299,8 +261,10 @@ internal object EventClassGenerator {
     private fun genFields(properties: List<PropertyInfo>,
                           extensions: List<ExtensionSpecification>,
                           type: Type,
+                          typeInfo: TypeInfo<*>,
+                          requiresType: Boolean,
                           eventGenerator: EventGenerator): List<FieldDeclaration> {
-        return properties.map {
+        val fields = properties.map {
             val name = it.propertyName
 
             val modifiers = EnumSet.of(CodeModifier.PRIVATE)
@@ -310,8 +274,20 @@ internal object EventClassGenerator {
             }
 
             fieldDec().modifiers(modifiers).type(it.inferredType).name(name).build()
-        } + genPropertyField() + genExtensionsFields(extensions, type, eventGenerator)
+        }.toMutableList()
 
+        fields += genPropertyField()
+        fields += genExtensionsFields(extensions, type, eventGenerator)
+
+        if (requiresType) {
+            fields += fieldDec()
+                    .modifiers(CodeModifier.PRIVATE, CodeModifier.FINAL)
+                    .type(getEventTypeInfoSignature(typeInfo))
+                    .name(eventTypeInfoFieldName)
+                    .build()
+        }
+
+        return fields
 
     }
 
@@ -386,8 +362,24 @@ internal object EventClassGenerator {
     }
 
     private fun genConstructor(base: Class<*>,
+                               typeInfo: TypeInfo<*>,
+                               requiresType: Boolean,
                                properties: List<PropertyInfo>): ConstructorDeclaration {
+        val eventTypeInfoSignature = getEventTypeInfoSignature(typeInfo)
+
         val parameters = mutableListOf<CodeParameter>()
+
+        if (requiresType) {
+            parameters += parameter(
+                    name = eventTypeInfoFieldName,
+                    type = eventTypeInfoSignature,
+                    annotations = listOf(
+                            visibleAnnotation(TypeParam::class.java, mapOf()),
+                            visibleAnnotation(Name::class.java,
+                                    mapOf<String, Any>("value" to eventTypeInfoFieldName))
+                    )
+            )
+        }
 
         val cancellable = Cancellable::class.java.isAssignableFrom(base)
 
@@ -417,6 +409,16 @@ internal object EventClassGenerator {
                     TypeSpec(Types.OBJECT, listOf(Types.OBJECT)),
                     listOf(accessVariable(it.inferredType.codeType, it.propertyName))
             )
+        }
+
+        if (requiresType) {
+            constructorBody += Objects::class.java.invokeStatic("requireNonNull",
+                    TypeSpec(Types.OBJECT, listOf(Types.OBJECT)),
+                    listOf(accessVariable(eventTypeInfoSignature, eventTypeInfoFieldName))
+            )
+
+            constructorBody += setFieldValue(Alias.THIS, Access.THIS, eventTypeInfoSignature, eventTypeInfoFieldName,
+                    accessVariable(eventTypeInfoSignature, eventTypeInfoFieldName))
         }
 
         properties.forEach {
@@ -543,7 +545,8 @@ internal object EventClassGenerator {
                 .build()
     }
 
-    private fun genMethods(properties: List<PropertyInfo>): List<MethodDeclaration> {
+    private fun genMethods(typeInfo: TypeInfo<*>,
+                           isSpecialized: Boolean, properties: List<PropertyInfo>): List<MethodDeclaration> {
 
         val methods = mutableListOf<MethodDeclaration>()
 
@@ -556,8 +559,70 @@ internal object EventClassGenerator {
                 methods += genSetter(it)
             }
         }
+
+        val toReturn: CodeInstruction = if (isSpecialized)
+            getEventTypeInfoSignature(typeInfo).let { accessThisField(it, eventTypeInfoFieldName) }
+        else createTypeInfo(typeInfo.typeClass, null)
+
+        methods += MethodDeclaration.Builder.builder()
+                .annotations(overrideAnnotation())
+                .modifiers(CodeModifier.PUBLIC)
+                .returnType(erasedTypeInfo)
+                .name("get${eventTypeInfoFieldName.capitalize()}")
+                .body(source(
+                        returnValue(erasedTypeInfo,
+                                toReturn
+                        )
+                ))
+                .build()
+
         return methods
     }
+
+    private fun getEventTypeInfoSignature(typeInfo: TypeInfo<*>): GenericType =
+            Generic.type(TypeInfo::class.java).of(typeInfo.toGeneric())
+
+    val erasedTypeInfo: GenericType =
+            Generic.type(TypeInfo::class.java).of(Generic.wildcard().`extends$`(Event::class.java))
+
+    fun genToStringMethod(typeInfo: TypeInfo<*>,
+                          properties: List<PropertyInfo>,
+                          extensions: List<ExtensionSpecification>): MethodDeclaration =
+            MethodDeclaration.Builder.builder()
+                    .annotations(overrideAnnotation())
+                    .modifiers(CodeModifier.PUBLIC)
+                    .returnType(Types.STRING)
+                    .name("toString")
+                    .body(source(
+                            returnValue(Types.STRING,
+                                    ConcatHelper.builder()
+                                            .concat("{")
+                                            .concat(Literals.STRING("class="))
+                                            .concat(invokeVirtual(
+                                                    Class::class.java,
+                                                    invokeVirtual(Object::class.java, Access.THIS,
+                                                            "getClass",
+                                                            TypeSpec(Class::class.java),
+                                                            listOf()),
+                                                    "getSimpleName",
+                                                    TypeSpec(String::class.java),
+                                                    listOf()
+                                            ))
+                                            .concat(Literals.STRING(","))
+                                            .concat(Literals.STRING("type=$typeInfo"))
+                                            .concat(Literals.STRING(","))
+                                            .concat(Literals.STRING("properties=${properties
+                                                    .joinToString(prefix = "[", postfix="]") { it.propertyName }}"
+                                            ))
+                                            .concat(Literals.STRING(","))
+                                            .concat(Literals.STRING("extensions=${extensions
+                                                    .joinToString(prefix = "[", postfix="]") { "[impl=${it.implement?.simpleName},ext=${it.extensionClass?.simpleName},res=${it.residence}]" }}"))
+                                            .concat("}")
+                                            .build()
+
+                            )
+                    ))
+                    .build()
 
     private fun genExtensionMethods(extensionClass: Class<*>): List<MethodDeclaration> {
         return extensionClass.declaredMethods
@@ -789,7 +854,8 @@ internal object EventClassGenerator {
             // Skip PropertyHolder methods
             // We could use method.declaringClass == PropertyHolder::class.java
             // but override methods will return false.
-            if (this.hasMethod(PropertyHolder::class.java, method))
+            if (this.hasMethod(PropertyHolder::class.java, method)
+                    || this.hasMethod(Event::class.java, method))
                 return@forEach
 
             if (isGet || isIs || isSet) {
@@ -996,3 +1062,5 @@ internal object EventClassGenerator {
     }
 
 }
+
+const val eventTypeInfoFieldName = "eventTypeInfo"

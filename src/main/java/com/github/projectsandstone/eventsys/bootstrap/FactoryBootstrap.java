@@ -116,7 +116,11 @@ public class FactoryBootstrap {
             String[] names = (String[]) namesObj;
             Object[] methodArgs = (Object[]) argsObj;
 
-            Class<Event> aClass = eventGenerator.createEventClass(eventType.cast(), additionalProperties, extensions);
+            Class<Event> aClass = eventGenerator.createEventClass(
+                    TypeInfo.of(eventType.getTypeClass()).cast(),
+                    additionalProperties,
+                    extensions
+            );
 
             if (!propertyOrderCache.containsKey(aClass)) {
                 List<CachedParam> propertyOrder = new ArrayList<>();

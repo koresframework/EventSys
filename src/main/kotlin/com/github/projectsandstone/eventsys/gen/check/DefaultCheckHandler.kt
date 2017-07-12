@@ -92,7 +92,7 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
             val messages = mutableListOf<String>()
 
             messages += ""
-            messages += "Following methods was not implemented:"
+            messages += "Following methods was not implemented for event ${type.simpleName}:"
             messages += ""
 
             unimplMethods.forEach {

@@ -27,9 +27,10 @@
  */
 package com.github.projectsandstone.eventsys.event
 
-import com.github.projectsandstone.eventsys.gen.event.EventGenerator
+import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.event.annotation.Name
 import com.github.projectsandstone.eventsys.event.property.PropertyHolder
+import com.github.projectsandstone.eventsys.gen.event.EventGenerator
 
 /**
  * [Event].
@@ -48,4 +49,16 @@ import com.github.projectsandstone.eventsys.event.property.PropertyHolder
  * have capability to add fields, methods and implementations to existing classes
  * (this is the nature of static VMs).
  */
-interface Event : PropertyHolder
+interface Event : PropertyHolder {
+
+    /**
+     * Type information of event type.
+     */
+    val eventTypeInfo: TypeInfo<out Event>
+
+    /**
+     * Gets the extension of [type] if available.
+     */
+    fun <T> getExtension(type: Class<T>): T? = null
+
+}

@@ -39,8 +39,11 @@ import com.github.jonathanxd.codeapi.util.eraseType
 import com.github.jonathanxd.codeapi.util.getCodeTypeFromTypeParameters
 import com.github.jonathanxd.codeapi.util.inferType
 import com.github.jonathanxd.iutils.`object`.Default
+import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.event.annotation.Extension
 import com.github.projectsandstone.eventsys.event.annotation.Name
+import com.github.projectsandstone.eventsys.event.annotation.TypeParam
+import com.github.projectsandstone.eventsys.gen.event.eventTypeInfoFieldName
 import java.lang.reflect.Type
 import javax.lang.model.element.Element
 import javax.lang.model.element.TypeElement
@@ -83,7 +86,19 @@ object FactoryInterfaceGenerator {
                                     .build()
                         }
 
-                val parameters = it.properties.map {
+                val parameters = mutableListOf<CodeParameter>()
+
+                val gT = Generic.type(TypeInfo::class.java).of(*it.signature.types)
+
+                if (it.element.typeParameters.isNotEmpty() && !it.factoryUnification.omitTypeParam())
+                    parameters += parameter(type = gT, name = eventTypeInfoFieldName, annotations = listOf(
+                            Annotation.Builder.builder()
+                                    .type(TypeParam::class.java)
+                                    .visible(true)
+                                    .build()
+                    ))
+
+                parameters += it.properties.map {
                     parameter(type = it.propertyType, name = it.propertyName, annotations = listOf(
                             Annotation.Builder.builder()
                                     .type(Name::class.java)
@@ -160,4 +175,6 @@ class FactoryInfo(val type: CodeType,
                   val name: String,
                   val origin: Element)
 
-data class EventSysProperty(val annotatedElement: TypeElement, val propertyType: CodeType, val propertyName: String)
+data class EventSysProperty(val annotatedElement: TypeElement,
+                            val propertyType: CodeType,
+                            val propertyName: String)

@@ -28,10 +28,10 @@
 package com.github.projectsandstone.eventsys.event.annotation
 
 /**
- * Marks listener parameter as [Erased], which will change the behavior of event destruction,
- * instead of looking up the property based on type and name, it will lookup for first property
- * of a type which is assignable to parameter type.
+ * Marks the factory to use **lazy** generation of events,
+ * this means that the factory will not rely on static classes, but instead will delegate generation
+ * to another method and events will be generated when the factory method is called (and then cached).
  */
 @Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.VALUE_PARAMETER)
-annotation class Erased
+@Target(AnnotationTarget.FUNCTION)
+annotation class LazyGeneration

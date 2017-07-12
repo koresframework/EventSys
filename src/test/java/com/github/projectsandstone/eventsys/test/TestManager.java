@@ -116,6 +116,7 @@ public class TestManager {
         manager.dispatch(d, new AbstractTypeInfo<MyGenericEvent<String>>() {}.cast(), this);
 
         Constant.getMyFactoryInstance().createMyTestEvent("Cup", 100);
+        Constant.getMyFactoryInstance().createMyTestEvent2("Cup", 100);
 
         Assert.assertEquals("[TAG] hello world", messageEvent.getMessage());
 

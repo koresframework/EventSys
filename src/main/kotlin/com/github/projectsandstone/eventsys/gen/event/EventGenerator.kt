@@ -122,7 +122,9 @@ interface EventGenerator {
      *
      * @see EventClassGenerator
      */
-    fun <T : Event> createEventClass(type: TypeInfo<T>, additionalProperties: List<PropertyInfo>, extensions: List<ExtensionSpecification>): Class<T>
+    fun <T : Event> createEventClass(type: TypeInfo<T>,
+                                     additionalProperties: List<PropertyInfo>,
+                                     extensions: List<ExtensionSpecification>): Class<T>
 
     /**
      * Asynchronously create event class, only use this method if you do not need

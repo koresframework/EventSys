@@ -54,9 +54,9 @@ annotation class Listener(
         val priority: EventPriority = EventPriority.NORMAL,
 
         /**
-         * Phase where this method listen to.
+         * Channel where this method listen to.
          *
-         * @see ListenerSpec.phase
+         * @see ListenerSpec.channel
          */
-        val phase: Int = -1
+        val channel: Int = -1
 )

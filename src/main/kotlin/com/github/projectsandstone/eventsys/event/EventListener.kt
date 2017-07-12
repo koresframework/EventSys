@@ -52,11 +52,11 @@ interface EventListener<in T : Event> {
         get() = EventPriority.NORMAL
 
     /**
-     * Phase where this listener listen.
+     * Channel where this listener listen.
      *
-     * @see ListenerSpec.phase
+     * @see ListenerSpec.channel
      */
-    val phase: Int
+    val channel: Int
         get() = 0
 
     /**

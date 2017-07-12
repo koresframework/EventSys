@@ -28,17 +28,14 @@
 package com.github.projectsandstone.eventsys.event
 
 import com.github.jonathanxd.codeapi.util.conversion.kotlinParameters
-import com.github.jonathanxd.iutils.annotation.Named
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeUtil
-import com.github.projectsandstone.eventsys.event.annotation.Erased
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.event.annotation.Name
 import com.github.projectsandstone.eventsys.event.annotation.NullableProperty
 import com.github.projectsandstone.eventsys.reflect.isKotlin
 import org.jetbrains.annotations.Nullable
 import java.lang.reflect.Method
-import kotlin.reflect.jvm.kotlinFunction
 
 /**
  * Data Class version of [Listener] annotation.
@@ -65,21 +62,19 @@ data class ListenerSpec(
         val parameters: List<LParameter>,
 
         /**
-         * Phase where this method listen to. Less than zero means all phases.
+         * Channel where this method listen to. Less than zero means all groups.
          *
-         * Phases value may vary depending on the event dispatcher.
+         * Channel value may vary depending on the event dispatcher.
          *
-         * The EventSys supports phase listening,
-         * some event dispatchers may dispatch events in different phases, this means that the same
-         * event instance can be dispatched multiple times depending on the location where event occurs.
+         * This same event instance can be dispatched in different channels.
          */
-        val phase: Int) {
+        val channel: Int) {
 
     data class LParameter internal constructor(val name: String,
                                                val annotations: List<Annotation>,
                                                val type: TypeInfo<*>,
                                                val isNullable: Boolean,
-                                               val isErased: Boolean)
+                                               val shouldLookup: Boolean)
 
     companion object {
 
@@ -87,6 +82,8 @@ data class ListenerSpec(
          * Create listener specification from [method] annotated with [Listener].
          */
         fun fromMethod(method: Method): ListenerSpec {
+
+            val evType = TypeUtil.toTypeInfo(method.genericParameterTypes[0])
 
             val listenerAnnotation = method.getDeclaredAnnotation(Listener::class.java)
 
@@ -107,17 +104,16 @@ data class ListenerSpec(
                         it.annotations.toList(),
                         typeInfo,
                         it.isAnnotationPresent(NullableProperty::class.java) || isNullable,
-                        it.isAnnotationPresent(Erased::class.java))
+                        evType.related.isNotEmpty()
+                )
 
             }.toList()
 
-
-
-            return ListenerSpec(eventType = TypeUtil.toTypeInfo(method.genericParameterTypes[0]),
+            return ListenerSpec(eventType = evType,
                     ignoreCancelled = listenerAnnotation.ignoreCancelled,
                     priority = listenerAnnotation.priority,
                     parameters = namedParameters,
-                    phase = listenerAnnotation.phase)
+                    channel = listenerAnnotation.channel)
         }
 
     }

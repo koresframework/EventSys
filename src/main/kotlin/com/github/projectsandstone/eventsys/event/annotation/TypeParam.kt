@@ -29,7 +29,9 @@ package com.github.projectsandstone.eventsys.event.annotation
 
 /**
  * Marks the factory parameter as a `TypeInfo` provider, this is required for generic events.
+ *
+ * When found on constructors denotes the constructor parameter which should receive the type information.
  */
 @Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.VALUE_PARAMETER)
+@Target(AnnotationTarget.VALUE_PARAMETER, AnnotationTarget.CONSTRUCTOR)
 annotation class TypeParam

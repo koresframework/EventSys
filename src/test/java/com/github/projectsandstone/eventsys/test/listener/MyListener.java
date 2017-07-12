@@ -28,7 +28,6 @@
 package com.github.projectsandstone.eventsys.test.listener;
 
 import com.github.projectsandstone.eventsys.event.EventPriority;
-import com.github.projectsandstone.eventsys.event.annotation.Erased;
 import com.github.projectsandstone.eventsys.event.annotation.Listener;
 import com.github.projectsandstone.eventsys.event.annotation.Name;
 import com.github.projectsandstone.eventsys.test.event.MessageEvent;
@@ -65,8 +64,4 @@ public class MyListener {
         System.out.println("i: " + i);
     }
 
-    @Listener
-    public void listen4(MyGenericEvent<String> event, @Name("obj") @Erased String s) {
-        System.out.println("str: " + s+"m ev: "+event.getClass());
-    }
 }

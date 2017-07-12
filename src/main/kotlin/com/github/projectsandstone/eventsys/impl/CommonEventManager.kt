@@ -29,10 +29,7 @@ package com.github.projectsandstone.eventsys.impl
 
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeUtil
-import com.github.projectsandstone.eventsys.event.Event
-import com.github.projectsandstone.eventsys.event.EventListener
-import com.github.projectsandstone.eventsys.event.EventManager
-import com.github.projectsandstone.eventsys.event.ListenerSpec
+import com.github.projectsandstone.eventsys.event.*
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.gen.event.CommonEventGenerator
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
@@ -74,12 +71,12 @@ open class CommonEventManager @JvmOverloads constructor(
 
     private val executor = Executors.newCachedThreadPool(threadFactory)
 
-    override fun <T : Event> dispatch(event: T, owner: Any, phase: Int) {
-        this.dispatch_(event, owner, phase, isAsync = false)
+    override fun <T : Event> dispatch(event: T, owner: Any, channel: Int) {
+        this.dispatch_(event, owner, channel, isAsync = false)
     }
 
-    override fun <T : Event> dispatch(event: T, typeInfo: TypeInfo<T>, owner: Any, phase: Int) {
-        this.dispatchWithType(event, typeInfo, owner, phase, isAsync = false)
+    override fun <T : Event> dispatch(event: T, typeInfo: TypeInfo<T>, owner: Any, channel: Int) {
+        this.dispatchWithType(event, typeInfo, owner, channel, isAsync = false)
     }
 
     protected fun <T : Event> dispatchWithType(event: T, eventType: TypeInfo<T>, owner: Any, phase: Int, isAsync: Boolean) {
@@ -140,17 +137,17 @@ open class CommonEventManager @JvmOverloads constructor(
                             && container.eventType.typeClass.isAssignableFrom(eventType.typeClass))
         }
 
-        val listenerPhase = container.eventListener.phase
+        val listenerPhase = container.eventListener.channel
 
         return checkType() && (listenerPhase < 0 || phase < 0 || listenerPhase == phase)
     }
 
-    override fun <T : Event> dispatchAsync(event: T, owner: Any, phase: Int) {
-        this.dispatch_(event, owner, phase, isAsync = true)
+    override fun <T : Event> dispatchAsync(event: T, owner: Any, channel: Int) {
+        this.dispatch_(event, owner, channel, isAsync = true)
     }
 
-    override fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, owner: Any, phase: Int) {
-        this.dispatchWithType(event, typeInfo, owner, phase, isAsync = true)
+    override fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, owner: Any, channel: Int) {
+        this.dispatchWithType(event, typeInfo, owner, channel, isAsync = true)
     }
 
     override fun getListeners(): Set<Pair<TypeInfo<*>, EventListener<*>>> {

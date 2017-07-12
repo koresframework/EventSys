@@ -36,6 +36,7 @@ import com.github.jonathanxd.codeapi.type.GenericType
 import com.github.jonathanxd.codeapi.util.*
 import com.github.jonathanxd.iutils.`object`.Default
 import com.github.projectsandstone.eventsys.event.Cancellable
+import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.annotation.Extension
 import com.github.projectsandstone.eventsys.event.property.PropertyHolder
 import java.io.IOException
@@ -79,7 +80,8 @@ class AnnotationProcessor : AbstractProcessor() {
 
                     val cTypeWithParams = it.getCodeTypeFromTypeParameters(processingEnv.elementUtils).asGeneric
                     val codeType = it.getCodeType(processingEnv.elementUtils).concreteType
-                    if (!codeType.`is`(PropertyHolder::class.java)) {
+                    if (!codeType.`is`(PropertyHolder::class.java)
+                            && !codeType.`is`(Event::class.java)) {
                         checkExtension(annotation, it)
                         val properties = getProperties(annotation, it).map { prop ->
                             val propWithParams =
@@ -335,7 +337,9 @@ class AnnotationProcessor : AbstractProcessor() {
         if (codeType.`is`(Default::class.java))
             return
 
-        if (!codeType.`is`(PropertyHolder::class.java) && !codeType.`is`(Cancellable::class.java)) {
+        if (!codeType.`is`(PropertyHolder::class.java)
+                && !codeType.`is`(Event::class.java)
+                && !codeType.`is`(Cancellable::class.java)) {
             element.enclosedElements.forEach {
                 if (it is ExecutableElement) {
                     val name = it.simpleName.toString()

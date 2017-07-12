@@ -37,9 +37,9 @@ import java.lang.reflect.Method
  * Event manager.
  *
  * [EventManager] register event listeners and dispatches events to listeners.
- * Events can be dispatched in from dispatch phase, the phase -1 is the default phase.
- * If a negative phase is provided, the dispatcher will dispatch event to all listeners. Listeners
- * that listen to negative phases will always handle all phases.
+ * Events can be dispatched in different channels, the channel -1 is the default channel.
+ * If a negative channel is provided, the dispatcher will dispatch event to all listeners. Listeners
+ * that listen to negative channels will always listen to all channels.
  */
 interface EventManager {
 
@@ -98,18 +98,18 @@ interface EventManager {
                                method: Method)
 
     /**
-     * Dispatch an [Event] to all [EventListener]s that listen to the [event] and specified [listening phase][phase].
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
      *
      * @param event [Event] to dispatch do listeners.
      * @param owner Owner of the [event].
-     * @param phase Phase of the dispatch, only listeners that listen to this phase will be called.
+     * @param channel Channel of listeners to receive event.
      */
-    fun <T : Event> dispatch(event: T, owner: Any, phase: Int)
+    fun <T : Event> dispatch(event: T, owner: Any, channel: Int)
 
     /**
-     * Dispatch an [Event] to all [EventListener]s that listen to the [event] (ignore phases).
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
      *
-     * All listeners will be called (no matter the phase it listen).
+     * All listeners will be called (no matter the channel it listen).
      *
      * @param event [Event] to dispatch do listeners.
      * @param owner Instance of the [event].
@@ -119,7 +119,7 @@ interface EventManager {
     }
 
     /**
-     * Dispatch an [Event] to all [EventListener]s that listen to the [event] and specified [listening phase][phase].
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
      *
      * This dispatch also includes [generic type information][typeInfo], normally EventSys infer the type
      * from generated event class, but if inference fails, or the class does not have generic information,
@@ -128,18 +128,18 @@ interface EventManager {
      * @param event [Event] to dispatch do listeners.
      * @param typeInfo Information of generic event type.
      * @param owner Owner of the [event].
-     * @param phase Phase of the dispatch, only listeners that listen to this phase will be called.
+     * @param channel Channel of listeners to receive event.
      */
-    fun <T : Event> dispatch(event: T, typeInfo: TypeInfo<T>, owner: Any, phase: Int)
+    fun <T : Event> dispatch(event: T, typeInfo: TypeInfo<T>, owner: Any, channel: Int)
 
     /**
-     * Dispatch an [Event] to all [EventListener]s that listen to the [event] (ignore phases).
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
      *
      * This dispatch also includes [generic type information][typeInfo], normally EventSys infer the type
      * from generated event class, but if inference fails, or the class does not have generic information,
      * you need to use this method to dispatch events.
      *
-     * All listeners will be called (no matter the phase it listen).
+     * All listeners will be called (no matter the channel it listen).
      *
      * @param event [Event] to dispatch do listeners.
      * @param typeInfo Information of generic event type.
@@ -152,23 +152,23 @@ interface EventManager {
     //////////// Async
 
     /**
-     * Dispatch an [Event] to all [EventListener]s that listen to the [event] and specified [listening phase][phase].
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
      *
      * Asynchronous dispatch.
      *
      * @param event [Event] to dispatch do listeners.
      * @param owner Owner of the [event].
-     * @param phase Phase of the dispatch, only listeners that listen to this phase will be called.
+     * @param owner Instance of the [event].
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, owner: Any, phase: Int)
+    fun <T : Event> dispatchAsync(event: T, owner: Any, channel: Int)
 
     /**
-     * Dispatch an [Event] to all [EventListener]s that listen to the [event].
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
      *
      * Asynchronous dispatch
      *
-     * All listeners will be called (no matter the phase it listen).
+     * All listeners will be called (no matter the channel it listen).
      *
      * @param event [Event] to dispatch do listeners.
      * @param owner Owner of the [event].
@@ -179,7 +179,7 @@ interface EventManager {
     }
 
     /**
-     * Dispatch an [Event] to all [EventListener]s that listen to the [event] and specified [listening phase][phase].
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
      *
      * This dispatch also includes [generic type information][typeInfo], normally EventSys infer the type
      * from generated event class, but if inference fails, or the class does not have generic information,
@@ -190,10 +190,10 @@ interface EventManager {
      * @param event [Event] to dispatch do listeners.
      * @param typeInfo Information of generic event type.
      * @param owner Owner of the [event].
-     * @param phase Phase of the dispatch, only listeners that listen to this phase will be called.
+     * @param channel Channel to dispatch event.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, owner: Any, phase: Int)
+    fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, owner: Any, channel: Int)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event].
@@ -204,7 +204,7 @@ interface EventManager {
      *
      * Asynchronous dispatch
      *
-     * All listeners will be called (no matter the phase it listen).
+     * All listeners will be called (no matter the channel it listen).
      *
      * @param event [Event] to dispatch do listeners.
      * @param typeInfo Information of generic event type.
