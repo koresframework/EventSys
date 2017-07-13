@@ -291,10 +291,10 @@ class AnnotationProcessor : AbstractProcessor() {
         }
     }
 
-    fun getProperties(factoryUnification: FactoryUnification,
-                      element: TypeElement,
-                      extensionOnly: Boolean = false): List<EventSysProperty> {
-        val list = mutableListOf<EventSysProperty>()
+    private fun getProperties(factoryUnification: FactoryUnification,
+                              element: TypeElement,
+                              extensionOnly: Boolean = false,
+                              list: MutableList<EventSysProperty> = mutableListOf()): List<EventSysProperty> {
 
         if(!extensionOnly) {
             this.getProperties(factoryUnification, element, list)
@@ -313,7 +313,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
             itfs.forEach {
                 if (it is TypeElement) {
-                    getProperties(factoryUnification, it, list)
+                    getProperties(factoryUnification, it, false, list)
                 }
 
             }
@@ -324,16 +324,16 @@ class AnnotationProcessor : AbstractProcessor() {
             val tp = impl.defaultResolver.resolve(impl)
 
             if (tp is TypeElement) {
-                this.getProperties(factoryUnification, tp, list)
+                this.getProperties(factoryUnification, tp, false, list)
             }
         }
 
         return list
     }
 
-    fun getProperties(factoryUnification: FactoryUnification,
-                      element: TypeElement,
-                      list: MutableList<EventSysProperty>) {
+    private fun getProperties(factoryUnification: FactoryUnification,
+                              element: TypeElement,
+                              list: MutableList<EventSysProperty>) {
         val codeType = element.getCodeType(processingEnv.elementUtils).concreteType
 
         if (codeType.`is`(Default::class.java))
