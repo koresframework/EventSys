@@ -313,7 +313,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
             itfs.forEach {
                 if (it is TypeElement) {
-                    getProperties(factoryUnification, it, false, list)
+                    getProperties(factoryUnification, it, list)
                 }
 
             }
@@ -324,7 +324,7 @@ class AnnotationProcessor : AbstractProcessor() {
             val tp = impl.defaultResolver.resolve(impl)
 
             if (tp is TypeElement) {
-                this.getProperties(factoryUnification, tp, false, list)
+                this.getProperties(factoryUnification, tp, list)
             }
         }
 
@@ -334,6 +334,7 @@ class AnnotationProcessor : AbstractProcessor() {
     private fun getProperties(factoryUnification: FactoryUnification,
                               element: TypeElement,
                               list: MutableList<EventSysProperty>) {
+
         val codeType = element.getCodeType(processingEnv.elementUtils).concreteType
 
         if (codeType.`is`(Default::class.java))
@@ -351,7 +352,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
                     if (isGetOrSet || isIs) {
                         val propertyName =
-                                (if (isGetOrSet) name.substring(3..name.length - 1) else name.substring(2..name.length - 1))
+                                (if (isGetOrSet) name.substring(3 until name.length) else name.substring(2 until name.length))
                                         .decapitalize()
 
                         val type = if(isSet) it.parameters.first().asType().getCodeType(processingEnv.elementUtils)
@@ -369,6 +370,25 @@ class AnnotationProcessor : AbstractProcessor() {
 
                 }
             }
+        }
+
+        val types = mutableListOf<TypeMirror>()
+
+        if (element.superclass.kind != TypeKind.NONE) {
+            types += element.superclass
+        }
+
+        types += element.interfaces
+
+        val itfs = types.map { it.getCodeType(processingEnv.elementUtils).concreteType }.map {
+            it.defaultResolver.resolve(it)
+        }.toMutableList()
+
+        itfs.forEach {
+            if (it is TypeElement) {
+                getProperties(factoryUnification, it, list)
+            }
+
         }
 
     }
