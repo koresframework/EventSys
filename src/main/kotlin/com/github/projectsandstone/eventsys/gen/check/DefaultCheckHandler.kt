@@ -145,7 +145,7 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
 
         extensionClass.declaredConstructors.forEach {
             if (it.parameterCount == 1) {
-                if (resolver.isAssignableFrom(it.parameterTypes.single(), type))
+                if (resolver.isAssignableFrom(it.parameterTypes.single(), type).run { isRight && right })
                     return it
                 else
                     foundsCtr += it

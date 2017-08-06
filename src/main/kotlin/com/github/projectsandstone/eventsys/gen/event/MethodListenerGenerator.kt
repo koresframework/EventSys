@@ -36,7 +36,7 @@ import com.github.jonathanxd.codeapi.bytecode.VISIT_LINES
 import com.github.jonathanxd.codeapi.bytecode.VisitLineType
 import com.github.jonathanxd.codeapi.bytecode.extra.Dup
 import com.github.jonathanxd.codeapi.bytecode.extra.Pop
-import com.github.jonathanxd.codeapi.bytecode.processor.BytecodeProcessor
+import com.github.jonathanxd.codeapi.bytecode.processor.BytecodeGenerator
 import com.github.jonathanxd.codeapi.common.Stack
 import com.github.jonathanxd.codeapi.factory.*
 import com.github.jonathanxd.codeapi.literal.Literals
@@ -115,7 +115,7 @@ internal object MethodListenerGenerator {
                 .methods(methods)
                 .build()
 
-        val generator = BytecodeProcessor()
+        val generator = BytecodeGenerator()
 
         generator.options.set(VISIT_LINES, VisitLineType.FOLLOW_CODE_SOURCE)
 

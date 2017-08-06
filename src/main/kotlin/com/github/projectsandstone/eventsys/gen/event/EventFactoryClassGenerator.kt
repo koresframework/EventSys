@@ -34,7 +34,7 @@ import com.github.jonathanxd.codeapi.Types
 import com.github.jonathanxd.codeapi.base.*
 import com.github.jonathanxd.codeapi.bytecode.VISIT_LINES
 import com.github.jonathanxd.codeapi.bytecode.VisitLineType
-import com.github.jonathanxd.codeapi.bytecode.processor.BytecodeProcessor
+import com.github.jonathanxd.codeapi.bytecode.processor.BytecodeGenerator
 import com.github.jonathanxd.codeapi.common.MethodInvokeSpec
 import com.github.jonathanxd.codeapi.common.Nothing
 import com.github.jonathanxd.codeapi.common.VariableRef
@@ -221,7 +221,7 @@ internal object EventFactoryClassGenerator {
                         })
                 .build()
 
-        val generator = BytecodeProcessor()
+        val generator = BytecodeGenerator()
 
         generator.options.set(VISIT_LINES, VisitLineType.FOLLOW_CODE_SOURCE)
 

@@ -35,7 +35,7 @@ import com.github.jonathanxd.codeapi.base.*
 import com.github.jonathanxd.codeapi.bytecode.CHECK
 import com.github.jonathanxd.codeapi.bytecode.VISIT_LINES
 import com.github.jonathanxd.codeapi.bytecode.VisitLineType
-import com.github.jonathanxd.codeapi.bytecode.processor.BytecodeProcessor
+import com.github.jonathanxd.codeapi.bytecode.processor.BytecodeGenerator
 import com.github.jonathanxd.codeapi.common.FieldRef
 import com.github.jonathanxd.codeapi.common.MethodTypeSpec
 import com.github.jonathanxd.codeapi.common.Nothing
@@ -202,7 +202,7 @@ internal object EventClassGenerator {
         checker.checkImplementation(classDeclaration.methods, classType, extensions, eventGenerator)
 
 
-        val generator = BytecodeProcessor()
+        val generator = BytecodeGenerator()
 
         generator.options.set(VISIT_LINES, VisitLineType.FOLLOW_CODE_SOURCE)
         generator.options.set(CHECK, false)
