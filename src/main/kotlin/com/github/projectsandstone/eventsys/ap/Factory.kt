@@ -36,14 +36,14 @@ import com.github.projectsandstone.eventsys.event.annotation.Extension
 interface FactoryUnification : UnifiedAnnotation {
     fun value(): String
     fun methodName(): String
-    fun extensions(): Array<ExtensionUnification>
+    fun extensions(): List<ExtensionUnification>
     fun inheritProperties(): Boolean
     fun omitTypeParam(): Boolean
     fun lazy(): Boolean
 }
 
 interface FactoriesUnification : UnifiedAnnotation {
-    fun value(): Array<FactoryUnification>
+    fun value(): List<FactoryUnification>
 }
 
 interface ExtensionUnification : UnifiedAnnotation {
