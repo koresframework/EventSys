@@ -213,7 +213,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
         if (element.superclass.kind != TypeKind.NONE) {
             val type = element.superclass.getCodeType(processingEnv.elementUtils).concreteType
-            val resolve = type.defaultResolver.resolve(type)
+            val resolve = type.defaultResolver.resolve(type).rightOrFail
 
             if (resolve is TypeElement) {
                 getSubTypesProperties0(resolve, unificationList)
@@ -222,7 +222,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
         element.interfaces.forEach {
             val type = it.getCodeType(processingEnv.elementUtils).concreteType
-            val resolve = type.defaultResolver.resolve(type)
+            val resolve = type.defaultResolver.resolve(type).rightOrFail
 
             if (resolve is TypeElement) {
                 getSubTypesProperties0(resolve, unificationList)
@@ -250,7 +250,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
         tps.forEach {
             types += it.getCodeType(processingEnv.elementUtils).concreteType.also {
-                (it.defaultResolver.resolve(it) as? TypeElement)?.let {
+                (it.defaultResolver.resolve(it).rightOrFail as? TypeElement)?.let {
                     this.getTypes(it, types)
                 }
             }
@@ -265,7 +265,7 @@ class AnnotationProcessor : AbstractProcessor() {
             var found = false
 
             val impl = it.extensionClass().concreteType
-            val tp = impl.defaultResolver.resolve(impl)
+            val tp = impl.defaultResolver.resolve(impl).rightOrFail
 
             if (!impl.`is`(Default::class.java)) {
 
@@ -309,7 +309,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
             val itfs = types.map { it.getCodeType(processingEnv.elementUtils).concreteType }.map {
                 it.defaultResolver.resolve(it)
-            }.toMutableList()
+            }.filter { it.isRight }.map { it.rightOrFail }.toMutableList()
 
             itfs.forEach {
                 if (it is TypeElement) {
@@ -321,7 +321,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
         factoryUnification.extensions().forEach {
             val impl = it.implement().concreteType
-            val tp = impl.defaultResolver.resolve(impl)
+            val tp = impl.defaultResolver.resolve(impl).rightOrFail
 
             if (tp is TypeElement) {
                 this.getProperties(factoryUnification, tp, list)
@@ -382,7 +382,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
         val itfs = types.map { it.getCodeType(processingEnv.elementUtils).concreteType }.map {
             it.defaultResolver.resolve(it)
-        }.toMutableList()
+        }.filter { it.isRight }.map { it.right!! }.toMutableList()
 
         itfs.forEach {
             if (it is TypeElement) {
@@ -419,7 +419,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
         val itfs = types.map { it.getCodeType(processingEnv.elementUtils).concreteType }.map {
             it.defaultResolver.resolve(it)
-        }.toMutableList()
+        }.filter { it.isRight }.map { it.right!! }.toMutableList()
 
         itfs.forEach {
             if (it is TypeElement) {
@@ -438,7 +438,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
         extensions.forEach {
             val cl = it.extensionClass().concreteType
-            val resolve = cl.defaultResolver.resolve(cl)
+            val resolve = cl.defaultResolver.resolve(cl).rightOrFail
 
             if (resolve is TypeElement) {
                 if (containsMethod(resolve, executableElement))

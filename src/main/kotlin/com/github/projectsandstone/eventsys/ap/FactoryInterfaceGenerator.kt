@@ -115,7 +115,7 @@ object FactoryInterfaceGenerator {
                 val desc = MethodDesc(it.name, parameters.size)
 
                 val name = getUniqueName(desc, descs)
-                descs += desc
+                descs += desc.copy(name = name)
 
                 val signature = it.signature
 

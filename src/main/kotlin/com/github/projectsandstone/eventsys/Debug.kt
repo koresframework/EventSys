@@ -35,13 +35,11 @@ object Debug {
     private const val FACTORY_GEN_PROPERTY = "eventsys.debug.factorygen"
     private const val EVENT_GEN_PROPERTY = "eventsys.debug.eventgen"
     private const val LISTENER_GEN_PROPERTY = "eventsys.debug.listenergen"
-    private const val DIRECT_GEN_PROPERTY = "eventsys.debug.directgen"
 
     val SAVE_PATH_DEBUG = getSaveProperty()
     val EVENT_GEN_DEBUG = getDebugProperty(EVENT_GEN_PROPERTY)
     val FACTORY_GEN_DEBUG = getDebugProperty(FACTORY_GEN_PROPERTY)
     val LISTENER_GEN_DEBUG = getDebugProperty(LISTENER_GEN_PROPERTY)
-    val DIRECT_GEN_DEBUG = getDebugProperty(DIRECT_GEN_PROPERTY)
 
     private fun getDebugProperty(name: String) = System.getProperties()[name]?.equals("true") ?: System.getProperties()[DEBUG_PROPERTY]?.equals("true") ?: false
     private fun getSaveProperty() = Paths.get(System.getProperties()[SAVE_PATH]?.toString() ?: ".")!!
