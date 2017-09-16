@@ -52,6 +52,4 @@ fun <T : Event> getEventTypes(event: T): List<TypeInfo<*>> {
     return types
 }
 
-fun <T : Event> getEventType(event: T): TypeInfo<*> {
-    return event.eventTypeInfo
-}
+fun <T : Event> getEventType(event: T): TypeInfo<*> = event.eventTypeInfo

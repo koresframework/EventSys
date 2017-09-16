@@ -86,12 +86,6 @@ import kotlin.collections.set
 internal object EventClassGenerator {
     private val cached: MutableMap<EventClassSpecification<*>, Class<*>> = mutableMapOf()
 
-    val propertiesFieldName = "#properties"
-    val propertiesUnmodName = "immutable#properties"
-    val propertiesFieldType = Generic.type(Map::class.java)
-            .of(Types.STRING)
-            .of(Property::class.java)
-
     private fun TypeInfo<*>.toStr(): String {
         if (this.related.isEmpty()) {
             return this.toFullString()
@@ -169,7 +163,7 @@ internal object EventClassGenerator {
 
         val plain = classDeclarationBuilder.build()
 
-        val properties = this.getProperties(classType, additionalProperties, extensions).map {
+        val properties = getProperties(classType, additionalProperties, extensions).map {
             it.copy(inferredType = getPropInferredType(it, isSpecialized, plain))
         }
 
@@ -276,7 +270,7 @@ internal object EventClassGenerator {
             fieldDec().modifiers(modifiers).type(it.inferredType).name(name).build()
         }.toMutableList()
 
-        fields += genPropertyField()
+        fields += getPropertyFields()
         fields += genExtensionsFields(extensions, type, eventGenerator)
 
         if (requiresType) {
@@ -343,24 +337,6 @@ internal object EventClassGenerator {
                                 .build()
                     }
 
-
-    private fun genPropertyField(): List<FieldDeclaration> {
-        return listOf(FieldDeclaration.Builder.builder()
-                .modifiers(CodeModifier.PRIVATE, CodeModifier.FINAL)
-                .type(propertiesFieldType)
-                .name(propertiesFieldName)
-                .value(HashMap::class.java.invokeConstructor())
-                .build(),
-                FieldDeclaration.Builder.builder()
-                        .modifiers(CodeModifier.PRIVATE, CodeModifier.FINAL)
-                        .type(propertiesFieldType)
-                        .name(propertiesUnmodName)
-                        .value(Collections::class.java.invokeStatic("unmodifiableMap",
-                                typeSpec(Map::class.java, Map::class.java),
-                                listOf(accessThisField(propertiesFieldType, propertiesFieldName))))
-                        .build())
-    }
-
     private fun genConstructor(base: Class<*>,
                                typeInfo: TypeInfo<*>,
                                requiresType: Boolean,
@@ -424,10 +400,10 @@ internal object EventClassGenerator {
         properties.forEach {
             val valueType: CodeType = it.inferredType.codeType
 
-            if (cancellable && it.propertyName == "cancelled") {
-                constructorBody += setFieldValue(Alias.THIS, Access.THIS, valueType, it.propertyName, Literals.FALSE)
+            constructorBody += if (cancellable && it.propertyName == "cancelled") {
+                setFieldValue(Alias.THIS, Access.THIS, valueType, it.propertyName, Literals.FALSE)
             } else {
-                constructorBody += setFieldValue(Alias.THIS, Access.THIS, valueType, it.propertyName,
+                setFieldValue(Alias.THIS, Access.THIS, valueType, it.propertyName,
                         accessVariable(valueType, it.propertyName))
             }
         }
@@ -436,113 +412,6 @@ internal object EventClassGenerator {
 
         return constructor
 
-    }
-
-    private fun genConstructorPropertiesMap(constructorBody: MutableCodeSource,
-                                            properties: List<PropertyInfo>) {
-        val accessMap = accessThisField(propertiesFieldType, propertiesFieldName)
-
-        properties.forEach {
-            val realType = it.type
-            val inferredType = it.inferredType
-
-            if (!inferredType.`is`(realType)) {
-                constructorBody += this.invokePut(accessMap,
-                        com.github.jonathanxd.codeapi.literal.Literals.STRING(it.propertyName),
-                        this.propertyToSProperty(it, inferredType))
-            } else {
-                constructorBody += this.invokePut(accessMap,
-                        com.github.jonathanxd.codeapi.literal.Literals.STRING(it.propertyName),
-                        this.propertyToSProperty(it, realType))
-            }
-
-
-        }
-
-    }
-
-    private fun invokePut(accessMap: CodeInstruction, vararg arguments: CodeInstruction): CodeInstruction {
-        return invokeInterface(Map::class.java, accessMap, "put", typeSpec(Any::class.java, Any::class.java, Any::class.java), listOf(*arguments))
-    }
-
-    private fun propertyToSProperty(property: PropertyInfo, registryType: Type): CodeInstruction {
-
-        val hasGetter = property.hasGetter()
-        val hasSetter = property.hasSetter()
-
-        val realType = property.type
-
-        val typeToInvoke = this.getTypeToInvoke(hasGetter, hasSetter, realType).codeType
-
-        val arguments = mutableListOf<CodeInstruction>()
-        val argumentTypes = mutableListOf<CodeType>()
-
-        if (!property.type.isPrimitive) {
-            arguments.add(Literals.CLASS(registryType.codeType))
-            argumentTypes.add(Types.CLASS)
-        }
-
-        if (hasGetter) {
-            val supplierInfo = this.getSupplierType(realType)
-            val supplierType = supplierInfo.second
-
-            arguments += this.invokeGetter(realType, supplierInfo, property)
-            argumentTypes += supplierType.codeType
-        }
-
-        if (hasSetter) {
-            val consumerType = this.getConsumerType(realType).codeType
-
-            arguments += this.invokeSetter(realType, consumerType, property)
-            argumentTypes += consumerType
-        }
-
-        val typeSpec = TypeSpec(Types.VOID, argumentTypes)
-
-        return typeToInvoke.invokeConstructor(typeSpec, arguments)
-    }
-
-    private fun invokeGetter(type: Class<*>, supplierInfo: Pair<String, Class<*>>, property: PropertyInfo): CodeInstruction {
-        val propertyType = property.type
-        val getterName = property.getterName!!
-
-        val supplierType = supplierInfo.second.codeType
-        val realType = this.getCastType(propertyType).codeType
-        val rtype = if (type.isPrimitive) realType /*type.codeType*/ else Types.OBJECT
-
-        val invocation = invoke(InvokeType.INVOKE_VIRTUAL,
-                Alias.THIS,
-                Access.THIS,
-                getterName,
-                typeSpec(realType/*propertyType*/),
-                mutableListOf()
-        )
-
-        return InvokeDynamic.LambdaMethodRef.Builder.builder()
-                .invocation(invocation)
-                .baseSam(MethodTypeSpec(supplierType, supplierInfo.first, typeSpec(rtype)))
-                .expectedTypes(typeSpec(realType /*propertyType*/))
-                .build()
-    }
-
-    private fun invokeSetter(type: Class<*>, consumerType: CodeType, property: PropertyInfo): CodeInstruction {
-        val setterName = property.setterName!!
-
-        val realType = this.getCastType(property.type).codeType
-        val ptype = if (type.isPrimitive) realType/*type.codeType*/ else Types.OBJECT
-
-        val invocation: MethodInvocation
-
-        invocation = invokeVirtual(Alias.THIS, Access.THIS, setterName,
-                TypeSpec(Types.VOID, listOf(realType/*propertyType*/)),
-                emptyList()
-        )
-
-        return InvokeDynamic.LambdaMethodRef.Builder.builder()
-                .invocation(invocation)
-                .baseSam(MethodTypeSpec(consumerType, "accept", constructorTypeSpec(ptype)))
-                .expectedTypes(constructorTypeSpec(realType/*propertyType*/))
-                .build()
     }
 
     private fun genMethods(typeInfo: TypeInfo<*>,
@@ -671,7 +540,7 @@ internal object EventClassGenerator {
                 .body(source(returnValue(fieldType, accessThisField(inferredType, name))))
                 .build()
 
-        val castType = this.getCastType(fieldType)
+        val castType = getCastType(fieldType)
 
         val ret: Return = if (!fieldType.isPrimitive && property.isNotNull)
             returnValue(fieldType, cast(Types.OBJECT, castType,
@@ -762,7 +631,7 @@ internal object EventClassGenerator {
                         ))
                 .build()
 
-        val castType = this.getCastType(fieldType)
+        val castType = getCastType(fieldType)
 
         if (castType != fieldType) {
             methods += MethodDeclaration.Builder.builder()
@@ -789,32 +658,6 @@ internal object EventClassGenerator {
                 .build()
     }
 
-    private fun getSetter(type: Class<*>, name: String, propertyType: Class<*>): Method? {
-
-        val capitalized = name.capitalize()
-
-        return try {
-            type.getMethod("set$capitalized", propertyType)
-        } catch (t: Throwable) {
-            null
-        }
-    }
-
-    private fun getGetter(type: Class<*>, name: String): Method? {
-
-        val capitalized = name.capitalize()
-
-        return try {
-            type.getMethod("is$capitalized")
-        } catch (t: Throwable) {
-            null
-        } ?: try {
-            type.getMethod("get$capitalized")
-        } catch (t: Throwable) {
-            null
-        }
-    }
-
     private fun validateExtensions(extensions: List<ExtensionSpecification>,
                                    type: CodeType,
                                    eventGenerator: EventGenerator) {
@@ -824,94 +667,6 @@ internal object EventClassGenerator {
                 eventGenerator.checkHandler.validateExtension(extension, it, type, eventGenerator)
             }
         }
-    }
-
-    internal fun getProperties(type: Class<*>, additional: List<PropertyInfo>, extensions: List<ExtensionSpecification>): List<PropertyInfo> {
-        val list = mutableListOf<PropertyInfo>()
-
-        val methods = type.methods
-                .filter { it.declaringClass != Any::class.java }
-                .toMutableList()
-
-        extensions.map { it.implement }.filterNotNull().forEach {
-            methods += it.methods.filter { it.declaringClass != Any::class.java }
-        }
-
-        val extensionClasses = extensions.map { it.extensionClass }.filterNotNull()
-
-        methods.forEach { method ->
-
-            // Since: 1.1.2: Extensions are allowed to implement properties getter and setter.
-            if (extensionClasses.any { this.hasMethod(it, method) })
-                return@forEach
-
-            val name = method.name
-
-            val isGet = name.startsWith("get") && method.parameterCount == 0
-            val isIs = name.startsWith("is") && method.parameterCount == 0
-            val isSet = name.startsWith("set") && method.parameterCount == 1
-
-            // Skip PropertyHolder methods
-            // We could use method.declaringClass == PropertyHolder::class.java
-            // but override methods will return false.
-            if (this.hasMethod(PropertyHolder::class.java, method)
-                    || this.hasMethod(Event::class.java, method))
-                return@forEach
-
-            if (isGet || isIs || isSet) {
-                // hasProperty of PropertyHolder
-                // 3 = "get".length & "set".length
-                // 2 = "is".length
-                val propertyName = (if (isGet || isSet) name.substring(3..name.length - 1) else name.substring(2..name.length - 1))
-                        .decapitalize()
-
-                val propertyType = if (isGet || isIs) method.returnType else method.parameterTypes[0]
-
-                val genericPropertyType =
-                        if (isGet || isIs) method.genericReturnType.codeType.asGeneric
-                        else method.genericParameterTypes[0].codeType.asGeneric
-
-                if (!list.any { it.propertyName == propertyName }) {
-
-                    val setter = getSetter(type, propertyName, propertyType)
-                            ?: getSetter(method.declaringClass, propertyName, propertyType)
-
-                    val getter = getGetter(type, propertyName)
-                            ?: getGetter(method.declaringClass, propertyName)
-
-                    val getterName = getter?.name
-                    val setterName = setter?.name
-
-                    val validator = setter?.getDeclaredAnnotation(Validate::class.java)?.value?.java
-                    val isNotNull = setter?.parameterAnnotations?.firstOrNull()?.any { it is NotNullValue }
-                            ?: getter?.isAnnotationPresent(NotNullValue::class.java)
-                            ?: method.isAnnotationPresent(NotNullValue::class.java)
-
-                    list += PropertyInfo(
-                            method.declaringClass,
-                            propertyName,
-                            getterName,
-                            setterName,
-                            propertyType,
-                            isNotNull,
-                            validator,
-                            PropertyTypeInfo(
-                                    genericPropertyType,
-                                    GenericSignature.create(*method.typeParameters
-                                            .map { it.codeType.asGeneric }.toTypedArray())
-                            ))
-                }
-
-            }
-
-        }
-
-        additional.forEach { ad ->
-            if (!list.any { it.propertyName == ad.propertyName })
-                list.add(ad)
-        }
-
-        return list
     }
 
     internal fun TypeSpec.concrete() =
@@ -966,101 +721,346 @@ internal object EventClassGenerator {
         }
     }
 
-    private fun getTypeToInvoke(hasGetter: Boolean, hasSetter: Boolean, type: Class<*>): Class<*> =
-            if (hasGetter && hasSetter) when (type) {
-                java.lang.Byte.TYPE,
-                java.lang.Short.TYPE,
-                java.lang.Character.TYPE,
-                java.lang.Integer.TYPE -> IntGSProperty.Impl::class.java
-                java.lang.Boolean.TYPE -> BooleanGSProperty.Impl::class.java
-                java.lang.Double.TYPE,
-                java.lang.Float.TYPE -> DoubleGSProperty.Impl::class.java
-                java.lang.Long.TYPE -> LongGSProperty.Impl::class.java
-                else -> GSProperty.Impl::class.java
-            } else if (hasGetter) when (type) {
-                java.lang.Byte.TYPE,
-                java.lang.Short.TYPE,
-                Character.TYPE,
-                java.lang.Integer.TYPE -> IntGetterProperty.Impl::class.java
-                java.lang.Boolean.TYPE -> BooleanGetterProperty.Impl::class.java
-                java.lang.Double.TYPE,
-                java.lang.Float.TYPE -> DoubleGetterProperty.Impl::class.java
-                java.lang.Long.TYPE -> LongGetterProperty.Impl::class.java
-                else -> GetterProperty.Impl::class.java
-            } else if (hasSetter) when (type) {
-                java.lang.Byte.TYPE,
-                java.lang.Short.TYPE,
-                java.lang.Character.TYPE,
-                java.lang.Integer.TYPE -> IntSetterProperty.Impl::class.java
-                java.lang.Boolean.TYPE -> BooleanSetterProperty.Impl::class.java
-                java.lang.Double.TYPE,
-                java.lang.Float.TYPE -> DoubleSetterProperty.Impl::class.java
-                java.lang.Long.TYPE -> LongSetterProperty.Impl::class.java
-                else -> SetterProperty.Impl::class.java
-            } else when (type) {
-                java.lang.Byte.TYPE,
-                java.lang.Short.TYPE,
-                java.lang.Character.TYPE,
-                java.lang.Integer.TYPE -> IntProperty.Impl::class.java
-                java.lang.Boolean.TYPE -> BooleanProperty.Impl::class.java
-                java.lang.Double.TYPE,
-                java.lang.Float.TYPE -> DoubleProperty.Impl::class.java
-                java.lang.Long.TYPE -> LongProperty.Impl::class.java
-                else -> Property.Impl::class.java
+}
+
+const val eventTypeInfoFieldName = "eventTypeInfo"
+
+const val propertiesFieldName = "#properties"
+const val propertiesUnmodName = "immutable#properties"
+val propertiesFieldType = Generic.type(Map::class.java)
+        .of(Types.STRING)
+        .of(Property::class.java)
+
+
+
+fun getProperties(type: Class<*>,
+                  additional: List<PropertyInfo>,
+                  extensions: List<ExtensionSpecification>): List<PropertyInfo> {
+    val list = mutableListOf<PropertyInfo>()
+
+    val methods = type.methods
+            .filter { it.declaringClass != Any::class.java }
+            .toMutableList()
+
+    extensions.map { it.implement }.filterNotNull().forEach {
+        methods += it.methods.filter { it.declaringClass != Any::class.java }
+    }
+
+    val extensionClasses = extensions.map { it.extensionClass }.filterNotNull()
+
+    methods.forEach { method ->
+
+        // Since: 1.1.2: Extensions are allowed to implement properties getter and setter.
+        if (extensionClasses.any { hasMethod(it, method) })
+            return@forEach
+
+        val name = method.name
+
+        val isGet = name.startsWith("get") && method.parameterCount == 0
+        val isIs = name.startsWith("is") && method.parameterCount == 0
+        val isSet = name.startsWith("set") && method.parameterCount == 1
+
+        // Skip PropertyHolder methods
+        // We could use method.declaringClass == PropertyHolder::class.java
+        // but override methods will return false.
+        if (hasMethod(PropertyHolder::class.java, method)
+                || hasMethod(Event::class.java, method))
+            return@forEach
+
+        if (isGet || isIs || isSet) {
+            // hasProperty of PropertyHolder
+            // 3 = "get".length & "set".length
+            // 2 = "is".length
+            val propertyName = (if (isGet || isSet) name.substring(3 until name.length) else name.substring(2 until name.length))
+                    .decapitalize()
+
+            val propertyType = if (isGet || isIs) method.returnType else method.parameterTypes[0]
+
+            val genericPropertyType =
+                    if (isGet || isIs) method.genericReturnType.codeType.asGeneric
+                    else method.genericParameterTypes[0].codeType.asGeneric
+
+            if (!list.any { it.propertyName == propertyName }) {
+
+                val setter = getSetter(type, propertyName, propertyType)
+                        ?: getSetter(method.declaringClass, propertyName, propertyType)
+
+                val getter = getGetter(type, propertyName)
+                        ?: getGetter(method.declaringClass, propertyName)
+
+                val getterName = getter?.name
+                val setterName = setter?.name
+
+                val validator = setter?.getDeclaredAnnotation(Validate::class.java)?.value?.java
+                val isNotNull = setter?.parameterAnnotations?.firstOrNull()?.any { it is NotNullValue }
+                        ?: getter?.isAnnotationPresent(NotNullValue::class.java)
+                        ?: method.isAnnotationPresent(NotNullValue::class.java)
+
+                list += PropertyInfo(
+                        method.declaringClass,
+                        propertyName,
+                        getterName,
+                        setterName,
+                        propertyType,
+                        isNotNull,
+                        validator,
+                        PropertyTypeInfo(
+                                genericPropertyType,
+                                GenericSignature.create(*method.typeParameters
+                                        .map { it.codeType.asGeneric }.toTypedArray())
+                        ))
             }
 
-    private fun getSupplierType(type: Class<*>): Pair<String, Class<*>> = when (type) {
-        java.lang.Byte.TYPE,
-        java.lang.Short.TYPE,
-        java.lang.Character.TYPE,
-        java.lang.Integer.TYPE -> "getAsInt" to IntSupplier::class.java
-        java.lang.Boolean.TYPE -> "getAsBoolean" to BooleanSupplier::class.java
-        java.lang.Double.TYPE,
-        java.lang.Float.TYPE -> "getAsDouble" to DoubleSupplier::class.java
-        java.lang.Long.TYPE -> "getAsLong" to LongSupplier::class.java
-        else -> "get" to Supplier::class.java
+        }
+
     }
 
-    private fun getConsumerType(type: Class<*>): Class<*> = when (type) {
-        java.lang.Byte.TYPE,
-        java.lang.Short.TYPE,
-        java.lang.Character.TYPE,
-        java.lang.Integer.TYPE -> IntConsumer::class.java
-        java.lang.Boolean.TYPE -> BooleanConsumer::class.java
-        java.lang.Double.TYPE,
-        java.lang.Float.TYPE -> DoubleConsumer::class.java
-        java.lang.Long.TYPE -> LongConsumer::class.java
-        else -> Consumer::class.java
+    additional.forEach { ad ->
+        if (!list.any { it.propertyName == ad.propertyName })
+            list.add(ad)
     }
 
-    private fun getCastType(type: Class<*>): Class<*> = when (type) {
-        java.lang.Byte.TYPE, // -> java.lang.Byte.TYPE // Temporary workaround until CodeAPI-BytecodeWriter:hotfix3
-        java.lang.Short.TYPE, // -> java.lang.Short.TYPE // Temporary workaround until CodeAPI-BytecodeWriter:hotfix3
-        java.lang.Character.TYPE, // -> java.lang.Character.TYPE // Temporary workaround until CodeAPI-BytecodeWriter:hotfix3
-        java.lang.Integer.TYPE -> java.lang.Integer.TYPE
-        java.lang.Boolean.TYPE -> java.lang.Boolean.TYPE
-        java.lang.Double.TYPE,
-        java.lang.Float.TYPE -> java.lang.Double.TYPE
-        java.lang.Long.TYPE -> java.lang.Long.TYPE
-        else -> type
-    }
+    return list
+}
 
-    private fun getCastType(codeType: CodeType): CodeType = when (codeType) {
-        Types.BYTE,
-        Types.SHORT,
-        Types.CHAR,
-        Types.INT -> Types.INT
-        Types.BOOLEAN -> Types.BOOLEAN
-        Types.DOUBLE,
-        Types.FLOAT -> Types.DOUBLE
-        Types.LONG -> Types.LONG
-        else -> codeType
-    }
+fun getPropertyFields(): List<FieldDeclaration> {
+    return listOf(FieldDeclaration.Builder.builder()
+            .modifiers(CodeModifier.PRIVATE, CodeModifier.FINAL)
+            .type(propertiesFieldType)
+            .name(propertiesFieldName)
+            .value(HashMap::class.java.invokeConstructor())
+            .build(),
+            FieldDeclaration.Builder.builder()
+                    .modifiers(CodeModifier.PRIVATE, CodeModifier.FINAL)
+                    .type(propertiesFieldType)
+                    .name(propertiesUnmodName)
+                    .value(Collections::class.java.invokeStatic("unmodifiableMap",
+                            typeSpec(Map::class.java, Map::class.java),
+                            listOf(accessThisField(propertiesFieldType, propertiesFieldName))))
+                    .build())
+}
 
-    private fun hasMethod(klass: Class<*>, method: Method): Boolean {
-        return klass.methods.any { it.isEqual(method) }
+private fun getSetter(type: Class<*>, name: String, propertyType: Class<*>): Method? {
+
+    val capitalized = name.capitalize()
+
+    return try {
+        type.getMethod("set$capitalized", propertyType)
+    } catch (t: Throwable) {
+        null
+    }
+}
+
+private fun getGetter(type: Class<*>, name: String): Method? {
+
+    val capitalized = name.capitalize()
+
+    return try {
+        type.getMethod("is$capitalized")
+    } catch (t: Throwable) {
+        null
+    } ?: try {
+        type.getMethod("get$capitalized")
+    } catch (t: Throwable) {
+        null
+    }
+}
+
+private fun hasMethod(klass: Class<*>, method: Method): Boolean = klass.methods.any { it.isEqual(method) }
+
+fun genConstructorPropertiesMap(constructorBody: MutableCodeSource,
+                                        properties: List<PropertyInfo>) {
+    val accessMap = accessThisField(propertiesFieldType, propertiesFieldName)
+
+    properties.forEach {
+        val realType = it.type
+        val inferredType = it.inferredType
+
+        constructorBody += if (!inferredType.`is`(realType)) {
+            invokePut(accessMap,
+                    com.github.jonathanxd.codeapi.literal.Literals.STRING(it.propertyName),
+                    propertyToSProperty(it, inferredType))
+        } else {
+            invokePut(accessMap,
+                    com.github.jonathanxd.codeapi.literal.Literals.STRING(it.propertyName),
+                    propertyToSProperty(it, realType))
+        }
+
+
     }
 
 }
 
-const val eventTypeInfoFieldName = "eventTypeInfo"
+fun invokePut(accessMap: CodeInstruction, vararg arguments: CodeInstruction): CodeInstruction =
+        invokeInterface(Map::class.java, accessMap, "put", typeSpec(Any::class.java, Any::class.java, Any::class.java), listOf(*arguments))
+
+private fun propertyToSProperty(property: PropertyInfo, registryType: Type): CodeInstruction {
+
+    val hasGetter = property.hasGetter()
+    val hasSetter = property.hasSetter()
+
+    val realType = property.type
+
+    val typeToInvoke = getTypeToInvoke(hasGetter, hasSetter, realType).codeType
+
+    val arguments = mutableListOf<CodeInstruction>()
+    val argumentTypes = mutableListOf<CodeType>()
+
+    if (!property.type.isPrimitive) {
+        arguments.add(Literals.CLASS(registryType.codeType))
+        argumentTypes.add(Types.CLASS)
+    }
+
+    if (hasGetter) {
+        val supplierInfo = getSupplierType(realType)
+        val supplierType = supplierInfo.second
+
+        arguments += invokeGetter(realType, supplierInfo, property)
+        argumentTypes += supplierType.codeType
+    }
+
+    if (hasSetter) {
+        val consumerType = getConsumerType(realType).codeType
+
+        arguments += invokeSetter(realType, consumerType, property)
+        argumentTypes += consumerType
+    }
+
+    val typeSpec = TypeSpec(Types.VOID, argumentTypes)
+
+    return typeToInvoke.invokeConstructor(typeSpec, arguments)
+}
+
+private fun invokeGetter(type: Class<*>, supplierInfo: Pair<String, Class<*>>, property: PropertyInfo): CodeInstruction {
+    val propertyType = property.type
+    val getterName = property.getterName!!
+
+    val supplierType = supplierInfo.second.codeType
+    val realType = getCastType(propertyType).codeType
+    val rtype = if (type.isPrimitive) realType /*type.codeType*/ else Types.OBJECT
+
+    val invocation = invoke(InvokeType.INVOKE_VIRTUAL,
+            Alias.THIS,
+            Access.THIS,
+            getterName,
+            typeSpec(realType/*propertyType*/),
+            mutableListOf()
+    )
+
+    return InvokeDynamic.LambdaMethodRef.Builder.builder()
+            .invocation(invocation)
+            .baseSam(MethodTypeSpec(supplierType, supplierInfo.first, typeSpec(rtype)))
+            .expectedTypes(typeSpec(realType /*propertyType*/))
+            .build()
+}
+
+private fun invokeSetter(type: Class<*>, consumerType: CodeType, property: PropertyInfo): CodeInstruction {
+    val setterName = property.setterName!!
+
+    val realType = getCastType(property.type).codeType
+    val ptype = if (type.isPrimitive) realType/*type.codeType*/ else Types.OBJECT
+
+    val invocation: MethodInvocation
+
+    invocation = invokeVirtual(Alias.THIS, Access.THIS, setterName,
+            TypeSpec(Types.VOID, listOf(realType/*propertyType*/)),
+            emptyList()
+    )
+
+    return InvokeDynamic.LambdaMethodRef.Builder.builder()
+            .invocation(invocation)
+            .baseSam(MethodTypeSpec(consumerType, "accept", constructorTypeSpec(ptype)))
+            .expectedTypes(constructorTypeSpec(realType/*propertyType*/))
+            .build()
+}
+
+private fun getTypeToInvoke(hasGetter: Boolean, hasSetter: Boolean, type: Class<*>): Class<*> =
+        if (hasGetter && hasSetter) when (type) {
+            java.lang.Byte.TYPE,
+            java.lang.Short.TYPE,
+            java.lang.Character.TYPE,
+            java.lang.Integer.TYPE -> IntGSProperty.Impl::class.java
+            java.lang.Boolean.TYPE -> BooleanGSProperty.Impl::class.java
+            java.lang.Double.TYPE,
+            java.lang.Float.TYPE -> DoubleGSProperty.Impl::class.java
+            java.lang.Long.TYPE -> LongGSProperty.Impl::class.java
+            else -> GSProperty.Impl::class.java
+        } else if (hasGetter) when (type) {
+            java.lang.Byte.TYPE,
+            java.lang.Short.TYPE,
+            Character.TYPE,
+            java.lang.Integer.TYPE -> IntGetterProperty.Impl::class.java
+            java.lang.Boolean.TYPE -> BooleanGetterProperty.Impl::class.java
+            java.lang.Double.TYPE,
+            java.lang.Float.TYPE -> DoubleGetterProperty.Impl::class.java
+            java.lang.Long.TYPE -> LongGetterProperty.Impl::class.java
+            else -> GetterProperty.Impl::class.java
+        } else if (hasSetter) when (type) {
+            java.lang.Byte.TYPE,
+            java.lang.Short.TYPE,
+            java.lang.Character.TYPE,
+            java.lang.Integer.TYPE -> IntSetterProperty.Impl::class.java
+            java.lang.Boolean.TYPE -> BooleanSetterProperty.Impl::class.java
+            java.lang.Double.TYPE,
+            java.lang.Float.TYPE -> DoubleSetterProperty.Impl::class.java
+            java.lang.Long.TYPE -> LongSetterProperty.Impl::class.java
+            else -> SetterProperty.Impl::class.java
+        } else when (type) {
+            java.lang.Byte.TYPE,
+            java.lang.Short.TYPE,
+            java.lang.Character.TYPE,
+            java.lang.Integer.TYPE -> IntProperty.Impl::class.java
+            java.lang.Boolean.TYPE -> BooleanProperty.Impl::class.java
+            java.lang.Double.TYPE,
+            java.lang.Float.TYPE -> DoubleProperty.Impl::class.java
+            java.lang.Long.TYPE -> LongProperty.Impl::class.java
+            else -> Property.Impl::class.java
+        }
+
+private fun getSupplierType(type: Class<*>): Pair<String, Class<*>> = when (type) {
+    java.lang.Byte.TYPE,
+    java.lang.Short.TYPE,
+    java.lang.Character.TYPE,
+    java.lang.Integer.TYPE -> "getAsInt" to IntSupplier::class.java
+    java.lang.Boolean.TYPE -> "getAsBoolean" to BooleanSupplier::class.java
+    java.lang.Double.TYPE,
+    java.lang.Float.TYPE -> "getAsDouble" to DoubleSupplier::class.java
+    java.lang.Long.TYPE -> "getAsLong" to LongSupplier::class.java
+    else -> "get" to Supplier::class.java
+}
+
+private fun getConsumerType(type: Class<*>): Class<*> = when (type) {
+    java.lang.Byte.TYPE,
+    java.lang.Short.TYPE,
+    java.lang.Character.TYPE,
+    java.lang.Integer.TYPE -> IntConsumer::class.java
+    java.lang.Boolean.TYPE -> BooleanConsumer::class.java
+    java.lang.Double.TYPE,
+    java.lang.Float.TYPE -> DoubleConsumer::class.java
+    java.lang.Long.TYPE -> LongConsumer::class.java
+    else -> Consumer::class.java
+}
+
+private fun getCastType(type: Class<*>): Class<*> = when (type) {
+    java.lang.Byte.TYPE, // -> java.lang.Byte.TYPE // Temporary workaround until CodeAPI-BytecodeWriter:hotfix3
+    java.lang.Short.TYPE, // -> java.lang.Short.TYPE // Temporary workaround until CodeAPI-BytecodeWriter:hotfix3
+    java.lang.Character.TYPE, // -> java.lang.Character.TYPE // Temporary workaround until CodeAPI-BytecodeWriter:hotfix3
+    java.lang.Integer.TYPE -> java.lang.Integer.TYPE
+    java.lang.Boolean.TYPE -> java.lang.Boolean.TYPE
+    java.lang.Double.TYPE,
+    java.lang.Float.TYPE -> java.lang.Double.TYPE
+    java.lang.Long.TYPE -> java.lang.Long.TYPE
+    else -> type
+}
+
+private fun getCastType(codeType: CodeType): CodeType = when (codeType) {
+    Types.BYTE,
+    Types.SHORT,
+    Types.CHAR,
+    Types.INT -> Types.INT
+    Types.BOOLEAN -> Types.BOOLEAN
+    Types.DOUBLE,
+    Types.FLOAT -> Types.DOUBLE
+    Types.LONG -> Types.LONG
+    else -> codeType
+}
