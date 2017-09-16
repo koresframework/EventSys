@@ -144,7 +144,7 @@ internal object EventFactoryClassGenerator {
                                 val parameterNames = getNames(factoryMethod)
                                 val extensions = getExtensions(eventType, factoryMethod)
 
-                                val properties = EventClassGenerator.getProperties(eventType, emptyList(), extensions)
+                                val properties = getProperties(eventType, emptyList(), extensions)
                                 val additionalProperties = mutableListOf<PropertyInfo>()
 
                                 val eventTypeInfo = TypeInfo.of(eventType) as TypeInfo<Event>
