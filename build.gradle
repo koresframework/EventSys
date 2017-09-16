@@ -19,7 +19,7 @@ plugins {
 }
 
 group 'com.github.projectsandstone'
-version '1.3.7'
+version '1.3.8'
 
 // IDE
 apply plugin: 'idea'
@@ -50,7 +50,7 @@ dependencies {
     compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
 
     // Utilities
-    compile 'com.github.JonathanxD:CodeAPI-SourceWriter:alpha-4.0.0-source-22'
+    compile 'com.github.JonathanxD:CodeAPI-SourceWriter:alpha-4.0.0-source-23'
     compile 'com.github.JonathanxD:CodeAPI-BytecodeWriter:alpha-4.0.0-bytecode-32'
     compile 'com.github.JonathanxD:CodeAPI-Extra:1.1.3'
     compile 'com.github.JonathanxD:JwIUtils:4.7.7'
