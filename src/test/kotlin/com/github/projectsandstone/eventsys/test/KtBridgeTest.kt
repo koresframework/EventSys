@@ -25,21 +25,14 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.gen.event
+package com.github.projectsandstone.eventsys.test
 
-enum class GenericGenerationMode {
+import com.github.projectsandstone.eventsys.event.Event
 
-    /**
-     * Delegates the generation to [com.github.projectsandstone.eventsys.bootstrap.FactoryBootstrap].
-     */
-    BOOTSTRAP,
+interface KtBridgeTest : Event {
+    val value: Any
+}
 
-    /**
-     * Uses reflection on call site of method to invoke constructor of events.
-     *
-     * Because of the complexity of sorting code, it will not be generated (because will be hard to maintain),
-     * sorting is delegated to [com.github.projectsandstone.eventsys.reflect.PropertiesSort].
-     */
-    REFLECTION
-
+interface KtBridgeStringTest : KtBridgeTest {
+    override val value: String
 }

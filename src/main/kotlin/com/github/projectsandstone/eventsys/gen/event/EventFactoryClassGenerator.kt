@@ -52,8 +52,6 @@ import com.github.jonathanxd.codeapi.util.conversion.toVariableAccess
 import com.github.jonathanxd.iutils.`object`.Default
 import com.github.jonathanxd.iutils.collection.Collections3
 import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.iutils.type.TypeInfoBuilder
-import com.github.jonathanxd.iutils.type.TypeUtil
 import com.github.projectsandstone.eventsys.Debug
 import com.github.projectsandstone.eventsys.bootstrap.FactoryBootstrap
 import com.github.projectsandstone.eventsys.event.Cancellable
@@ -169,11 +167,11 @@ internal object EventFactoryClassGenerator {
 
                                 if (isLazyGen) {
                                     // || isSpecialized
-                                    val mode: GenericGenerationMode = eventGenerator
-                                            .options[EventGeneratorOptions.GENERIC_EVENT_GENERATION_MODE]
+                                    val mode: LazyGenerationMode = eventGenerator
+                                            .options[EventGeneratorOptions.LAZY_EVENT_GENERATION_MODE]
 
                                     when (mode) {
-                                        GenericGenerationMode.BOOTSTRAP ->
+                                        LazyGenerationMode.BOOTSTRAP ->
                                             methodBody += genCallToDynamicGeneration(
                                                     eventTypeInfo.typeClass,
                                                     eventGeneratorField.name,
@@ -181,7 +179,7 @@ internal object EventFactoryClassGenerator {
                                                     extensions,
                                                     provider.singleOrNull(),
                                                     methodDeclaration.parameters)
-                                        GenericGenerationMode.REFLECTION ->
+                                        LazyGenerationMode.REFLECTION ->
                                             methodBody.addAll(
                                                     genCallToDynamicGenerationReflect(
                                                             eventTypeInfo.typeClass,

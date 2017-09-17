@@ -27,28 +27,19 @@
  */
 package com.github.projectsandstone.eventsys.gen.event
 
-import com.github.jonathanxd.iutils.option.Option
-
-object EventGeneratorOptions {
+enum class LazyGenerationMode {
 
     /**
-     * True to enable suppression of checks. This is disabled by default.
+     * Delegates the generation to [com.github.projectsandstone.eventsys.bootstrap.FactoryBootstrap].
      */
-    @JvmField
-    val ENABLE_SUPPRESSION = Option(false)
+    BOOTSTRAP,
 
     /**
-     * Mode of lazy generation of event classes on factory classes.
+     * Uses reflection on call site of method to invoke constructor of events.
+     *
+     * Because of the complexity of sorting code, it will not be generated (because will be hard to maintain),
+     * sorting is delegated to [com.github.projectsandstone.eventsys.reflect.PropertiesSort].
      */
-    @JvmField
-    val LAZY_EVENT_GENERATION_MODE = Option(LazyGenerationMode.BOOTSTRAP)
+    REFLECTION
 
-    /**
-     * Enables bridge method generation, this is default in EventSys because kotlin compiler
-     * does not add bridge methods in interfaces like Java 8 do. If you disable this, you will probably
-     * receive log messages about `not implemented methods` in some cases. Bridge methods introduces
-     * a little overhead (depends on the amount of methods in generated class and inherited classes).
-     */
-    @JvmField
-    val ENABLE_BRIDGE = Option(true)
 }

@@ -36,11 +36,10 @@ import com.github.projectsandstone.eventsys.event.EventManager;
 import com.github.projectsandstone.eventsys.gen.check.CheckHandler;
 import com.github.projectsandstone.eventsys.gen.check.SuppressCapableCheckHandler;
 import com.github.projectsandstone.eventsys.gen.event.CommonEventGenerator;
-import com.github.projectsandstone.eventsys.gen.event.EventClassGenerator;
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator;
 import com.github.projectsandstone.eventsys.gen.event.EventGeneratorOptions;
 import com.github.projectsandstone.eventsys.gen.event.ExtensionSpecification;
-import com.github.projectsandstone.eventsys.gen.event.GenericGenerationMode;
+import com.github.projectsandstone.eventsys.gen.event.LazyGenerationMode;
 import com.github.projectsandstone.eventsys.impl.CommonEventManager;
 import com.github.projectsandstone.eventsys.impl.CommonLogger;
 import com.github.projectsandstone.eventsys.logging.LoggerInterface;
@@ -69,8 +68,8 @@ public class TestManager {
         CheckHandler checkHandler = manager.getEventGenerator().getCheckHandler();
 
         manager.getEventGenerator().getOptions().set(EventGeneratorOptions.ENABLE_SUPPRESSION, true);
-        manager.getEventGenerator().getOptions().set(EventGeneratorOptions.GENERIC_EVENT_GENERATION_MODE,
-                GenericGenerationMode.REFLECTION);
+        manager.getEventGenerator().getOptions().set(EventGeneratorOptions.LAZY_EVENT_GENERATION_MODE,
+                LazyGenerationMode.REFLECTION);
 
         manager.getEventGenerator().registerExtension(MessageEvent.class,
                 new ExtensionSpecification(Unit.INSTANCE, null, ProvidedExt.class));
@@ -91,6 +90,10 @@ public class TestManager {
 
         MessageEvent messageEvent = Constant.getMyFactoryInstance().createMessageEvent("HELLO WORLD", "[TAG] ");
         KtEvent ktEvent = Constant.getMyFactoryInstance().createKtEvent("ProjectSandstone");
+
+        KtBridgeStringTest x = Constant.getMyFactoryInstance().createKtBridgeTestEvent("x");
+        Assert.assertEquals("x", x.getValue());
+        Assert.assertEquals("x", ((KtBridgeTest) x).getValue());
 
         manager.dispatch(messageEvent, this);
         manager.dispatch(ktEvent, this);

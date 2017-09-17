@@ -32,6 +32,7 @@ import com.github.projectsandstone.eventsys.event.annotation.Extension;
 import com.github.projectsandstone.eventsys.event.annotation.LazyGeneration;
 import com.github.projectsandstone.eventsys.event.annotation.Name;
 import com.github.projectsandstone.eventsys.event.annotation.TypeParam;
+import com.github.projectsandstone.eventsys.test.KtBridgeStringTest;
 import com.github.projectsandstone.eventsys.test.KtEvent;
 import com.github.projectsandstone.eventsys.test.event.BridgeTestEvent;
 import com.github.projectsandstone.eventsys.test.event.MessageEvent;
@@ -59,4 +60,6 @@ public interface MyFactory {
     MyTestEvent createMyTestEvent2(@Name("name") String name, @Name("amount") int amount);
 
     BridgeTestEvent createBridgeTestEvent(@Name("obj") String obj);
+
+    KtBridgeStringTest createKtBridgeTestEvent(@Name("value") String value);
 }

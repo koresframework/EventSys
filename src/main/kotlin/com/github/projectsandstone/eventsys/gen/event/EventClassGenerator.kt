@@ -197,9 +197,11 @@ internal object EventClassGenerator {
         methods += this.genDefaultMethodsImpl(classType, methods)
 
         val classDeclaration = classDeclarationBuilder.methods(methods).build().let {
-            // Use generate bridges in this was to
-            // Ensure correctness of implementation check
-            it.builder().methods(it.methods + BridgeUtil.genBridgeMethods(it)).build()
+            if (eventGenerator.options[EventGeneratorOptions.ENABLE_BRIDGE]) {
+                // Use generate bridges method instead of bytecode generator option to
+                // Ensure correctness of checker
+                it.builder().methods(it.methods + BridgeUtil.genBridgeMethods(it)).build()
+            } else it
         }
 
         checker.checkDuplicatedMethods(classDeclaration.methods)
