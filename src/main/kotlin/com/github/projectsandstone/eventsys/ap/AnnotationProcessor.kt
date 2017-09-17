@@ -35,6 +35,7 @@ import com.github.jonathanxd.codeapi.type.CodeType
 import com.github.jonathanxd.codeapi.type.GenericType
 import com.github.jonathanxd.codeapi.util.*
 import com.github.jonathanxd.iutils.`object`.Default
+import com.github.jonathanxd.jwiutils.kt.rightOrFail
 import com.github.projectsandstone.eventsys.event.Cancellable
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.annotation.Extension
