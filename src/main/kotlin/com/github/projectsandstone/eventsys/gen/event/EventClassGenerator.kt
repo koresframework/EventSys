@@ -36,6 +36,7 @@ import com.github.jonathanxd.codeapi.bytecode.CHECK
 import com.github.jonathanxd.codeapi.bytecode.VISIT_LINES
 import com.github.jonathanxd.codeapi.bytecode.VisitLineType
 import com.github.jonathanxd.codeapi.bytecode.processor.BytecodeGenerator
+import com.github.jonathanxd.codeapi.bytecode.util.BridgeUtil
 import com.github.jonathanxd.codeapi.common.FieldRef
 import com.github.jonathanxd.codeapi.common.MethodTypeSpec
 import com.github.jonathanxd.codeapi.common.Nothing
@@ -44,11 +45,13 @@ import com.github.jonathanxd.codeapi.generic.GenericSignature
 import com.github.jonathanxd.codeapi.helper.ConcatHelper
 import com.github.jonathanxd.codeapi.literal.Literals
 import com.github.jonathanxd.codeapi.type.CodeType
+import com.github.jonathanxd.codeapi.type.CodeTypeResolver
 import com.github.jonathanxd.codeapi.type.Generic
 import com.github.jonathanxd.codeapi.type.GenericType
 import com.github.jonathanxd.codeapi.util.*
 import com.github.jonathanxd.codeapi.util.conversion.*
 import com.github.jonathanxd.iutils.type.TypeInfo
+import com.github.jonathanxd.iutils.type.TypeInfoUtil
 import com.github.projectsandstone.eventsys.Debug
 import com.github.projectsandstone.eventsys.common.ExtensionHolder
 import com.github.projectsandstone.eventsys.event.Cancellable
@@ -82,6 +85,10 @@ import kotlin.collections.set
  * methods present in the [Event] class must be manually implemented via [Extensions][ExtensionSpecification],
  * [Extensions][ExtensionSpecification] should be registered in [EventGenerator] (with [EventGenerator.registerExtension] method)
  * to work.
+ *
+ * If the event class have type parameters and [EventClassSpecification.typeInfo] provides types for these parameters,
+ * then a reified event class will be generated, if not, a erased event class will be generated with a [TypeParam] parameter
+ * in constructor.
  */
 internal object EventClassGenerator {
     private val cached: MutableMap<EventClassSpecification<*>, Class<*>> = mutableMapOf()
@@ -169,7 +176,7 @@ internal object EventClassGenerator {
 
         classDeclarationBuilder = classDeclarationBuilder
                 .fields(this.genFields(properties, extensions, plain, typeInfo, requiresTypeInfo, eventGenerator))
-                .constructors(this.genConstructor(classType, typeInfo, requiresTypeInfo, properties))
+                .constructors(this.genConstructor(classType, typeInfo, requiresTypeInfo, isSpecialized, properties))
 
         val methods = this.genMethods(typeInfo, requiresTypeInfo, properties).toMutableList()
 
@@ -189,7 +196,11 @@ internal object EventClassGenerator {
 
         methods += this.genDefaultMethodsImpl(classType, methods)
 
-        val classDeclaration = classDeclarationBuilder.methods(methods).build()
+        val classDeclaration = classDeclarationBuilder.methods(methods).build().let {
+            // Use generate bridges in this was to
+            // Ensure correctness of implementation check
+            it.builder().methods(it.methods + BridgeUtil.genBridgeMethods(it)).build()
+        }
 
         checker.checkDuplicatedMethods(classDeclaration.methods)
         this.validateExtensions(extensions, classDeclaration, eventGenerator)
@@ -198,7 +209,7 @@ internal object EventClassGenerator {
 
         val generator = BytecodeGenerator()
 
-        generator.options.set(VISIT_LINES, VisitLineType.FOLLOW_CODE_SOURCE)
+        generator.options.set(VISIT_LINES, VisitLineType.GEN_LINE_INSTRUCTION)
         generator.options.set(CHECK, false)
 
         val bytecodeClass = generator.process(classDeclaration)[0]
@@ -340,12 +351,13 @@ internal object EventClassGenerator {
     private fun genConstructor(base: Class<*>,
                                typeInfo: TypeInfo<*>,
                                requiresType: Boolean,
+                               isSpecialized: Boolean,
                                properties: List<PropertyInfo>): ConstructorDeclaration {
         val eventTypeInfoSignature = getEventTypeInfoSignature(typeInfo)
 
         val parameters = mutableListOf<CodeParameter>()
 
-        if (requiresType) {
+        if (requiresType && !isSpecialized) {
             parameters += parameter(
                     name = eventTypeInfoFieldName,
                     type = eventTypeInfoSignature,
@@ -388,13 +400,29 @@ internal object EventClassGenerator {
         }
 
         if (requiresType) {
-            constructorBody += Objects::class.java.invokeStatic("requireNonNull",
-                    TypeSpec(Types.OBJECT, listOf(Types.OBJECT)),
-                    listOf(accessVariable(eventTypeInfoSignature, eventTypeInfoFieldName))
-            )
+            if (isSpecialized) {
+                constructorBody += setFieldValue(Alias.THIS, Access.THIS, eventTypeInfoSignature, eventTypeInfoFieldName,
+                        cast(Object::class.java, TypeInfo::class.java,invokeInterface(List::class.java,
+                                TypeInfoUtil::class.java.invokeStatic(
+                                        "fromFullString",
+                                        typeSpec(List::class.java, String::class.java),
+                                        listOf(Literals.STRING(typeInfo.toFullString()))
+                                ),
+                                "get",
+                                typeSpec(Object::class.java, Int::class.javaPrimitiveType!!),
+                                listOf(Literals.INT(0)))
+                        ))
+            } else {
 
-            constructorBody += setFieldValue(Alias.THIS, Access.THIS, eventTypeInfoSignature, eventTypeInfoFieldName,
-                    accessVariable(eventTypeInfoSignature, eventTypeInfoFieldName))
+                constructorBody += Objects::class.java.invokeStatic("requireNonNull",
+                        TypeSpec(Types.OBJECT, listOf(Types.OBJECT)),
+                        listOf(accessVariable(eventTypeInfoSignature, eventTypeInfoFieldName))
+                )
+
+                constructorBody += setFieldValue(Alias.THIS, Access.THIS, eventTypeInfoSignature, eventTypeInfoFieldName,
+                        accessVariable(eventTypeInfoSignature, eventTypeInfoFieldName))
+            }
+
         }
 
         properties.forEach {
@@ -415,7 +443,7 @@ internal object EventClassGenerator {
     }
 
     private fun genMethods(typeInfo: TypeInfo<*>,
-                           isSpecialized: Boolean, properties: List<PropertyInfo>): List<MethodDeclaration> {
+                           requiresTypeInfo: Boolean, properties: List<PropertyInfo>): List<MethodDeclaration> {
 
         val methods = mutableListOf<MethodDeclaration>()
 
@@ -429,7 +457,7 @@ internal object EventClassGenerator {
             }
         }
 
-        val toReturn: CodeInstruction = if (isSpecialized)
+        val toReturn: CodeInstruction = if (requiresTypeInfo)
             getEventTypeInfoSignature(typeInfo).let { accessThisField(it, eventTypeInfoFieldName) }
         else createTypeInfo(typeInfo.typeClass)
 

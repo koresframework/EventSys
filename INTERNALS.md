@@ -254,7 +254,7 @@ Yes, you need to provide a `TypeInfo<...>` for event construction, you can also 
 
 **Since 1.3**
 
-If you use generic events, `PropertyHolder.lookup` will be called instead of `PropertyHolder.getGetterProperty`.
+If you use generic events, `PropertyHolder.lookup` will be called instead of `PropertyHolder.getGetterProperty` in event destruction.
 
 ## Lazy generation
 

@@ -33,9 +33,9 @@ import com.github.projectsandstone.eventsys.event.property.PropertyHolder
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
 
 /**
- * [Event].
+ * [Event] base class.
  *
- * Has two ways to implement a event, first is creating your own interface that inherit [Event],
+ * There are two ways to implement a event, first is creating your own interface that inherit [Event],
  * and creating abstract property methods (getters and setters) and calling [EventGenerator.createEventClass].
  * The second is: Implementing event in an concrete class, naming constructor parameters with [Name]
  * annotation and mapping properties to getter and setter (if the property is mutable).
@@ -44,10 +44,24 @@ import com.github.projectsandstone.eventsys.gen.event.EventGenerator
  *
  * An [Event] may have additional properties and/or extensions, events with additional
  * properties and/or extensions have different class from events without these additional
- * properties, different additional properties generates different event classes, this
+ * properties - different additional properties generates different event classes - this
  * happens because [EventGenerator] create fields for additional properties and JVM doesn't
  * have capability to add fields, methods and implementations to existing classes
  * (this is the nature of static VMs).
+ *
+ * For generic events, the type information must be provided in the construction of event instance, in factories,
+ * a parameter of [com.github.projectsandstone.eventsys.event.annotation.TypeParam] type should be added, this parameter
+ * receives the event type to construct and pass to event constructor. Reified events can be also created through
+ * [com.github.projectsandstone.eventsys.gen.event.EventClassGenerator], but they introduce a little overhead for
+ * the first time that event class is generated.
+ *
+ * Example of factory interface of generic event:
+ *
+ * ```
+ * public <T extends Action> UserActionEvent<T> createUserActionEvent(
+ *         @TypeParam TypeInfo<UserActionEvent<T>> type,
+ *         @Name("action") T action);
+ * ```
  */
 interface Event : PropertyHolder {
 

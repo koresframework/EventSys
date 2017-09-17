@@ -30,11 +30,13 @@ package com.github.projectsandstone.eventsys.test;
 import com.github.jonathanxd.iutils.description.Description;
 import com.github.jonathanxd.iutils.description.DescriptionUtil;
 import com.github.jonathanxd.iutils.type.AbstractTypeInfo;
+import com.github.jonathanxd.iutils.type.TypeInfo;
 import com.github.projectsandstone.eventsys.event.EventListener;
 import com.github.projectsandstone.eventsys.event.EventManager;
 import com.github.projectsandstone.eventsys.gen.check.CheckHandler;
 import com.github.projectsandstone.eventsys.gen.check.SuppressCapableCheckHandler;
 import com.github.projectsandstone.eventsys.gen.event.CommonEventGenerator;
+import com.github.projectsandstone.eventsys.gen.event.EventClassGenerator;
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator;
 import com.github.projectsandstone.eventsys.gen.event.EventGeneratorOptions;
 import com.github.projectsandstone.eventsys.gen.event.ExtensionSpecification;
@@ -50,6 +52,7 @@ import com.github.projectsandstone.eventsys.test.listener.MyListener;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -72,6 +75,9 @@ public class TestManager {
         manager.getEventGenerator().registerExtension(MessageEvent.class,
                 new ExtensionSpecification(Unit.INSTANCE, null, ProvidedExt.class));
 
+        Class<MyGenericEvent> eventClass = manager.getEventGenerator().createEventClass(
+                TypeInfo.builderOf(MyGenericEvent.class).of(String.class).build(),
+                Collections.emptyList());
 
         if (checkHandler instanceof SuppressCapableCheckHandler) {
             Description from = DescriptionUtil.from(MessageEvent.class.getDeclaredMethod("getTest", int.class));
