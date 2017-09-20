@@ -515,7 +515,7 @@ internal object EventClassGenerator {
                                             ))
                                             .concat(Literals.STRING(","))
                                             .concat(Literals.STRING("extensions=${extensions
-                                                    .joinToString(prefix = "[", postfix="]") { "[impl=${it.implement?.simpleName},ext=${it.extensionClass?.simpleName},res=${it.residence}]" }}"))
+                                                    .joinToString(prefix = "[", postfix="]") { "[impl=${it.implement?.simpleName},ext=${it.extensionClass?.simpleName},residence=${it.residence}]" }}"))
                                             .concat("}")
                                             .build()
 

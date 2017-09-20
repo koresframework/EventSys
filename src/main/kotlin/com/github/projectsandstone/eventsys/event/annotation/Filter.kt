@@ -27,37 +27,26 @@
  */
 package com.github.projectsandstone.eventsys.event.annotation
 
-import com.github.projectsandstone.eventsys.event.EventPriority
 import com.github.projectsandstone.eventsys.event.Event
-import com.github.projectsandstone.eventsys.event.ListenerSpec
+import kotlin.reflect.KClass
 
 /**
- * Mark function to handle an event.
- *
- * The method MUST specify the [Event] in the first parameter (unless you use [Filter]), other parameters will be filled with
- * properties of [Event], if no one object matches the parameter type, the method will
- * not be invoked.
- *
- * You **MUST** to use [Name] annotation to provide name of property (not required if the compiler generates the
- * parameters types, like `javac` with `-parameters`, CodeAPI-BytecodeWriter, Kotlin compiler, etc...).
+ * Filter event types that a [Listener] function listen to. This is used when you don't use the [Event]
+ * parameter provided to listener function. If you specify more than one [KClass] for [value], a first
+ * listener parameters is required (the same applies if you set [useEventArg] to `true`).
  */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FUNCTION)
-annotation class Listener(
+annotation class Filter(
         /**
-         * Ignore this listener if event is cancelled
+         * Event types to filter (this respect the inheritance, so, if you filter event `B`, this listener
+         * will handle events of type, `B` and all others that `extends` B).
          */
-        val ignoreCancelled: Boolean = false,
+        vararg val value: KClass<*>,
 
         /**
-         * Priority of this listener
+         * Whether the first parameter of event listener is the target [Event] type, does not have effect
+         * if more than one [KClass] is specified to [value].
          */
-        val priority: EventPriority = EventPriority.NORMAL,
-
-        /**
-         * Channel where this method listen to.
-         *
-         * @see ListenerSpec.channel
-         */
-        val channel: Int = -1
+        val useEventArg: Boolean = false
 )

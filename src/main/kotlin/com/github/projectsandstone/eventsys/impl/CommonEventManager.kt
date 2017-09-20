@@ -31,6 +31,7 @@ import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeUtil
 import com.github.projectsandstone.eventsys.event.*
 import com.github.projectsandstone.eventsys.event.EventListener
+import com.github.projectsandstone.eventsys.event.annotation.Filter
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.gen.event.CommonEventGenerator
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
@@ -38,6 +39,7 @@ import com.github.projectsandstone.eventsys.logging.Level
 import com.github.projectsandstone.eventsys.logging.LoggerInterface
 import com.github.projectsandstone.eventsys.logging.MessageType
 import com.github.projectsandstone.eventsys.util.getEventType
+import com.github.projectsandstone.eventsys.util.hasEventFirstArg
 import com.github.projectsandstone.eventsys.util.mh.MethodDispatcher
 import java.lang.reflect.Method
 import java.util.*
@@ -132,9 +134,11 @@ open class CommonEventManager @JvmOverloads constructor(
                                      method: Method): EventListenerContainer<*> {
 
 
-        return EventListenerContainer(owner,
-                TypeUtil.toTypeInfo(method.genericParameterTypes[0]) as TypeInfo<Event>,
-                this.eventGenerator.createMethodListener(owner, method, instance, ListenerSpec.fromMethod(method)))
+        return ListenerSpec.fromMethod(method).let { spec ->
+            EventListenerContainer(owner,
+                    spec.eventType as TypeInfo<Event>,
+                    this.eventGenerator.createMethodListener(owner, method, instance, spec))
+        }
     }
 
 
@@ -142,9 +146,14 @@ open class CommonEventManager @JvmOverloads constructor(
                                       instance: Any): List<EventListenerContainer<*>> {
 
         return instance::class.java.declaredMethods.filter {
-            it.getDeclaredAnnotation(Listener::class.java) != null
-                    && it.parameterCount > 0
-                    && Event::class.java.isAssignableFrom(it.parameterTypes[0])
+            val reqArg = it.getDeclaredAnnotation(Filter::class.java).hasEventFirstArg()
+            if (it.getDeclaredAnnotation(Listener::class.java) != null)
+                if (reqArg)
+                        it.parameterCount > 0
+                        && Event::class.java.isAssignableFrom(it.parameterTypes[0])
+                else true
+            else false
+
         }.map {
             if (this.generateDispatchClass) {
                 return@map this.createMethodListener(

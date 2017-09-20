@@ -96,13 +96,16 @@ open class MethodDispatcher(
     override fun onEvent(event: Event, owner: Any) {
 
         // Process [parameters]
-        if (parameters.size == 1) {
+        if (listenerSpec.firstIsEvent && parameters.size == 1) {
             method.invokeWithArguments(event)
-        } else if (parameters.size > 1) {
-            val args: MutableList<Any?> = mutableListOf(event)
+        } else if (parameters.isNotEmpty()) {
+            val args: MutableList<Any?> = mutableListOf()
+
+            if (listenerSpec.firstIsEvent)
+                args += event
 
             this.namedParameters.forEachIndexed { i, named ->
-                if (i > 0) {
+                if (!listenerSpec.firstIsEvent || i > 0) {
                     val name = named.name
                     val typeInfo = named.type
 

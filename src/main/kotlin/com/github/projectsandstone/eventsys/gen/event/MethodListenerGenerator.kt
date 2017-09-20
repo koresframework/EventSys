@@ -180,10 +180,11 @@ internal object MethodListenerGenerator {
 
             val accessEventVar = accessVariable(eventType, eventVariableName)
 
-            arguments.add(cast(eventType, parameters[0].type.typeClass.codeType, accessEventVar))
+            if (listenerSpec.firstIsEvent)
+                arguments.add(cast(eventType, listenerSpec.eventType.typeClass.codeType, accessEventVar))
 
             parameters.forEachIndexed { i, param ->
-                if (i > 0) {
+                if (!listenerSpec.firstIsEvent || i > 0) {
                     val name = param.name
                     val typeInfo = param.type
 

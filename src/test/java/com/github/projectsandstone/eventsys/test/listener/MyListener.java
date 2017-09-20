@@ -27,7 +27,9 @@
  */
 package com.github.projectsandstone.eventsys.test.listener;
 
+import com.github.projectsandstone.eventsys.event.Event;
 import com.github.projectsandstone.eventsys.event.EventPriority;
+import com.github.projectsandstone.eventsys.event.annotation.Filter;
 import com.github.projectsandstone.eventsys.event.annotation.Listener;
 import com.github.projectsandstone.eventsys.event.annotation.Name;
 import com.github.projectsandstone.eventsys.test.event.MessageEvent;
@@ -38,6 +40,18 @@ public class MyListener {
     @Listener
     public void listen(MessageEvent messageEvent) {
         messageEvent.transform(String::toLowerCase);
+    }
+
+    @Filter(MessageEvent.class)
+    @Listener(priority = EventPriority.FIRST)
+    public void listen(@Name("message") String message) {
+        System.out.println("Listened with filter, message: "+message);
+    }
+
+    @Filter(value = Event.class, useEventArg = true)
+    @Listener(priority = EventPriority.FIRST)
+    public void listenAnyWithMessage(Event event, @Name("message") String message) {
+        System.out.println("Listened to any event with message property, message: "+message+", Event instance: "+event);
     }
 
     @Listener

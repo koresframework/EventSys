@@ -28,14 +28,18 @@
 package com.github.projectsandstone.eventsys.event
 
 import com.github.jonathanxd.codeapi.util.conversion.kotlinParameters
+import com.github.jonathanxd.iutils.type.AbstractTypeInfo
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeUtil
+import com.github.projectsandstone.eventsys.event.annotation.Filter
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.event.annotation.Name
 import com.github.projectsandstone.eventsys.event.annotation.NullableProperty
 import com.github.projectsandstone.eventsys.reflect.isKotlin
+import com.github.projectsandstone.eventsys.util.hasEventFirstArg
 import org.jetbrains.annotations.Nullable
 import java.lang.reflect.Method
+import java.lang.reflect.ParameterizedType
 
 /**
  * Data Class version of [Listener] annotation.
@@ -45,6 +49,11 @@ data class ListenerSpec(
          * Event type.
          */
         val eventType: TypeInfo<*>,
+
+        /**
+         * Whether first parameter is event type or not
+         */
+        val firstIsEvent: Boolean,
 
         /**
          * Ignore this listener if event is cancelled
@@ -83,13 +92,24 @@ data class ListenerSpec(
          */
         fun fromMethod(method: Method): ListenerSpec {
 
-            val evType = TypeUtil.toTypeInfo(method.genericParameterTypes[0])
+            val firstIsEvent =
+                    method.getDeclaredAnnotation(Filter::class.java).hasEventFirstArg()
+
+            val evType =
+                    if (!firstIsEvent)
+                        method.getDeclaredAnnotation(Filter::class.java)?.value?.singleOrNull()?.java?.let {
+                            if (it.superclass == AbstractTypeInfo::class.java)
+                                (it.genericSuperclass as? ParameterizedType)?.actualTypeArguments
+                                        ?.firstOrNull()?.let { TypeUtil.toTypeInfo(it) } ?: TypeInfo.of(it)
+                            else TypeInfo.of(it)
+                        } ?: TypeUtil.toTypeInfo(method.genericParameterTypes[0])
+                    else TypeUtil.toTypeInfo(method.genericParameterTypes[0])
 
             val listenerAnnotation = method.getDeclaredAnnotation(Listener::class.java)
 
             val isKotlin = method.declaringClass.isKotlin
 
-            val ktParameters = if(isKotlin) method.kotlinParameters else null
+            val ktParameters = if (isKotlin) method.kotlinParameters else null
 
             val namedParameters = method.parameters.mapIndexed { i, it ->
 
@@ -110,6 +130,7 @@ data class ListenerSpec(
             }.toList()
 
             return ListenerSpec(eventType = evType,
+                    firstIsEvent = firstIsEvent,
                     ignoreCancelled = listenerAnnotation.ignoreCancelled,
                     priority = listenerAnnotation.priority,
                     parameters = namedParameters,

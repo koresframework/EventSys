@@ -25,39 +25,9 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.event.annotation
+package com.github.projectsandstone.eventsys.util
 
-import com.github.projectsandstone.eventsys.event.EventPriority
-import com.github.projectsandstone.eventsys.event.Event
-import com.github.projectsandstone.eventsys.event.ListenerSpec
+import com.github.projectsandstone.eventsys.event.annotation.Filter
 
-/**
- * Mark function to handle an event.
- *
- * The method MUST specify the [Event] in the first parameter (unless you use [Filter]), other parameters will be filled with
- * properties of [Event], if no one object matches the parameter type, the method will
- * not be invoked.
- *
- * You **MUST** to use [Name] annotation to provide name of property (not required if the compiler generates the
- * parameters types, like `javac` with `-parameters`, CodeAPI-BytecodeWriter, Kotlin compiler, etc...).
- */
-@Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.FUNCTION)
-annotation class Listener(
-        /**
-         * Ignore this listener if event is cancelled
-         */
-        val ignoreCancelled: Boolean = false,
-
-        /**
-         * Priority of this listener
-         */
-        val priority: EventPriority = EventPriority.NORMAL,
-
-        /**
-         * Channel where this method listen to.
-         *
-         * @see ListenerSpec.channel
-         */
-        val channel: Int = -1
-)
+fun Filter?.hasEventFirstArg(): Boolean =
+        this == null || this.useEventArg || this.value.size > 1
