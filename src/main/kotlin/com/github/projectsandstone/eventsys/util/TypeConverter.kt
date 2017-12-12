@@ -36,7 +36,7 @@ import com.github.jonathanxd.iutils.type.TypeInfo
  */
 fun <T: Any> TypeInfo<T>.toGeneric(): Generic {
     val aClass = this.typeClass
-    val related = this.related
+    val related = this.typeParameters
 
     var generic = Generic.type(aClass.codeType)
 

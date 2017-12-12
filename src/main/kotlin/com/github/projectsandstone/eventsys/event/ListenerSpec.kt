@@ -124,7 +124,7 @@ data class ListenerSpec(
                         it.annotations.toList(),
                         typeInfo,
                         it.isAnnotationPresent(NullableProperty::class.java) || isNullable,
-                        evType.related.isNotEmpty()
+                        evType.typeParameters.isNotEmpty()
                 )
 
             }.toList()

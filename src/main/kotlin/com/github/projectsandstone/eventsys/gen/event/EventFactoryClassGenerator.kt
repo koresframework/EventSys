@@ -35,6 +35,7 @@ import com.github.jonathanxd.codeapi.base.*
 import com.github.jonathanxd.codeapi.bytecode.VISIT_LINES
 import com.github.jonathanxd.codeapi.bytecode.VisitLineType
 import com.github.jonathanxd.codeapi.bytecode.processor.BytecodeGenerator
+import com.github.jonathanxd.codeapi.common.DynamicMethodSpec
 import com.github.jonathanxd.codeapi.common.MethodInvokeSpec
 import com.github.jonathanxd.codeapi.common.Nothing
 import com.github.jonathanxd.codeapi.common.VariableRef
@@ -396,9 +397,8 @@ internal object EventFactoryClassGenerator {
         val (paramNames, args) = getNamesAndArgsArrs(evType, params, single)
 
         return returnValue(evType, invokeDynamic(
-                evType,
                 MethodInvokeSpec(InvokeType.INVOKE_STATIC, FactoryBootstrap.BOOTSTRAP_SPEC),
-                invoke(InvokeType.INVOKE_INTERFACE, evType, accessStatic(),
+                DynamicMethodSpec(
                         "create",
                         TypeSpec(evType,
                                 listOf(EventGenerator::class.java,

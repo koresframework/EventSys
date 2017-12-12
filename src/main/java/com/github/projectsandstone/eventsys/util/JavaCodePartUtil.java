@@ -38,7 +38,6 @@ import java.lang.reflect.Type;
 
 public class JavaCodePartUtil {
 
-
     public static CodeInstruction callGetCodeType(CodeInstruction instruction) {
         return InvocationFactory.invokeStatic(CodeTypes.class, "getCodeType",
                 Factories.typeSpec(CodeType.class, Type.class),

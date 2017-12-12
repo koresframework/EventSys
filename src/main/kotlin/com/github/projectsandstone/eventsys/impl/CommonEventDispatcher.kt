@@ -91,7 +91,7 @@ abstract class HelperEventDispatcher : EventDispatcher {
         fun checkType(): Boolean {
             return container.eventType.isAssignableFrom(eventType)
                     ||
-                    (container.eventType.related.isEmpty()
+                    (container.eventType.typeParameters.isEmpty()
                             && container.eventType.typeClass.isAssignableFrom(eventType.typeClass))
         }
 

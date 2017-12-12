@@ -188,9 +188,9 @@ internal object MethodListenerGenerator {
                     val name = param.name
                     val typeInfo = param.type
 
-                    val toAdd: CodeInstruction = if (typeInfo.typeClass == Property::class.java && typeInfo.related.isNotEmpty()) {
+                    val toAdd: CodeInstruction = if (typeInfo.typeClass == Property::class.java && typeInfo.typeParameters.isNotEmpty()) {
                         this.callGetPropertyDirectOn(accessEventVar,
-                                name, typeInfo.related[0].typeClass,
+                                name, typeInfo.typeParameters[0].typeClass,
                                 true,
                                 param.isNullable,
                                 param.shouldLookup)

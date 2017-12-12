@@ -37,7 +37,7 @@ fun genericFromTypeInfo(typeInfo: TypeInfo<*>): GenericType {
 
     var generic = Generic.type(typeInfo.typeClass.codeType)
 
-    typeInfo.related.forEach {
+    typeInfo.typeParameters.forEach {
         generic = generic.of(genericFromTypeInfo(it))
     }
 

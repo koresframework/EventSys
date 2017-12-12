@@ -67,7 +67,7 @@ class CommonEventGenerator(override val logger: LoggerInterface) : EventGenerato
 
     override fun registerExtension(base: Class<*>, extensionSpecification: ExtensionSpecification) {
 
-        if(this.extensionMap[base]?.contains(extensionSpecification) ?: false)
+        if(this.extensionMap[base]?.contains(extensionSpecification) == true)
             return
 
         this.extensionMap.putToList(base, extensionSpecification)
@@ -81,7 +81,9 @@ class CommonEventGenerator(override val logger: LoggerInterface) : EventGenerato
         return EventFactoryClassGenerator.create(this, factoryClass, this.logger)
     }
 
-    override fun <T : Event> createEventClass(type: TypeInfo<T>, additionalProperties: List<PropertyInfo>, extensions: List<ExtensionSpecification>): Class<T> {
+    override fun <T : Event> createEventClass(type: TypeInfo<T>,
+                                              additionalProperties: List<PropertyInfo>,
+                                              extensions: List<ExtensionSpecification>): Class<T> {
 
         val exts = (this.extensionMap[type.typeClass] ?: emptyList()) + extensions
 
