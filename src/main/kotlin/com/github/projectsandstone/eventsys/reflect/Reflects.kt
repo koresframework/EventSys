@@ -37,32 +37,6 @@ import kotlin.reflect.KFunction
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.valueParameters
 
-val propertyHolderSignatures: List<Description> =
-        Property::class.java.methods.map {
-            DescriptionUtil.from(it)
-        }
-
-@Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
-val Class<*>.isKotlin get() = this.declaredAnnotations.any {
-    (it as java.lang.annotation.Annotation).annotationType().canonicalName.startsWith("kotlin.Metadata")
-}
-
-val Method.parameterNames: List<String>
-    get() {
-        val kNames by lazy {
-            this.parameterNames
-        }
-
-        return this.parameters.mapIndexed { i, it ->
-            it.getDeclaredAnnotation(Name::class.java)?.value ?: kNames[i]
-        }
-    }
-
-val KFunction<*>.parameterNames: List<String>
-    get() = this.valueParameters.map {
-        it.findAnnotation<Name>()?.value ?: it.name ?: throw IllegalStateException("Cannot determine name of parameter $it")
-    }
-
 fun findImplementation(jClass: Class<*>, method: Method): Pair<Class<*>, Method>? {
     val paramTypes = arrayOf(method.declaringClass) + method.parameterTypes
     val retType = method.returnType

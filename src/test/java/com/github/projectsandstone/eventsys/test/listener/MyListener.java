@@ -78,4 +78,8 @@ public class MyListener {
         System.out.println("i: " + i);
     }
 
+    @Listener(ignoreCancelled = true, priority = EventPriority.HIGHEST)
+    public void listen4(MyGenericEvent<Integer> event, @Name("obj") int i) {
+        System.out.println("ii: " + i);
+    }
 }

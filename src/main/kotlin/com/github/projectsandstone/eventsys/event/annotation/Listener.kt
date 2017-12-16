@@ -27,37 +27,25 @@
  */
 package com.github.projectsandstone.eventsys.event.annotation
 
-import com.github.projectsandstone.eventsys.event.EventPriority
 import com.github.projectsandstone.eventsys.event.Event
+import com.github.projectsandstone.eventsys.event.EventPriority
 import com.github.projectsandstone.eventsys.event.ListenerSpec
 
 /**
- * Mark function to handle an event.
+ * Marks the function as a event listener function.
  *
- * The method MUST specify the [Event] in the first parameter (unless you use [Filter]), other parameters will be filled with
- * properties of [Event], if no one object matches the parameter type, the method will
- * not be invoked.
+ * The function must specify the [Event] in the first parameter (unless annotated with [Filter]),
+ * other parameters will be filled with matching properties of [Event]. If [Event] does not have
+ * the property, and the parameter is not annotated with [OptionalProperty], the event will be
+ * ignored by this listener. The property parameters must have name retention (compiled by Javac with
+ * `-parameters`, compiled by Kotlinc) or have [Name] annotation.
  *
- * You **MUST** to use [Name] annotation to provide name of property (not required if the compiler generates the
- * parameters types, like `javac` with `-parameters`, CodeAPI-BytecodeWriter, Kotlin compiler, etc...).
+ * @property ignoreCancelled Ignore this listener if event is cancelled.
+ * @property priority Priority of this listener.
+ * @property channel Channel where this method listen to, see [ListenerSpec.channel]
  */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FUNCTION)
-annotation class Listener(
-        /**
-         * Ignore this listener if event is cancelled
-         */
-        val ignoreCancelled: Boolean = false,
-
-        /**
-         * Priority of this listener
-         */
-        val priority: EventPriority = EventPriority.NORMAL,
-
-        /**
-         * Channel where this method listen to.
-         *
-         * @see ListenerSpec.channel
-         */
-        val channel: Int = -1
-)
+annotation class Listener(val ignoreCancelled: Boolean = false,
+                          val priority: EventPriority = EventPriority.NORMAL,
+                          val channel: Int = -1)

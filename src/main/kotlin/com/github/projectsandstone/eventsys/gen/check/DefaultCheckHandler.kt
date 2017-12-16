@@ -37,19 +37,20 @@ import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.annotation.Check
 import com.github.projectsandstone.eventsys.event.annotation.SuppressCheck
+import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
 import com.github.projectsandstone.eventsys.gen.event.EventGeneratorOptions
-import com.github.projectsandstone.eventsys.gen.event.ExtensionSpecification
 import com.github.projectsandstone.eventsys.logging.MessageType
 import com.github.projectsandstone.eventsys.util.fail
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 import java.lang.reflect.Parameter
 import java.lang.reflect.Type
+import java.util.concurrent.ConcurrentSkipListSet
 
 class DefaultCheckHandler : SuppressCapableCheckHandler {
 
-    private val suppress = mutableListOf<String>()
+    private val suppress = ConcurrentSkipListSet<String>()
 
     override fun addSuppression(elementDescription: Description) {
         suppress.add(elementDescription.plainDescription)

@@ -76,7 +76,8 @@ abstract class HelperEventDispatcher : EventDispatcher {
         try {
             eventListenerContainer.eventListener.helpOnEvent(event, owner)
         } catch (throwable: Throwable) {
-            logger.log("Cannot dispatch event $event (with provided type: $eventType) to listener " +
+            logger.log("Cannot dispatch event $event (of type: ${event.eventTypeInfo})" +
+                    " with provided type '$eventType' to listener " +
                     "${eventListenerContainer.eventListener} (of event type: ${eventListenerContainer.eventType}) of owner " +
                     "$owner. " +
                     "(Source: $owner, channel: $channel)",

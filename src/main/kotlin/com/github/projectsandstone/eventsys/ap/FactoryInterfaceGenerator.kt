@@ -45,6 +45,9 @@ import com.github.projectsandstone.eventsys.gen.event.eventTypeInfoFieldName
 import javax.lang.model.element.Element
 import javax.lang.model.element.TypeElement
 
+/**
+ * Generator of factory interface
+ */
 object FactoryInterfaceGenerator {
 
     private val DEFAULT = Default::class.java.codeType

@@ -25,20 +25,24 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.gen
+package com.github.projectsandstone.eventsys.util
 
-import com.github.jonathanxd.codeapi.type.Generic
-import com.github.jonathanxd.codeapi.type.GenericType
-import com.github.jonathanxd.codeapi.util.codeType
-import com.github.jonathanxd.iutils.type.TypeInfo
+import com.github.projectsandstone.eventsys.event.Event
+import com.github.projectsandstone.eventsys.reflect.PropertiesSort
+import java.lang.reflect.InvocationTargetException
 
-fun genericFromTypeInfo(typeInfo: TypeInfo<*>): GenericType {
+@Suppress("UNCHECKED_CAST")
+fun <T : Event> create(evtImplClass: Class<out T>, properties: Map<String, Any>): T {
+    val ctr = evtImplClass.constructors[0]
+    val entries = properties.entries.toList() // Keep order
+    val names = entries.map { it.key }
+    val args = entries.map { it.value }
+    val sortedArgs = PropertiesSort.sort(ctr, names.toTypedArray(), args.toTypedArray())
 
-    var generic = Generic.type(typeInfo.typeClass.codeType)
-
-    typeInfo.typeParameters.forEach {
-        generic = generic.of(genericFromTypeInfo(it))
+    try {
+        return ctr.newInstance(*sortedArgs) as T
+    } catch (t: InvocationTargetException) {
+        throw t.targetException
     }
 
-    return generic
 }

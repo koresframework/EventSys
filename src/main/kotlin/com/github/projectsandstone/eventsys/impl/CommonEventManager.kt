@@ -35,6 +35,7 @@ import com.github.projectsandstone.eventsys.event.annotation.Filter
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.gen.event.CommonEventGenerator
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
+import com.github.projectsandstone.eventsys.gen.event.EventGeneratorOptions
 import com.github.projectsandstone.eventsys.logging.Level
 import com.github.projectsandstone.eventsys.logging.LoggerInterface
 import com.github.projectsandstone.eventsys.logging.MessageType
@@ -49,15 +50,12 @@ import java.util.concurrent.ThreadFactory
 /**
  * Common Event Manager implementation
  *
- * @param generateDispatchClass True to generate classes that delegates directly to the listener method (faster),
- * false to use Java 7 MethodHandles to delegate to listener methods (slower) (see [MethodDispatcher]).
  * @param sorter Sort event listeners.
  * @param threadFactory Thread factory for async dispatch
  * @param logger Logger interface for error logging.
  * @param eventGenerator Event generator instance to generate listener methods.
  */
-open class CommonEventManager @JvmOverloads constructor(
-        val generateDispatchClass: Boolean = true,
+open class CommonEventManager(
         sorter: Comparator<EventListener<*>>,
         threadFactory: ThreadFactory,
         val logger: LoggerInterface,
@@ -155,12 +153,7 @@ open class CommonEventManager @JvmOverloads constructor(
             else false
 
         }.map {
-            if (this.generateDispatchClass) {
-                return@map this.createMethodListener(
-                        owner = owner,
-                        method = it,
-                        instance = instance)
-            } else {
+            if (this.eventGenerator.options[EventGeneratorOptions.USE_METHOD_HANDLE_LISTENER]) {
                 val data = ListenerSpec.fromMethod(it)
 
                 @Suppress("UNCHECKED_CAST")
@@ -168,6 +161,11 @@ open class CommonEventManager @JvmOverloads constructor(
                         owner = owner,
                         eventType = data.eventType as TypeInfo<Event>,
                         eventListener = MethodDispatcher(data, it, instance))
+            } else {
+                return@map this.createMethodListener(
+                        owner = owner,
+                        method = it,
+                        instance = instance)
             }
         }
     }
@@ -179,7 +177,7 @@ open class CommonEventManager @JvmOverloads constructor(
 
 }
 
-class DefaultEventManager : CommonEventManager(true, COMMON_SORTER, COMMON_THREAD_FACTORY, COMMON_LOGGER, COMMON_EVENT_GENERATOR) {
+class DefaultEventManager : CommonEventManager(COMMON_SORTER, COMMON_THREAD_FACTORY, COMMON_LOGGER, COMMON_EVENT_GENERATOR) {
 
     companion object {
         private val COMMON_SORTER = Comparator.comparing(EventListener<*>::priority)

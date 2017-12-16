@@ -41,8 +41,8 @@ import com.github.jonathanxd.codeapi.type.TypeRef;
 import com.github.jonathanxd.iutils.collection.Collections3;
 import com.github.jonathanxd.iutils.data.TypedData;
 import com.github.jonathanxd.iutils.object.TypedKey;
-import com.github.jonathanxd.iutils.type.AbstractTypeInfo;
 import com.github.jonathanxd.iutils.type.TypeInfo;
+import com.github.jonathanxd.iutils.type.TypeParameterProvider;
 import com.github.projectsandstone.eventsys.event.Event;
 import com.github.projectsandstone.eventsys.event.property.PropertyHolder;
 import com.github.projectsandstone.eventsys.gen.event.EventClassGeneratorKt;
@@ -58,8 +58,8 @@ import java.util.Optional;
 public class EventSysAdditionalHandler {
 
     private static final TypedKey<List<PropertyInfo>> PROP_INFO_KEY = new TypedKey<>("PROP_INFO",
-            new AbstractTypeInfo<List<PropertyInfo>>() {
-            });
+            new TypeParameterProvider<List<PropertyInfo>>() {
+            }.createTypeInfo());
 
     private static void registerPropertiesIfAbsent(TypedData typedData, Class<?> base) {
         if (!PROP_INFO_KEY.contains(typedData)) {

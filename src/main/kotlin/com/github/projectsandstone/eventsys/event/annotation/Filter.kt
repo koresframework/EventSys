@@ -31,22 +31,15 @@ import com.github.projectsandstone.eventsys.event.Event
 import kotlin.reflect.KClass
 
 /**
- * Filter event types that a [Listener] function listen to. This is used when you don't use the [Event]
- * parameter provided to listener function. If you specify more than one [KClass] for [value], a first
- * listener parameters is required (the same applies if you set [useEventArg] to `true`).
+ * Filter event types that a [Listener] function listen to. This is used when listener
+ * only care about properties and does not care about [Event] instance, or to listen to a limited
+ * set of event types.
+ *
+ * @property value Event types to filter. The filter respect the inheritance, so, if you filter event
+ * of type `B`, this listener will handle events of type `B` and all others that `extends` B.
+ * @property useEventArg Whether the first parameter of event listener function is the dispatched [Event]
+ * or not.
  */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FUNCTION)
-annotation class Filter(
-        /**
-         * Event types to filter (this respect the inheritance, so, if you filter event `B`, this listener
-         * will handle events of type, `B` and all others that `extends` B).
-         */
-        vararg val value: KClass<*>,
-
-        /**
-         * Whether the first parameter of event listener is the target [Event] type, does not have effect
-         * if more than one [KClass] is specified to [value].
-         */
-        val useEventArg: Boolean = false
-)
+annotation class Filter(vararg val value: KClass<*> = [Event::class], val useEventArg: Boolean = false)

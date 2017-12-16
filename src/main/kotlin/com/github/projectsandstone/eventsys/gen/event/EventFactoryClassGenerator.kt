@@ -46,7 +46,9 @@ import com.github.jonathanxd.codeapi.type.CodeType
 import com.github.jonathanxd.codeapi.type.Generic
 import com.github.jonathanxd.codeapi.type.GenericType
 import com.github.jonathanxd.codeapi.type.LoadedCodeType
-import com.github.jonathanxd.codeapi.util.*
+import com.github.jonathanxd.codeapi.util.asGeneric
+import com.github.jonathanxd.codeapi.util.canonicalName
+import com.github.jonathanxd.codeapi.util.codeType
 import com.github.jonathanxd.codeapi.util.conversion.parameterNames
 import com.github.jonathanxd.codeapi.util.conversion.toMethodDeclaration
 import com.github.jonathanxd.codeapi.util.conversion.toVariableAccess
@@ -58,6 +60,7 @@ import com.github.projectsandstone.eventsys.bootstrap.FactoryBootstrap
 import com.github.projectsandstone.eventsys.event.Cancellable
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.annotation.*
+import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
 import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
 import com.github.projectsandstone.eventsys.gen.save.ClassSaver
 import com.github.projectsandstone.eventsys.logging.LoggerInterface
@@ -69,19 +72,18 @@ import com.github.projectsandstone.eventsys.util.JavaCodePartUtil
 import com.github.projectsandstone.eventsys.util.fail
 import com.github.projectsandstone.eventsys.util.toSimpleString
 import java.lang.reflect.*
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * This class generates an implementation of an event factory, this method will create the event class
- * and direct-call the constructor.
+ * This class generates implementation of an event factory interface, this method will create the event class
+ * and direct-call the constructor. Factory generated events cannot have [Extensions][Extension] plugged
+ * after first generation of classes (does not apply to factories annotated with [LazyGeneration]).
  *
  * Additional properties that are mutable must be annotated with [Mutable] annotation.
  *
  * Extensions are provided via [Extension] annotation in the factory method.
- *
  */
 internal object EventFactoryClassGenerator {
-
-    private val cached = mutableMapOf<Class<*>, Any>()
 
     /**
      * Create [factoryClass] instance invoking generated event classes constructor.
@@ -90,9 +92,6 @@ internal object EventFactoryClassGenerator {
     internal fun <T : Any> create(eventGenerator: EventGenerator,
                                   factoryClass: Class<T>,
                                   logger: LoggerInterface): T {
-
-        if (this.cached.containsKey(factoryClass))
-            return this.cached[factoryClass]!! as T
 
         val checkHandler = eventGenerator.checkHandler
 
@@ -160,7 +159,7 @@ internal object EventFactoryClassGenerator {
                                         parameterNames
                                 )
 
-                                val methodDeclaration = factoryMethod.toMethodDeclaration { index, parameter ->
+                                val methodDeclaration = factoryMethod.toMethodDeclaration { index, _ ->
                                     parameterNames[index]
                                 }
 
@@ -222,7 +221,7 @@ internal object EventFactoryClassGenerator {
 
         val generator = BytecodeGenerator()
 
-        generator.options.set(VISIT_LINES, VisitLineType.FOLLOW_CODE_SOURCE)
+        generator.options.set(VISIT_LINES, VisitLineType.GEN_LINE_INSTRUCTION)
 
         val bytecodeClass = try {
             generator.process(declaration)[0]
@@ -240,14 +239,10 @@ internal object EventFactoryClassGenerator {
             ClassSaver.save("factorygen", generatedEventClass)
         }
 
-        return generatedEventClass.javaClass.let {
-            val instance = it.getConstructor(EventGenerator::class.java).newInstance(eventGenerator)
-            this.cached.put(factoryClass, instance)
-            instance
-        }
+        return generatedEventClass.javaClass.getConstructor(EventGenerator::class.java).newInstance(eventGenerator)
     }
 
-    fun getExtensions(eventType: Class<*>, factoryMethod: Method): List<ExtensionSpecification> {
+    private fun getExtensions(eventType: Class<*>, factoryMethod: Method): List<ExtensionSpecification> {
         val allExtensionAnnotations = mutableListOf<Extension>()
 
         allExtensionAnnotations += eventType.getAllAnnotationsOfType(Extension::class.java)
@@ -264,7 +259,7 @@ internal object EventFactoryClassGenerator {
         }
     }
 
-    fun getNames(factoryMethod: Method): List<String> {
+    private fun getNames(factoryMethod: Method): List<String> {
         val ktNames by lazy(LazyThreadSafetyMode.NONE) {
             factoryMethod.parameterNames
         }
@@ -279,7 +274,7 @@ internal object EventFactoryClassGenerator {
 
     }
 
-    fun genDefaultInvocation(kFunc: Method, impl: Pair<Class<*>, Method>): CodeInstruction {
+    private fun genDefaultInvocation(kFunc: Method, impl: Pair<Class<*>, Method>): CodeInstruction {
         val base = kFunc
         val delegateClass = impl.first
         val delegate = impl.second
@@ -305,10 +300,10 @@ internal object EventFactoryClassGenerator {
         }
     }
 
-    fun extractAdditionalPropertiesTo(additionalProperties: MutableList<PropertyInfo>,
-                                      factoryMethod: Method,
-                                      properties: List<PropertyInfo>,
-                                      parameterNames: List<String>) {
+    private fun extractAdditionalPropertiesTo(additionalProperties: MutableList<PropertyInfo>,
+                                              factoryMethod: Method,
+                                              properties: List<PropertyInfo>,
+                                              parameterNames: List<String>) {
         factoryMethod.parameters.forEachIndexed { i, parameter ->
             val find = properties.any { it.propertyName == parameterNames[i] && it.type == parameter.type }
 
@@ -336,13 +331,13 @@ internal object EventFactoryClassGenerator {
         }
     }
 
-    fun invokeEventConstructor(implClass: Class<*>,
-                               eventTypeInfo: TypeInfo<*>,
-                               methodDeclaration: MethodDeclaration,
-                               logger: LoggerInterface,
-                               eventType: Class<*>,
-                               specParam: Parameter?,
-                               factoryMethod: Method): CodeInstruction {
+    private fun invokeEventConstructor(implClass: Class<*>,
+                                       eventTypeInfo: TypeInfo<*>,
+                                       methodDeclaration: MethodDeclaration,
+                                       logger: LoggerInterface,
+                                       eventType: Class<*>,
+                                       specParam: Parameter?,
+                                       factoryMethod: Method): CodeInstruction {
 
         val ctr = implClass.declaredConstructors[0]
 
@@ -394,7 +389,7 @@ internal object EventFactoryClassGenerator {
                                            single: Parameter?,
                                            params: List<CodeParameter>): CodeInstruction {
 
-        val (paramNames, args) = getNamesAndArgsArrs(evType, params, single)
+        val (paramNames, args) = getNamesAndArgsArrs(params)
 
         return returnValue(evType, invokeDynamic(
                 MethodInvokeSpec(InvokeType.INVOKE_STATIC, FactoryBootstrap.BOOTSTRAP_SPEC),
@@ -409,8 +404,8 @@ internal object EventFactoryClassGenerator {
                                         Array<Any>::class.java)),
                         listOf(accessThisField(EventGenerator::class.java, eventGeneratorParam),
                                 createTypeInfo(evType),
-                                additionalProperties.asArgs(),
-                                extensions.asArgs(),
+                                additionalProperties.asPropArgs(),
+                                extensions.asExtArgs(),
                                 paramNames,
                                 args
                         )
@@ -426,7 +421,7 @@ internal object EventFactoryClassGenerator {
                                                   single: Parameter?,
                                                   params: List<CodeParameter>): List<CodeInstruction> {
 
-        val (paramNames, args) = getNamesAndArgsArrs(evType, params, single)
+        val (paramNames, args) = getNamesAndArgsArrs(params)
 
         val insns = mutableListOf<CodeInstruction>()
 
@@ -439,8 +434,8 @@ internal object EventFactoryClassGenerator {
                                 // eventType, additionalParameters, extensions
                                 TypeSpec(Types.CLASS, listOf(TypeInfo::class.java, List::class.java, List::class.java)),
                                 listOf(createTypeInfo(evType),
-                                        additionalProperties.asArgs(),
-                                        extensions.asArgs()
+                                        additionalProperties.asPropArgs(),
+                                        extensions.asExtArgs()
                                 )
                         ))
 
@@ -480,19 +475,19 @@ internal object EventFactoryClassGenerator {
         return insns
     }
 
-    fun getNamesAndArgs(evType: Class<*>, params: List<CodeParameter>, single: Parameter?) =
+    private fun getNamesAndArgs(params: List<CodeParameter>) =
             params.map { Literals.STRING(it.name) } to params.map {
-                    it.toVariableAccess()
+                it.toVariableAccess()
             }
 
-    fun getNamesAndArgsArrs(evType: Class<*>, params: List<CodeParameter>, single: Parameter?) =
-            getNamesAndArgs(evType, params, single).let { (pNames, cArgs) ->
+    private fun getNamesAndArgsArrs(params: List<CodeParameter>) =
+            getNamesAndArgs(params).let { (pNames, cArgs) ->
                 createArray(Array<String>::class.java, listOf(Literals.INT(pNames.size)),
                         pNames) to createArray(Array<Any>::class.java, listOf(Literals.INT(cArgs.size)),
                         cArgs)
             }
 
-    fun List<PropertyInfo>.asArgs(): CodeInstruction {
+    private fun List<PropertyInfo>.asPropArgs(): CodeInstruction {
         return Collections3::class.java.invokeStatic("listOf",
                 TypeSpec(List::class.java, listOf(Array<Any>::class.java)),
                 listOf(createArray(Array<Any>::class.java, listOf(Literals.INT(this.size)),
@@ -500,8 +495,7 @@ internal object EventFactoryClassGenerator {
                 )))
     }
 
-    @JvmName("asArgs2")
-    fun List<ExtensionSpecification>.asArgs(): CodeInstruction {
+    private fun List<ExtensionSpecification>.asExtArgs(): CodeInstruction {
         return Collections3::class.java.invokeStatic("listOf",
                 TypeSpec(List::class.java, listOf(Array<Any>::class.java)),
                 listOf(createArray(Array<Any>::class.java, listOf(Literals.INT(this.size)),
@@ -509,7 +503,7 @@ internal object EventFactoryClassGenerator {
                 ))
     }
 
-    fun PropertyInfo.asArg(): CodeInstruction {
+    private fun PropertyInfo.asArg(): CodeInstruction {
         return PropertyInfo::class.java.invokeConstructor(
 
                 constructorTypeSpec(Types.CLASS, // declaringClass
@@ -534,7 +528,7 @@ internal object EventFactoryClassGenerator {
         )
     }
 
-    fun PropertyTypeInfo.toArg(): CodeInstruction {
+    private fun PropertyTypeInfo.toArg(): CodeInstruction {
         return PropertyTypeInfo::class.java.invokeConstructor(
                 constructorTypeSpec(
                         GenericType::class.java,
@@ -544,7 +538,7 @@ internal object EventFactoryClassGenerator {
         )
     }
 
-    fun GenericSignature.toArg(): CodeInstruction =
+    private fun GenericSignature.toArg(): CodeInstruction =
             GenericSignature::class.java.invokeStatic(
                     "create",
                     TypeSpec(GenericSignature::class.java, listOf(Array<GenericType>::class.java)),
@@ -556,32 +550,31 @@ internal object EventFactoryClassGenerator {
 }
 
 fun GenericType.toArg(): CodeInstruction {
-    val insn = if (this.isType)
-        Generic::class.java.invokeStatic(
+    val insn = when {
+        this.isType -> Generic::class.java.invokeStatic(
                 "type",
                 TypeSpec(Generic::class.java, listOf(CodeType::class.java)),
                 listOf(this.resolvedType.toArg())
         )
-    else if (this.isWildcard)
-        Generic::class.java.invokeStatic(
+        this.isWildcard -> Generic::class.java.invokeStatic(
                 "wildcard",
                 TypeSpec(Generic::class.java),
                 emptyList()
         )
-    else
-        Generic::class.java.invokeStatic(
+        else -> Generic::class.java.invokeStatic(
                 "type",
                 TypeSpec(Generic::class.java, listOf(Types.STRING)),
                 listOf(Literals.STRING(this.name))
         )
+    }
 
-    if (this.bounds.isEmpty()) {
-        return insn
+    return if (this.bounds.isEmpty()) {
+        insn
     } else {
         val args = this.bounds.toArgs()
         val arrType = GenericType.Bound::class.java.codeType.toArray(1)
 
-        return invokeVirtual(Generic::class.java,
+        invokeVirtual(Generic::class.java,
                 insn,
                 "of",
                 TypeSpec(Generic::class.java, listOf(arrType)),
@@ -604,12 +597,11 @@ fun CodeInstruction.callGetCodeType(): CodeInstruction =
         JavaCodePartUtil.callGetCodeType(this)
 
 fun CodeType.toArg(): CodeInstruction =
-        if (this is LoadedCodeType<*>)
-            Literals.CLASS(this.loadedType.codeType).callGetCodeType()
-        else if (this is GenericType)
-            this.toArg()
-        else
-            Literals.CLASS(this).callGetCodeType()
+        when {
+            this is LoadedCodeType<*> -> Literals.CLASS(this.loadedType.codeType).callGetCodeType()
+            this is GenericType -> this.toArg()
+            else -> Literals.CLASS(this).callGetCodeType()
+        }
 
 fun ExtensionSpecification.asArg(): CodeInstruction {
     return ExtensionSpecification::class.java.invokeConstructor(
@@ -627,9 +619,9 @@ fun CodeType.usesParameters(parameters: Array<TypeVariable<Method>>): Boolean {
     if (this !is GenericType)
         return false
 
-    if (!this.isType && !this.isWildcard && parameters.any { it.name == this.name })
-        return true
-    else return this.bounds.map { it.type }.any { it.usesParameters(parameters) }
+    return if (!this.isType && !this.isWildcard && parameters.any { it.name == this.name })
+        true
+    else this.bounds.map { it.type }.any { it.usesParameters(parameters) }
 }
 
 

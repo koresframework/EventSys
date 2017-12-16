@@ -25,16 +25,20 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.common
+package com.github.projectsandstone.eventsys.extension
 
 /**
- * Interface which all events that holds any extension extends.
+ * Specification of event extension. An Extension is a indirect implementation of event methods,
+ * the extension may be plugged to event class before `Event class generation` (trying to plug after that
+ * cause `Event class` to be regenerated in next request).
+ *
+ * @property residence Location which this extension was specified. For annotations,
+ * this will be the annotated elements. (may be [Unit])
+ * @property implement Specifies the interface to add to `event class hierarchy`.
+ * @property extensionClass Specifies the extension class which implements the methods
+ * of [implement], of `event base interfaces`, or provides additional features to the event.
+ * This class is instantiated in event constructor and stored as variable,
+ * a single-arg constructor is required, the first argument must be
+ * a type assignable to target event value.
  */
-interface ExtensionHolder {
-
-    /**
-     * Gets extension instance by [extensions class][extensionClass]. Returns null if extensions was not found.
-     */
-    fun <T> getExtension(extensionClass: Class<T>): T?
-
-}
+data class ExtensionSpecification(val residence: Any, val implement: Class<*>?, val extensionClass: Class<*>?)

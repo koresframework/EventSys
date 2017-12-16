@@ -27,7 +27,10 @@
  */
 package com.github.projectsandstone.eventsys.event.property
 
+import com.github.jonathanxd.iutils.reflection.ClassUtil
+import com.github.jonathanxd.iutils.type.Primitive
 import com.github.projectsandstone.eventsys.event.property.primitive.*
+import com.github.projectsandstone.eventsys.util.cast
 
 /**
  * [PropertyHolder] holds information about properties in a class, commonly used in Events,
@@ -37,7 +40,7 @@ interface PropertyHolder {
 
     /**
      * Gets the property of name [name] and return it only if the value
-     * is assignable to [type].
+     * is assignable to [type], wraping and un-wraping primitives if necessary.
      *
      * Only works with [GetterProperties][GetterProperty].
      *
@@ -58,6 +61,9 @@ interface PropertyHolder {
 
                 if (type.isInstance(get))
                     return property as Property<R>
+
+                if (get != null && Primitive.typeEquals(type, get::class.java))
+                    return property.cast(type, get::class.java) as Property<R>
             }
         } else {
             this.getProperties().forEach { (_, property) ->
@@ -66,6 +72,9 @@ interface PropertyHolder {
 
                     if (type.isInstance(get))
                         return property as Property<R>
+
+                    if (get != null && Primitive.typeEquals(type, get::class.java))
+                        return property.cast(type, get::class.java) as Property<R>
                 }
             }
         }

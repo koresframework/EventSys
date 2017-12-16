@@ -32,7 +32,6 @@ import com.github.jonathanxd.codeapi.CodeSource
 import com.github.jonathanxd.codeapi.MutableCodeSource
 import com.github.jonathanxd.codeapi.Types
 import com.github.jonathanxd.codeapi.base.*
-import com.github.jonathanxd.codeapi.bytecode.CHECK
 import com.github.jonathanxd.codeapi.bytecode.VISIT_LINES
 import com.github.jonathanxd.codeapi.bytecode.VisitLineType
 import com.github.jonathanxd.codeapi.bytecode.processor.BytecodeGenerator
@@ -44,16 +43,17 @@ import com.github.jonathanxd.codeapi.common.Nothing
 import com.github.jonathanxd.codeapi.factory.*
 import com.github.jonathanxd.codeapi.generic.GenericSignature
 import com.github.jonathanxd.codeapi.helper.ConcatHelper
+import com.github.jonathanxd.codeapi.helper.invokeToString
 import com.github.jonathanxd.codeapi.literal.Literals
 import com.github.jonathanxd.codeapi.type.CodeType
 import com.github.jonathanxd.codeapi.type.Generic
 import com.github.jonathanxd.codeapi.type.GenericType
 import com.github.jonathanxd.codeapi.util.*
 import com.github.jonathanxd.codeapi.util.conversion.*
+import com.github.jonathanxd.iutils.function.consumer.BooleanConsumer
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeInfoUtil
 import com.github.projectsandstone.eventsys.Debug
-import com.github.projectsandstone.eventsys.common.ExtensionHolder
 import com.github.projectsandstone.eventsys.event.Cancellable
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.annotation.Name
@@ -62,13 +62,14 @@ import com.github.projectsandstone.eventsys.event.annotation.TypeParam
 import com.github.projectsandstone.eventsys.event.annotation.Validate
 import com.github.projectsandstone.eventsys.event.property.*
 import com.github.projectsandstone.eventsys.event.property.primitive.*
+import com.github.projectsandstone.eventsys.extension.ExtensionHolder
+import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
 import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
 import com.github.projectsandstone.eventsys.gen.genericFromTypeInfo
 import com.github.projectsandstone.eventsys.gen.save.ClassSaver
 import com.github.projectsandstone.eventsys.reflect.findImplementation
 import com.github.projectsandstone.eventsys.reflect.getName
 import com.github.projectsandstone.eventsys.reflect.isEqual
-import com.github.projectsandstone.eventsys.util.BooleanConsumer
 import com.github.projectsandstone.eventsys.util.toGeneric
 import com.github.projectsandstone.eventsys.validation.Validator
 import java.lang.reflect.Method
@@ -76,7 +77,6 @@ import java.lang.reflect.Modifier
 import java.lang.reflect.Type
 import java.util.*
 import java.util.function.*
-import kotlin.collections.set
 
 /**
  * Generates [Event] class implementation.
@@ -94,7 +94,6 @@ import kotlin.collections.set
  * in constructor.
  */
 internal object EventClassGenerator {
-    private val cached: MutableMap<EventClassSpecification<*>, Class<*>> = mutableMapOf()
 
     private fun TypeInfo<*>.toStr(): String {
         if (this.typeParameters.isEmpty()) {
@@ -118,18 +117,10 @@ internal object EventClassGenerator {
         }
     }
 
-    fun <T : Event> cache(eventClassSpecification: EventClassSpecification<T>, klass: Class<T>) {
-        this.cached[eventClassSpecification] = klass
-    }
-
     @Suppress("UNCHECKED_CAST")
     fun <T : Event> genImplementation(eventClassSpecification: EventClassSpecification<T>,
                                       eventGenerator: EventGenerator): Class<T> {
         val checker = eventGenerator.checkHandler
-
-        if (this.cached.containsKey(eventClassSpecification)) {
-            return this.cached[eventClassSpecification]!! as Class<T>
-        }
 
         val typeInfo = eventClassSpecification.typeInfo
         val additionalProperties = eventClassSpecification.additionalProperties
@@ -183,7 +174,7 @@ internal object EventClassGenerator {
 
         val methods = this.genMethods(typeInfo, requiresTypeInfo, properties).toMutableList()
 
-        methods += this.genToStringMethod(typeInfo, properties, extensions)
+        methods += this.genToStringMethod(properties, extensions)
 
         extensions.forEach { ext ->
             ext.extensionClass?.let {
@@ -215,7 +206,6 @@ internal object EventClassGenerator {
         val generator = BytecodeGenerator()
 
         generator.options.set(VISIT_LINES, VisitLineType.GEN_LINE_INSTRUCTION)
-        generator.options.set(CHECK, true)
 
         val bytecodeClass = generator.process(classDeclaration)[0]
 
@@ -228,10 +218,7 @@ internal object EventClassGenerator {
             ClassSaver.save("eventgen", generatedEventClass)
         }
 
-        return generatedEventClass.javaClass.let {
-            this.cached.put(eventClassSpecification, it)
-            it
-        }
+        return generatedEventClass.javaClass
     }
 
     private fun genExtensionGetter(extensions: List<ExtensionSpecification>): MethodDeclaration {
@@ -485,12 +472,11 @@ internal object EventClassGenerator {
     private fun getEventTypeInfoSignature(typeInfo: TypeInfo<*>): GenericType =
             Generic.type(TypeInfo::class.java).of(typeInfo.toGeneric())
 
-    val erasedTypeInfo: GenericType =
+    private val erasedTypeInfo: GenericType =
             Generic.type(TypeInfo::class.java).of(Generic.wildcard().`extends$`(Event::class.java))
 
-    fun genToStringMethod(typeInfo: TypeInfo<*>,
-                          properties: List<PropertyInfo>,
-                          extensions: List<ExtensionSpecification>): MethodDeclaration =
+    private fun genToStringMethod(properties: List<PropertyInfo>,
+                                  extensions: List<ExtensionSpecification>): MethodDeclaration =
             MethodDeclaration.Builder.builder()
                     .annotations(overrideAnnotation())
                     .modifiers(CodeModifier.PUBLIC)
@@ -512,7 +498,14 @@ internal object EventClassGenerator {
                                                     listOf()
                                             ))
                                             .concat(Literals.STRING(","))
-                                            .concat(Literals.STRING("type=$typeInfo"))
+                                            .concat(Literals.STRING("type="))
+                                            .concat(invokeInterface(
+                                                    Event::class.java,
+                                                    Access.THIS,
+                                                    "getEventTypeInfo",
+                                                    TypeSpec(TypeInfo::class.java),
+                                                    listOf()
+                                            ).invokeToString())
                                             .concat(Literals.STRING(","))
                                             .concat(Literals.STRING("properties=${properties
                                                     .joinToString(prefix = "[", postfix = "]") { it.propertyName }}"
@@ -720,7 +713,7 @@ internal object EventClassGenerator {
             val delegateClass = it.second.first
             val delegate = it.second.second
 
-            val parameters = base.parameters.mapIndexed { i, it ->
+            val parameters = base.parameters.mapIndexed { i, _ ->
                 parameter(type = delegate.parameters[i + 1].type, name = "arg$i")
             }
 
@@ -821,9 +814,9 @@ fun getProperties(type: Class<*>,
                 val setterName = setter?.name
 
                 val validator = setter?.getDeclaredAnnotation(Validate::class.java)?.value?.java
-                val isNotNull = setter?.parameterAnnotations?.firstOrNull()?.any { it is NotNullValue }
-                        ?: getter?.isAnnotationPresent(NotNullValue::class.java)
-                        ?: method.isAnnotationPresent(NotNullValue::class.java)
+                val isNotNull = setter?.parameterAnnotations?.firstOrNull()?.any { it is NotNullValue } == true
+                        || getter?.isAnnotationPresent(NotNullValue::class.java) == true
+                        || method.isAnnotationPresent(NotNullValue::class.java)
 
                 list += PropertyInfo(
                         method.declaringClass,
@@ -979,7 +972,7 @@ private fun invokeGetter(type: Class<*>, supplierInfo: Pair<String, Class<*>>, p
 
     return InvokeDynamic.LambdaMethodRef.Builder.builder()
             .methodRef(spec)
-            .arguments(Access.THIS)
+            .target(Access.THIS)
             .baseSam(MethodTypeSpec(supplierType, supplierInfo.first, typeSpec(rtype)))
             .expectedTypes(typeSpec(realType /*propertyType*/))
             .build()
@@ -1002,7 +995,8 @@ private fun invokeSetter(type: Class<*>, consumerType: CodeType, property: Prope
 
     return InvokeDynamic.LambdaMethodRef.Builder.builder()
             .methodRef(spec)
-            .arguments(Access.THIS)
+            .target(Access.THIS)
+            .arguments()
             .baseSam(MethodTypeSpec(consumerType, "accept", constructorTypeSpec(ptype)))
             .expectedTypes(constructorTypeSpec(realType/*propertyType*/))
             .build()

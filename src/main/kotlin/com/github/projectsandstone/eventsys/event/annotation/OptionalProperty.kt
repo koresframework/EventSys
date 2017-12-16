@@ -27,9 +27,25 @@
  */
 package com.github.projectsandstone.eventsys.event.annotation
 
+import com.github.projectsandstone.eventsys.event.property.Property
+import com.github.jonathanxd.iutils.opt.Opt
+
 /**
- * Marks the event property as nullable.
+ * May be applied to destruction arguments of event listeners functions, from event system perspective,
+ * this means that the property is optional to exists in event, and if does not exists, use `null` in
+ * place [its][Property] value. Receiving `null` does not necessarily means that the property is absent,
+ * it can be the value of property (if the property is nullable). Also you can use JwIUtils [Opt] instead
+ * of [OptionalProperty] annotation, only make sure to use the right specialized version of [Opt] (OptLazy is not supported).
+ *
+ * Example of use of [Opt]:
+ *
+ * ```
+ * @Listener
+ * fun onJoin(event: JoinEvent, name: OptObject<String>) {
+ *     ...
+ * }
+ * ```
  */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.VALUE_PARAMETER)
-annotation class NullableProperty
+annotation class OptionalProperty

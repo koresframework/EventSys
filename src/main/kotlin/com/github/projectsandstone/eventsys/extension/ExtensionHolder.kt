@@ -25,20 +25,18 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.gen
+package com.github.projectsandstone.eventsys.extension
 
-import com.github.jonathanxd.codeapi.type.Generic
-import com.github.jonathanxd.codeapi.type.GenericType
-import com.github.jonathanxd.codeapi.util.codeType
-import com.github.jonathanxd.iutils.type.TypeInfo
+/**
+ * Interface which all events that holds any extension extends.
+ *
+ * @see ExtensionSpecification
+ */
+interface ExtensionHolder {
 
-fun genericFromTypeInfo(typeInfo: TypeInfo<*>): GenericType {
+    /**
+     * Gets extension instance by [extensions class][extensionClass]. Returns null if extensions was not found.
+     */
+    fun <T> getExtension(extensionClass: Class<T>): T?
 
-    var generic = Generic.type(typeInfo.typeClass.codeType)
-
-    typeInfo.typeParameters.forEach {
-        generic = generic.of(genericFromTypeInfo(it))
-    }
-
-    return generic
 }

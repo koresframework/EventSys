@@ -27,9 +27,8 @@
  */
 package com.github.projectsandstone.eventsys.event.property.primitive
 
+import com.github.jonathanxd.iutils.function.consumer.BooleanConsumer
 import com.github.projectsandstone.eventsys.event.property.SetterProperty
-import com.github.projectsandstone.eventsys.event.property.primitive.BooleanProperty
-import com.github.projectsandstone.eventsys.util.BooleanConsumer
 
 /**
  * Boolean setter property.

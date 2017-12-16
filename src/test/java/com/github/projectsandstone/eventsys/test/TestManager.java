@@ -29,8 +29,8 @@ package com.github.projectsandstone.eventsys.test;
 
 import com.github.jonathanxd.iutils.description.Description;
 import com.github.jonathanxd.iutils.description.DescriptionUtil;
-import com.github.jonathanxd.iutils.type.AbstractTypeInfo;
 import com.github.jonathanxd.iutils.type.TypeInfo;
+import com.github.jonathanxd.iutils.type.TypeParameterProvider;
 import com.github.projectsandstone.eventsys.event.EventListener;
 import com.github.projectsandstone.eventsys.event.EventManager;
 import com.github.projectsandstone.eventsys.gen.check.CheckHandler;
@@ -38,7 +38,7 @@ import com.github.projectsandstone.eventsys.gen.check.SuppressCapableCheckHandle
 import com.github.projectsandstone.eventsys.gen.event.CommonEventGenerator;
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator;
 import com.github.projectsandstone.eventsys.gen.event.EventGeneratorOptions;
-import com.github.projectsandstone.eventsys.gen.event.ExtensionSpecification;
+import com.github.projectsandstone.eventsys.extension.ExtensionSpecification;
 import com.github.projectsandstone.eventsys.gen.event.LazyGenerationMode;
 import com.github.projectsandstone.eventsys.impl.CommonEventManager;
 import com.github.projectsandstone.eventsys.impl.CommonLogger;
@@ -61,15 +61,14 @@ import kotlin.Unit;
 public class TestManager {
 
     @Test
-    public void test() throws NoSuchMethodException {
-
+    public void test() throws NoSuchMethodException, InterruptedException {
         EventManager manager = new MyManager();
 
         CheckHandler checkHandler = manager.getEventGenerator().getCheckHandler();
 
         manager.getEventGenerator().getOptions().set(EventGeneratorOptions.ENABLE_SUPPRESSION, true);
         manager.getEventGenerator().getOptions().set(EventGeneratorOptions.LAZY_EVENT_GENERATION_MODE,
-                LazyGenerationMode.REFLECTION);
+                LazyGenerationMode.BOOTSTRAP);
 
         manager.getEventGenerator().registerExtension(MessageEvent.class,
                 new ExtensionSpecification(Unit.INSTANCE, null, ProvidedExt.class));
@@ -101,30 +100,30 @@ public class TestManager {
         ktEvent.reset();
 
         MyGenericEvent<String> a = Constant.getMyFactoryInstance()
-                .createMyGenericEvent(new AbstractTypeInfo<MyGenericEvent<String>>() {
-                }, "A");
+                .createMyGenericEvent(new TypeParameterProvider<MyGenericEvent<String>>() {
+                }.createTypeInfo(), "A");
         MyGenericEvent<Integer> b = Constant.getMyFactoryInstance()
-                .createMyGenericEvent(new AbstractTypeInfo<MyGenericEvent<Integer>>() {
-                }, 1);
+                .createMyGenericEvent(new TypeParameterProvider<MyGenericEvent<Integer>>() {
+                }.createTypeInfo(), 1);
 
         MyGenericEvent<Object> c = Constant.getMyFactoryInstance()
-                .createMyGenericEvent(new AbstractTypeInfo<MyGenericEvent<Object>>() {
-                }, "Y");
+                .createMyGenericEvent(new TypeParameterProvider<MyGenericEvent<Object>>() {
+                }.createTypeInfo(), "Y");
 
         MyGenericEvent<Object> d = Constant.getMyFactoryInstance()
-                .createMyGenericEvent(new AbstractTypeInfo<MyGenericEvent<Object>>() {
-                }, 7);
+                .createMyGenericEvent(new TypeParameterProvider<MyGenericEvent<Object>>() {
+                }.createTypeInfo(), 7);
 
         manager.dispatch(a, this);
         manager.dispatch(b, this);
         manager.dispatch(c, this);
         manager.dispatch(d, this);
 
-        manager.dispatch(c, new AbstractTypeInfo<MyGenericEvent<String>>() {
-        }.cast(), this);
+        manager.dispatch(c, new TypeParameterProvider<MyGenericEvent<String>>() {
+        }.createTypeInfo().cast(), this);
 
-        manager.dispatch(d, new AbstractTypeInfo<MyGenericEvent<String>>() {
-        }.cast(), this);
+        manager.dispatch(d, new TypeParameterProvider<MyGenericEvent<String>>() {
+        }.createTypeInfo().cast(), this);
 
         Constant.getMyFactoryInstance().createMyTestEvent("Cup", 100);
         Constant.getMyFactoryInstance().createMyTestEvent2("Cup", 100);
@@ -147,7 +146,7 @@ public class TestManager {
         private static final EventGenerator COMMON_EVENT_GENERATOR = new CommonEventGenerator(COMMON_LOGGER);
 
         MyManager() {
-            super(true, COMMON_SORTER, COMMON_THREAD_FACTORY, COMMON_LOGGER, COMMON_EVENT_GENERATOR);
+            super(COMMON_SORTER, COMMON_THREAD_FACTORY, COMMON_LOGGER, COMMON_EVENT_GENERATOR);
         }
     }
 

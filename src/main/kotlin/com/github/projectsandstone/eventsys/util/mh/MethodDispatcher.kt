@@ -27,14 +27,15 @@
  */
 package com.github.projectsandstone.eventsys.util.mh
 
-import com.github.jonathanxd.iutils.annotation.Named
 import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.iutils.type.TypeUtil
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
 import com.github.projectsandstone.eventsys.event.EventPriority
 import com.github.projectsandstone.eventsys.event.ListenerSpec
-import com.github.projectsandstone.eventsys.event.annotation.Name
+import com.github.projectsandstone.eventsys.event.property.GetterProperty
+import com.github.projectsandstone.eventsys.event.property.Property
+import com.github.projectsandstone.eventsys.util.createNoneRuntime
+import com.github.projectsandstone.eventsys.util.createSomeRuntime
 import java.lang.invoke.MethodHandle
 import java.lang.invoke.MethodHandles
 import java.lang.reflect.Method
@@ -72,46 +73,47 @@ open class MethodDispatcher(
     val method: MethodHandle
         get() = backingMethod_
 
-    val parameters: Array<TypeInfo<*>> = method.genericParameterTypes.map { TypeUtil.toTypeInfo(it) }.toTypedArray()
-
-    internal val namedParameters: Array<Param> =
-            method.parameters.map {
-                val typeInfo = TypeUtil.toTypeInfo(it.parameterizedType)
-
-                val name: String? = it.getDeclaredAnnotation(Named::class.java)?.value
-                        ?: it.getDeclaredAnnotation(Name::class.java)?.value
-
-                return@map Param(name, typeInfo, eventType.typeClass.typeParameters.isNotEmpty())
-
-            }.toTypedArray()
-
     init {
-        if (parameters.isEmpty()) {
+        if (method.genericParameterTypes.isEmpty()) {
             throw IllegalArgumentException("Invalid Method: '$method'. (No Parameters)")
         }
     }
 
-    data class Param(val name: String?, val type: TypeInfo<*>, val lookup: Boolean)
-
     override fun onEvent(event: Event, owner: Any) {
 
         // Process [parameters]
-        if (listenerSpec.firstIsEvent && parameters.size == 1) {
+        if (listenerSpec.firstIsEvent && listenerSpec.parameters.size == 1) {
             method.invokeWithArguments(event)
-        } else if (parameters.isNotEmpty()) {
+        } else if (this.listenerSpec.parameters.isNotEmpty()) {
             val args: MutableList<Any?> = mutableListOf()
 
             if (listenerSpec.firstIsEvent)
                 args += event
 
-            this.namedParameters.forEachIndexed { i, named ->
-                if (!listenerSpec.firstIsEvent || i > 0) {
-                    val name = named.name
-                    val typeInfo = named.type
+            this.listenerSpec.parameters.forEachIndexed { i, spec ->
+                if (!this.listenerSpec.firstIsEvent || i > 0) {
+                    val name = spec.name
+                    val typeInfo = spec.type
 
-                    args += if (named.lookup)
-                        event.lookup(typeInfo.typeClass, name)
-                    else event.getProperty(typeInfo.typeClass, name)
+                    val type =
+                            if (typeInfo.typeClass == Property::class.java && typeInfo.typeParameters.size == 1)
+                                typeInfo.getTypeParameter(0).typeClass
+                            else
+                                typeInfo.typeClass
+
+                    val found =
+                            if (spec.shouldLookup) event.lookup(type, name) as? GetterProperty<*>
+                            else event.getGetterProperty(type, name)
+
+                    if (found == null && spec.isOptional) {
+                        if (spec.optType == null) args.add(null)
+                        else args.add(spec.optType.createNoneRuntime())
+                    } else if (found == null) {
+                        return
+                    } else {
+                        if (spec.optType == null) args.add(found.getValue())
+                        else args.add(spec.optType.createSomeRuntime(found.getValue()))
+                    }
                 }
             }
 

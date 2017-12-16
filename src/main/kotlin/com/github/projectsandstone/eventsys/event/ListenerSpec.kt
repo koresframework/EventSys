@@ -28,61 +28,44 @@
 package com.github.projectsandstone.eventsys.event
 
 import com.github.jonathanxd.codeapi.util.conversion.kotlinParameters
-import com.github.jonathanxd.iutils.type.AbstractTypeInfo
+import com.github.jonathanxd.codeapi.util.isKotlin
 import com.github.jonathanxd.iutils.type.TypeInfo
+import com.github.jonathanxd.iutils.type.TypeParameterProvider
 import com.github.jonathanxd.iutils.type.TypeUtil
 import com.github.projectsandstone.eventsys.event.annotation.Filter
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.event.annotation.Name
-import com.github.projectsandstone.eventsys.event.annotation.NullableProperty
-import com.github.projectsandstone.eventsys.reflect.isKotlin
+import com.github.projectsandstone.eventsys.event.annotation.OptionalProperty
 import com.github.projectsandstone.eventsys.util.hasEventFirstArg
-import org.jetbrains.annotations.Nullable
+import com.github.projectsandstone.eventsys.util.isOptType
 import java.lang.reflect.Method
 import java.lang.reflect.ParameterizedType
+import java.lang.reflect.Type
 
 /**
  * Data Class version of [Listener] annotation.
+ *
+ * @property eventType Event type information.
+ * @property firstIsEvent Whether first parameter is event type or not.
+ * @property ignoreCancelled Ignore this listener if event is cancelled.
+ * @property priority Priority of this listener.
+ * @property parameters Method parameters.
+ * @property channel Channel where this method listen to. Less than zero means all groups.
+ * Channel value may vary depending on the event dispatcher. This same event instance can be dispatched in different channels.
  */
 data class ListenerSpec(
-        /**
-         * Event type.
-         */
         val eventType: TypeInfo<*>,
-
-        /**
-         * Whether first parameter is event type or not
-         */
         val firstIsEvent: Boolean,
-
-        /**
-         * Ignore this listener if event is cancelled
-         */
         val ignoreCancelled: Boolean = false,
-
-        /**
-         * Priority of this listener
-         */
         val priority: EventPriority = EventPriority.NORMAL,
-
-        /**
-         * Method parameters
-         */
         val parameters: List<LParameter>,
-
-        /**
-         * Channel where this method listen to. Less than zero means all groups.
-         *
-         * Channel value may vary depending on the event dispatcher.
-         *
-         * This same event instance can be dispatched in different channels.
-         */
         val channel: Int) {
 
     data class LParameter internal constructor(val name: String,
                                                val annotations: List<Annotation>,
                                                val type: TypeInfo<*>,
-                                               val isNullable: Boolean,
+                                               val isOptional: Boolean,
+                                               val optType: Type?,
                                                val shouldLookup: Boolean)
 
     companion object {
@@ -98,11 +81,11 @@ data class ListenerSpec(
             val evType =
                     if (!firstIsEvent)
                         method.getDeclaredAnnotation(Filter::class.java)?.value?.singleOrNull()?.java?.let {
-                            if (it.superclass == AbstractTypeInfo::class.java)
+                            if (it.superclass == TypeParameterProvider::class.java)
                                 (it.genericSuperclass as? ParameterizedType)?.actualTypeArguments
                                         ?.firstOrNull()?.let { TypeUtil.toTypeInfo(it) } ?: TypeInfo.of(it)
                             else TypeInfo.of(it)
-                        } ?: TypeUtil.toTypeInfo(method.genericParameterTypes[0])
+                        } ?: TypeInfo.of(Event::class.java)
                     else TypeUtil.toTypeInfo(method.genericParameterTypes[0])
 
             val listenerAnnotation = method.getDeclaredAnnotation(Listener::class.java)
@@ -113,17 +96,23 @@ data class ListenerSpec(
 
             val namedParameters = method.parameters.mapIndexed { i, it ->
 
-                val isNullable = if (ktParameters != null) ktParameters[i].type.isMarkedNullable else
-                    it.isAnnotationPresent(Nullable::class.java)
+                val typeIsOptional = it.type.isOptType()
+                val isOptional = typeIsOptional || it.isAnnotationPresent(OptionalProperty::class.java)
 
                 val typeInfo = TypeUtil.toTypeInfo(it.parameterizedType)
+                val parameterType =
+                        if (typeIsOptional) typeInfo.getTypeParameter(0)
+                        else typeInfo
 
-                val name: String? = it.getDeclaredAnnotation(Name::class.java)?.value ?: ktParameters?.get(i)?.name
+                val name: String? = it.getDeclaredAnnotation(Name::class.java)?.value
+                        ?: (if (it.isNamePresent) it.name else null)
+                        ?: ktParameters?.get(i)?.name
 
                 return@mapIndexed LParameter(name ?: it.name,
                         it.annotations.toList(),
-                        typeInfo,
-                        it.isAnnotationPresent(NullableProperty::class.java) || isNullable,
+                        parameterType,
+                        isOptional,
+                        if (typeIsOptional) typeInfo.typeClass else null,
                         evType.typeParameters.isNotEmpty()
                 )
 

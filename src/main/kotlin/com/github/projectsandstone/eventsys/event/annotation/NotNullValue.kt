@@ -27,8 +27,14 @@
  */
 package com.github.projectsandstone.eventsys.event.annotation
 
+
 /**
  * Annotation used by EventSys to generate non-null checks for properties in event implementation.
+ * To enable, this annotation must be present in: property getter, setter or setter first parameter.
+ *
+ * We do not use `NotNull` or `NonNull` because they commonly have `CLASS` retention, for compile-time
+ * there is no problem, even for those who have `SOURCE` retention, but for runtime, where the magic happens,
+ * the annotation must have `RUNTIME` retention to check presence of the annotation.
  *
  * If you're using IntelliJ, we heavily recommend you to add this annotation to `NotNull` annotations of `Inspections`
  */

@@ -51,4 +51,10 @@ object EventGeneratorOptions {
      */
     @JvmField
     val ENABLE_BRIDGE = Option(true)
+
+    /**
+     * Parse arguments and dispatch to listener method with Java 7 MethodHandles instead of generating listener class.
+     */
+    @JvmField
+    val USE_METHOD_HANDLE_LISTENER = Option(false)
 }

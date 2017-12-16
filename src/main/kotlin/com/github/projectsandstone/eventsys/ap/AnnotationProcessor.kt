@@ -54,6 +54,9 @@ import javax.tools.Diagnostic
 import javax.tools.FileObject
 import javax.tools.StandardLocation
 
+/**
+ * Annotation processor of compile-time factory interface generation.
+ */
 class AnnotationProcessor : AbstractProcessor() {
 
     override fun process(annotations: MutableSet<out TypeElement>, roundEnv: RoundEnvironment): Boolean {

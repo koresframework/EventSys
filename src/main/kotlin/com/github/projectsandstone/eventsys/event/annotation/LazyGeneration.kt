@@ -28,9 +28,9 @@
 package com.github.projectsandstone.eventsys.event.annotation
 
 /**
- * Marks the factory to use **lazy** generation of events,
- * this means that the factory will not rely on static classes, but instead will delegate generation
- * to another method and events will be generated when the factory method is called (and then cached).
+ * Marks the factory to use **lazy** generation of events.
+ * This means that the factory will not rely on static classes, but instead will delegate generation
+ * to another method and events will be generated (and then cached) when the factory method is called.
  */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FUNCTION)

@@ -27,8 +27,8 @@
  */
 package com.github.projectsandstone.eventsys.event
 
-import com.github.jonathanxd.iutils.type.AbstractTypeInfo
 import com.github.jonathanxd.iutils.type.TypeInfo
+import com.github.jonathanxd.jwiutils.kt.typeInfo
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
 import com.github.projectsandstone.eventsys.impl.EventListenerContainer
@@ -119,7 +119,7 @@ interface EventManager {
      * All listeners will be called (no matter the channel it listen).
      *
      * @param event [Event] to dispatch do listeners.
-     * @param owner Instance of the [event].
+     * @param owner Owner of the [event].
      */
     fun <T : Event> dispatch(event: T, owner: Any) =
         this.dispatch(event, owner, -1)
@@ -270,7 +270,7 @@ interface EventDispatcher {
  * @param eventListener Event Listener instance.
  */
 inline fun <reified T : Event> EventManager.registerListener(plugin: Any, eventListener: EventListener<T>) {
-    val typeInfo: TypeInfo<T> = object : AbstractTypeInfo<T>() {}
+    val typeInfo: TypeInfo<T> = typeInfo()
 
     this.registerListener(plugin, typeInfo, eventListener)
 }

@@ -32,6 +32,7 @@ import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
 import com.github.projectsandstone.eventsys.event.ListenerSpec
+import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
 import com.github.projectsandstone.eventsys.gen.check.CheckHandler
 import com.github.projectsandstone.eventsys.logging.LoggerInterface
 import java.lang.reflect.Method
@@ -60,7 +61,7 @@ interface EventGenerator {
     var checkHandler: CheckHandler
 
     /**
-     * Registers a [extension][extensionSpecification] for [event base class][base].
+     * Plugs an [extension][extensionSpecification] to events of type [base].
      */
     fun registerExtension(base: Class<*>, extensionSpecification: ExtensionSpecification)
 
@@ -99,6 +100,14 @@ interface EventGenerator {
      * @see EventFactoryClassGenerator
      */
     fun <T : Any> createFactoryAsync(factoryClass: Class<T>): Future<T>
+
+    /**
+     * Creates event class
+     *
+     * @see EventClassGenerator
+     */
+    fun <T : Event> createEventClass(type: TypeInfo<T>): Class<T> =
+            this.createEventClass(type, emptyList(), emptyList())
 
     /**
      * Creates event class

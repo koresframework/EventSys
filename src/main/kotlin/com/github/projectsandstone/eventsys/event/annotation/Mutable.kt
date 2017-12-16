@@ -28,7 +28,7 @@
 package com.github.projectsandstone.eventsys.event.annotation
 
 /**
- * Marks additional property as mutable.
+ * Marks additional property of factory method as mutable.
  */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.VALUE_PARAMETER)

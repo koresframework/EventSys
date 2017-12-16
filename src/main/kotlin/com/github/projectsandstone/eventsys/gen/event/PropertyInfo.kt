@@ -33,7 +33,7 @@ import com.github.projectsandstone.eventsys.validation.Validator
 import java.lang.reflect.Type
 
 /**
- * Information about property.
+ * Information about property to generate.
  */
 data class PropertyInfo @JvmOverloads constructor(val declaringType: Class<*>,
                                                   val propertyName: String,

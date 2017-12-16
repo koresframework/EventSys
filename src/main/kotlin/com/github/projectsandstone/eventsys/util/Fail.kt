@@ -27,7 +27,6 @@
  */
 package com.github.projectsandstone.eventsys.util
 
-
 class FailException : Exception()
 
 @Suppress("NOTHING_TO_INLINE")

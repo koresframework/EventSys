@@ -30,4 +30,4 @@ package com.github.projectsandstone.eventsys.util
 import com.github.projectsandstone.eventsys.event.annotation.Filter
 
 fun Filter?.hasEventFirstArg(): Boolean =
-        this == null || this.useEventArg || this.value.size > 1
+        this == null || this.useEventArg

@@ -28,25 +28,35 @@
 package com.github.projectsandstone.eventsys.gen.event
 
 import com.github.jonathanxd.codeapi.base.TypeDeclaration
-import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
+import com.github.jonathanxd.codeapi.bytecode.classloader.CodeClassLoader
 import com.github.projectsandstone.eventsys.event.Event
+import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
 import java.util.*
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * [ClassLoader] of all event generated classes
  */
 internal object EventGenClassLoader {
 
-    private val loadedClasses_ = mutableListOf<GeneratedEventClass<*>>()
+    private val loadedClasses_ = CopyOnWriteArrayList<GeneratedEventClass<*>>()
     val loadedClasses = Collections.unmodifiableList(loadedClasses_)
 
-    fun defineClass(name: String, byteArray: ByteArray, disassembled: Lazy<String>): GeneratedEventClass<*> {
+    fun defineClass(decl: TypeDeclaration, byteArray: ByteArray, disassembled: Lazy<String>): GeneratedEventClass<*> {
         val cl = Event::class.java.classLoader
-        return this.defineClass(name, byteArray, disassembled, cl)
+        return this.defineClass(decl, byteArray, disassembled, cl)
     }
 
-    fun defineClass(name: String, byteArray: ByteArray, disassembled: Lazy<String>, classLoader: ClassLoader): GeneratedEventClass<*> {
-        val definedClass = this.inject(classLoader, name, byteArray)
+    fun defineClass(decl: TypeDeclaration,
+                    byteArray: ByteArray,
+                    disassembled: Lazy<String>,
+                    classLoader: ClassLoader): GeneratedEventClass<*> {
+
+        val definedClass = try {
+            this.inject(classLoader, decl.canonicalName, byteArray)
+        } catch (e: Exception) {
+            CodeClassLoader(classLoader).define(decl, byteArray)
+        }
 
         val sandstoneClass = GeneratedEventClass(definedClass, byteArray, disassembled)
 
@@ -56,7 +66,8 @@ internal object EventGenClassLoader {
     }
 
     private fun inject(classLoader: ClassLoader, name: String, bytes: ByteArray): Class<*> {
-        val method = ClassLoader::class.java.getDeclaredMethod("defineClass", String::class.java, ByteArray::class.java, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+        val method = ClassLoader::class.java.getDeclaredMethod("defineClass",
+                String::class.java, ByteArray::class.java, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
         method.isAccessible = true
         try {
             return method.invoke(classLoader, name, bytes, 0, bytes.size) as Class<*>
@@ -64,11 +75,5 @@ internal object EventGenClassLoader {
             throw IllegalArgumentException("Cannot inject provided class: $name.", t)
         }
     }
-
-    fun defineClass(typeDeclaration: TypeDeclaration, byteArray: ByteArray, disassembled: Lazy<String>) =
-            this.defineClass(typeDeclaration.canonicalName, byteArray, disassembled)
-
-    fun defineClass(typeDeclaration: TypeDeclaration, byteArray: ByteArray, disassembled: Lazy<String>, classLoader: ClassLoader) =
-            this.defineClass(typeDeclaration.canonicalName, byteArray, disassembled, classLoader)
 
 }

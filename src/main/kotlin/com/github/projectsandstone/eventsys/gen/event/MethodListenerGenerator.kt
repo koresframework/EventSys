@@ -56,23 +56,17 @@ import com.github.projectsandstone.eventsys.event.property.PropertyHolder
 import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
 import com.github.projectsandstone.eventsys.gen.save.ClassSaver
 import com.github.projectsandstone.eventsys.reflect.getName
-import com.github.projectsandstone.eventsys.util.toGeneric
-import com.github.projectsandstone.eventsys.util.toSimpleString
+import com.github.projectsandstone.eventsys.util.*
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
+import java.lang.reflect.Type
 
 /**
  * Creates [EventListener] class that invokes a method (that are annotated with [Listener]) directly (without reflection).
  */
 internal object MethodListenerGenerator {
 
-    private val cache = mutableMapOf<Method, EventListener<Event>>()
-
     fun create(owner: Any, method: Method, instance: Any?, listenerSpec: ListenerSpec): EventListener<Event> {
-
-        if (this.cache.containsKey(method)) {
-            return this.cache[method]!!
-        }
 
         val klass = this.createClass(owner, instance, method, listenerSpec)
 
@@ -88,9 +82,6 @@ internal object MethodListenerGenerator {
             klass.getConstructor(instance::class.java).newInstance(instance)
         } else {
             klass.newInstance()
-        }.let {
-            this.cache[method] = it
-            it
         }
     }
 
@@ -188,22 +179,27 @@ internal object MethodListenerGenerator {
                     val name = param.name
                     val typeInfo = param.type
 
-                    val toAdd: CodeInstruction = if (typeInfo.typeClass == Property::class.java && typeInfo.typeParameters.isNotEmpty()) {
+                    if (typeInfo.typeClass == Property::class.java && typeInfo.typeParameters.isNotEmpty()) {
+                        body.addAll(
                         this.callGetPropertyDirectOn(accessEventVar,
-                                name, typeInfo.typeParameters[0].typeClass,
+                                name,
+                                typeInfo.typeParameters[0].typeClass,
                                 true,
-                                param.isNullable,
-                                param.shouldLookup)
+                                param.isOptional,
+                                param.optType,
+                                param.shouldLookup))
                     } else {
-                        this.callGetPropertyDirectOn(accessEventVar,
+                        body.addAll(this.callGetPropertyDirectOn(accessEventVar,
                                 name,
                                 typeInfo.typeClass,
                                 false,
-                                param.isNullable,
-                                param.shouldLookup)
+                                param.isOptional,
+                                param.optType,
+                                param.shouldLookup))
                     }
 
-                    arguments.add(cast(Types.OBJECT, param.type.typeClass, toAdd))
+                    // toAdd/*cast(Types.OBJECT, param.type.typeClass, toAdd)*/
+                    arguments.add(accessVariable(param.type.typeClass, "prop$$name"))
                 }
             }
 
@@ -288,42 +284,75 @@ internal object MethodListenerGenerator {
         return methods
     }
 
+    private fun getPropertyAccessName(name: String) = "prop\$$name"
+
     private fun callGetPropertyDirectOn(target: CodeInstruction,
                                         name: String,
                                         type: Class<*>,
                                         propertyOnly: Boolean,
-                                        isNullable: Boolean,
-                                        shouldLookup: Boolean): CodeInstruction {
+                                        isOptional: Boolean,
+                                        optType: Type?,
+                                        shouldLookup: Boolean): CodeSource {
+
+        val source = MutableCodeSource.create()
 
         val getPropertyMethod = invokeInterface(PropertyHolder::class.java, target,
-                if (shouldLookup) "lookup"
-                else if (propertyOnly) "getProperty" else "getGetterProperty",
+                when {
+                    shouldLookup -> "lookup"
+                    propertyOnly -> "getProperty"
+                    else -> "getGetterProperty"
+                },
                 typeSpec(if (propertyOnly || shouldLookup) Property::class.java else GetterProperty::class.java,
                         Class::class.java,
                         String::class.java),
                 listOf(Literals.CLASS(type), Literals.STRING(name))
         )
 
-        val elsePart: CodeInstruction = if (isNullable) Literals.NULL else returnVoid()
+        val getPropertyVariable = variable(Property::class.java,
+                "access\$$name",
+                getPropertyMethod)
 
-        val getPropMethod = checkNull(getPropertyMethod, elsePart)
+        val propertyValue = variable(if (propertyOnly) Property::class.java else type, getPropertyAccessName(name))
 
-        if (propertyOnly)
-            return getPropMethod
+        source += getPropertyVariable
+        source += propertyValue
 
-        return ifStatement(checkNotNull(Dup(getPropMethod, GetterProperty::class.codeType)),
+        val elsePart: CodeInstruction =
+                if (isOptional) {
+                    setVariableValue(propertyValue, optType?.createNone() ?: Literals.NULL)
+                } else {
+                    returnVoid()
+                }
+
+        // if (null) prop$name = null/Opt.none() or if (null) return
+
+        val getPropMethod = accessVariable(getPropertyVariable)
+
+        if (propertyOnly) {
+            source += ifStatement(checkNull(accessVariable(getPropertyVariable)), source(elsePart))
+            source += setVariableValue(propertyValue, getPropMethod)
+            return source
+        }
+
+        val getterType = type.getGetterType()
+        val reifType = type.getReifiedType()
+
+        val ret = cast(reifType, type, invokeInterface(getterType, cast(GetterProperty::class.java, getterType, getPropMethod),
+                type.getInvokeName(),
+                typeSpec(reifType),
+                emptyList()))
+
+        source += ifStatement(checkNotNull(getPropMethod/*Dup(getPropMethod, GetterProperty::class.codeType)*/),
                 // Body
-                source(invokeInterface(GetterProperty::class.java, Stack,
-                        "getValue",
-                        typeSpec(Any::class.java),
-                        emptyList())),
+                source(setVariableValue(propertyValue, optType?.createSome(ret) ?: ret)),
                 // Else
                 source(
-                        Pop,
+                        //Pop,
                         elsePart
                 ))
-
+        return source
     }
 
-    private fun checkNull(part: Typed, else_: CodeInstruction) = ifStatement(checkNotNull(Dup(part)), source(Stack), source(Pop, else_))
+    private fun checkNull(part: Typed, else_: CodeInstruction) =
+            ifStatement(checkNull(part as CodeInstruction), source(else_))
 }

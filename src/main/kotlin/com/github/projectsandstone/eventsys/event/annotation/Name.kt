@@ -28,7 +28,16 @@
 package com.github.projectsandstone.eventsys.event.annotation
 
 /**
- * Specifies the name of an elements. Used to identify properties in factories.
+ * # In event factory parameters
+ *
+ * Used to specify the name of the property to initialize with value of the annotated parameter.
+ *
+ * # In listener function parameters
+ *
+ * Used to specify the name of the property value to extract from dispatched event, the property is required
+ * to be present in the event, if it is not, the event will be ignored. Also [OptionalProperty] may be added
+ * to make the property optional, and the absence will not result in event be ignored, instead `null` will be passed
+ * to parameter.
  */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FIELD,
