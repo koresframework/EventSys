@@ -28,7 +28,6 @@
 package com.github.projectsandstone.eventsys.event
 
 import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.jwiutils.kt.typeInfo
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
 import com.github.projectsandstone.eventsys.impl.EventListenerContainer
@@ -107,11 +106,11 @@ interface EventManager {
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
      *
      * @param event [Event] to dispatch do listeners.
-     * @param owner Owner of the [event].
+     * @param dispatcher Dispatcher of the [event].
      * @param channel Channel of listeners to receive event.
      */
-    fun <T : Event> dispatch(event: T, owner: Any, channel: Int) =
-        this.dispatch(event, getEventType(event).cast(), owner, channel)
+    fun <T : Event> dispatch(event: T, dispatcher: Any, channel: Int) =
+        this.dispatch(event, getEventType(event).cast(), dispatcher, channel)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
@@ -119,10 +118,10 @@ interface EventManager {
      * All listeners will be called (no matter the channel it listen).
      *
      * @param event [Event] to dispatch do listeners.
-     * @param owner Owner of the [event].
+     * @param dispatcher Dispatcher of the [event].
      */
-    fun <T : Event> dispatch(event: T, owner: Any) =
-        this.dispatch(event, owner, -1)
+    fun <T : Event> dispatch(event: T, dispatcher: Any) =
+        this.dispatch(event, dispatcher, -1)
 
 
     /**
@@ -134,11 +133,11 @@ interface EventManager {
      *
      * @param event [Event] to dispatch do listeners.
      * @param typeInfo Information of generic event type.
-     * @param owner Owner of the [event].
+     * @param dispatcher Dispatcher of the [event].
      * @param channel Channel of listeners to receive event.
      */
-    fun <T : Event> dispatch(event: T, typeInfo: TypeInfo<T>, owner: Any, channel: Int) =
-        this.eventDispatcher.dispatch(event, typeInfo, owner, channel, false)
+    fun <T : Event> dispatch(event: T, typeInfo: TypeInfo<T>, dispatcher: Any, channel: Int) =
+        this.eventDispatcher.dispatch(event, typeInfo, dispatcher, channel, false)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
@@ -151,10 +150,10 @@ interface EventManager {
      *
      * @param event [Event] to dispatch do listeners.
      * @param typeInfo Information of generic event type.
-     * @param owner Instance of the [event].
+     * @param dispatcher Dispatcher of the [event].
      */
-    fun <T : Event> dispatch(event: T, typeInfo: TypeInfo<T>, owner: Any) {
-        this.dispatch(event, typeInfo, owner, -1)
+    fun <T : Event> dispatch(event: T, typeInfo: TypeInfo<T>, dispatcher: Any) {
+        this.dispatch(event, typeInfo, dispatcher, -1)
     }
 
     //////////// Async
@@ -162,30 +161,30 @@ interface EventManager {
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
      *
-     * Asynchronous dispatch.
+     * Non blocking asynchronous dispatch.
      *
      * @param event [Event] to dispatch do listeners.
-     * @param owner Owner of the [event].
-     * @param owner Instance of the [event].
+     * @param dispatcher Dispatcher of the [event].
+     * @param channel Channel to dispatch event (`-1` = all).
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, owner: Any, channel: Int) {
-        this.dispatchAsync(event, getEventType(event).cast(), owner, channel)
+    fun <T : Event> dispatchAsync(event: T, dispatcher: Any, channel: Int) {
+        this.dispatchAsync(event, getEventType(event).cast(), dispatcher, channel)
     }
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
      *
-     * Asynchronous dispatch
+     * Non blocking asynchronous dispatch
      *
      * All listeners will be called (no matter the channel it listen).
      *
      * @param event [Event] to dispatch do listeners.
-     * @param owner Owner of the [event].
+     * @param dispatcher Dispatcher of the [event].
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, owner: Any) =
-        this.dispatchAsync(event, owner, -1)
+    fun <T : Event> dispatchAsync(event: T, dispatcher: Any) =
+        this.dispatchAsync(event, dispatcher, -1)
 
 
     /**
@@ -195,16 +194,16 @@ interface EventManager {
      * from generated event class, but if inference fails, or the class does not have generic information,
      * you need to use this method to dispatch events.
      *
-     * Asynchronous dispatch.
+     * Non blocking asynchronous dispatch.
      *
      * @param event [Event] to dispatch do listeners.
      * @param typeInfo Information of generic event type.
-     * @param owner Owner of the [event].
+     * @param dispatcher Dispatcher of the [event].
      * @param channel Channel to dispatch event.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, owner: Any, channel: Int) =
-        this.eventDispatcher.dispatch(event, typeInfo, owner, channel, false)
+    fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, dispatcher: Any, channel: Int) =
+        this.eventDispatcher.dispatch(event, typeInfo, dispatcher, channel, false)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event].
@@ -213,17 +212,17 @@ interface EventManager {
      * from generated event class, but if inference fails, or the class does not have generic information,
      * you need to use this method to dispatch events.
      *
-     * Asynchronous dispatch
+     * Non blocking asynchronous dispatch.
      *
      * All listeners will be called (no matter the channel it listen).
      *
      * @param event [Event] to dispatch do listeners.
      * @param typeInfo Information of generic event type.
-     * @param owner Owner of the [event].
+     * @param dispatcher Dispatcher of the [event].
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, owner: Any) =
-        this.dispatchAsync(event, typeInfo, owner, -1)
+    fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, dispatcher: Any) =
+        this.dispatchAsync(event, typeInfo, dispatcher, -1)
 
 
     //////////// /Async
@@ -258,19 +257,5 @@ interface EventDispatcher {
      * all listeners), if [isAsync] is true, each listener may be called on different threads,
      * the behavior depends on implementation, but the dispatch will never block current thread.
      */
-    fun <T: Event> dispatch(event: T, eventType: TypeInfo<T>, owner: Any, channel: Int, isAsync: Boolean)
-}
-
-
-/**
- * Register the listener to [Event] [T].
- *
- * @param T Event type
- * @param plugin Plugin instance
- * @param eventListener Event Listener instance.
- */
-inline fun <reified T : Event> EventManager.registerListener(plugin: Any, eventListener: EventListener<T>) {
-    val typeInfo: TypeInfo<T> = typeInfo()
-
-    this.registerListener(plugin, typeInfo, eventListener)
+    fun <T: Event> dispatch(event: T, eventType: TypeInfo<T>, dispatcher: Any, channel: Int, isAsync: Boolean)
 }

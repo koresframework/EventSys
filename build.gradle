@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = '1.2.0'
+    ext.kotlin_version = '1.2.10'
     ext.dokka_version = '0.9.10'
 
     repositories {
@@ -18,7 +18,7 @@ plugins {
 }
 
 group 'com.github.projectsandstone'
-version '1.4.2'
+version '1.4.3'
 
 // IDE
 apply plugin: 'idea'

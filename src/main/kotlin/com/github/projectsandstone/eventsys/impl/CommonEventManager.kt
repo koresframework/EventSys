@@ -123,7 +123,7 @@ open class CommonEventManager(
         }
     }
 
-    internal fun <T : Event> findListener(owner: Any, eventType: TypeInfo<T>, eventListener: EventListener<T>) =
+    private fun <T : Event> findListener(owner: Any, eventType: TypeInfo<T>, eventListener: EventListener<T>) =
             this.listeners.find { it.owner == owner && it.eventType.compareTo(eventType) == 0 && it.eventListener == eventListener }
 
     @Suppress("UNCHECKED_CAST")
@@ -168,11 +168,6 @@ open class CommonEventManager(
                         instance = instance)
             }
         }
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    fun <T : Event> EventListener<T>.helpOnEvent(event: Any, owner: Any) {
-        this.onEvent(event as T, owner)
     }
 
 }

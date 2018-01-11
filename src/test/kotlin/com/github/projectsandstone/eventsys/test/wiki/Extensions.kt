@@ -25,44 +25,16 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.event
+package com.github.projectsandstone.eventsys.test.wiki
 
-/**
- * Listen for an [Event].
- *
- * When [Event] is dispatched in [EventManager], [EventListener.onEvent] is called in its order.
- * (see [EventPriority]).
- *
- * This class can generated via [com.github.projectsandstone.eventsys.gen.event.EventGenerator.createMethodListener]
- */
-interface EventListener<in T : Event> {
+import com.github.projectsandstone.eventsys.event.Event
 
-    /**
-     * Called when the [event] is dispatched in [EventManager].
-     *
-     * @param event Event
-     * @param dispatcher Dispatcher of the [event].
-     */
-    fun onEvent(event: T, dispatcher: Any)
+class AmountTenExtension(val event: Event) {
+    val amount: Int = 10
+}
 
-    /**
-     * Priority of event, this priority will be used to sort [EventListener] in listener collection.
-     */
-    val priority: EventPriority
-        get() = EventPriority.NORMAL
-
-    /**
-     * Channel where this listener listen.
-     *
-     * @see ListenerSpec.channel
-     */
-    val channel: Int
-        get() = 0
-
-    /**
-     * Ignore if event is cancelled.
-     */
-    val ignoreCancelled
-        get() = false
-
+class ApplyExt(val transactionEvent: TransactionEvent) {
+    fun apply(f: (amount: Double) -> Double) {
+        this.transactionEvent.amount = f(this.transactionEvent.amount)
+    }
 }

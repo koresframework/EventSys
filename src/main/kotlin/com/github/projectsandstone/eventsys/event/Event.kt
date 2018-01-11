@@ -69,6 +69,7 @@ interface Event : PropertyHolder {
      * Type information of event type.
      */
     val eventTypeInfo: TypeInfo<out Event>
+        get() = TypeInfo.of(this::class.java)
 
     /**
      * Gets the extension of [type] if available.

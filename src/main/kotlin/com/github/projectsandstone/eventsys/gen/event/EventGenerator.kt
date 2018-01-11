@@ -82,7 +82,7 @@ interface EventGenerator {
      * generated (unless you specify your own implementation with the extension).
      */
     fun <T : Event> registerEventImplementation(eventClassSpecification: EventClassSpecification<T>,
-                                                implementation: Class<T>)
+                                                implementation: Class<out T>)
 
     /**
      * Creates event factory class.
@@ -99,14 +99,14 @@ interface EventGenerator {
      *
      * @see EventFactoryClassGenerator
      */
-    fun <T : Any> createFactoryAsync(factoryClass: Class<T>): Future<T>
+    fun <T : Any> createFactoryAsync(factoryClass: Class<T>): Future<out T>
 
     /**
      * Creates event class
      *
      * @see EventClassGenerator
      */
-    fun <T : Event> createEventClass(type: TypeInfo<T>): Class<T> =
+    fun <T : Event> createEventClass(type: TypeInfo<T>): Class<out T> =
             this.createEventClass(type, emptyList(), emptyList())
 
     /**
@@ -114,7 +114,7 @@ interface EventGenerator {
      *
      * @see EventClassGenerator
      */
-    fun <T : Event> createEventClass(type: TypeInfo<T>, additionalProperties: List<PropertyInfo>): Class<T> =
+    fun <T : Event> createEventClass(type: TypeInfo<T>, additionalProperties: List<PropertyInfo>): Class<out T> =
             this.createEventClass(type, additionalProperties, emptyList())
 
     /**
@@ -123,7 +123,7 @@ interface EventGenerator {
      *
      * @see EventClassGenerator
      */
-    fun <T : Event> createEventClassAsync(type: TypeInfo<T>, additionalProperties: List<PropertyInfo>): Future<Class<T>> =
+    fun <T : Event> createEventClassAsync(type: TypeInfo<T>, additionalProperties: List<PropertyInfo>): Future<Class<out T>> =
             this.createEventClassAsync(type, additionalProperties, emptyList())
 
     /**
@@ -133,7 +133,7 @@ interface EventGenerator {
      */
     fun <T : Event> createEventClass(type: TypeInfo<T>,
                                      additionalProperties: List<PropertyInfo>,
-                                     extensions: List<ExtensionSpecification>): Class<T>
+                                     extensions: List<ExtensionSpecification>): Class<out T>
 
     /**
      * Asynchronously create event class, only use this method if you do not need
@@ -141,7 +141,9 @@ interface EventGenerator {
      *
      * @see EventClassGenerator
      */
-    fun <T : Event> createEventClassAsync(type: TypeInfo<T>, additionalProperties: List<PropertyInfo>, extensions: List<ExtensionSpecification>): Future<Class<T>>
+    fun <T : Event> createEventClassAsync(type: TypeInfo<T>,
+                                          additionalProperties: List<PropertyInfo>,
+                                          extensions: List<ExtensionSpecification>): Future<Class<out T>>
 
     /**
      * Creates method listener class

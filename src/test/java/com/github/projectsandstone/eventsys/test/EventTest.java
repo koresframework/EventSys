@@ -37,6 +37,7 @@ import com.github.projectsandstone.eventsys.gen.event.EventGenerator;
 import com.github.projectsandstone.eventsys.extension.ExtensionSpecification;
 import com.github.projectsandstone.eventsys.impl.CommonLogger;
 import com.github.projectsandstone.eventsys.util.EventFactoryHelperKt;
+import com.github.projectsandstone.eventsys.util.ExtKt;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -49,7 +50,7 @@ public class EventTest {
     public void impl() {
         EventGenerator generator = new CommonEventGenerator(new CommonLogger());
 
-        Class<LoginEvent> eventClass = generator.createEventClass(TypeInfo.of(LoginEvent.class));
+        Class<? extends LoginEvent> eventClass = generator.createEventClass(TypeInfo.of(LoginEvent.class));
         LoginEvent loginEvent = EventFactoryHelperKt.create(eventClass, MapUtils.mapOf("name", "Player"));
         LoginEvent loginEvent2 = EventFactoryHelperKt.create(eventClass, MapUtils.mapOf("name", "Player2"));
 
@@ -75,7 +76,7 @@ public class EventTest {
         // Also check warnings may be printed
         // To check this out, disable bridge generation:
         // generator.getOptions().set(EventGeneratorOptions.ENABLE_BRIDGE, Boolean.FALSE);
-        Class<ToStringValueEvent<Integer>> eventClass = generator.createEventClass(
+        Class<? extends ToStringValueEvent<Integer>> eventClass = generator.createEventClass(
                 new TypeParameterProvider<ToStringValueEvent<Integer>>() {
                 }.createTypeInfo(),
                 Collections.emptyList(),

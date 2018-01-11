@@ -116,7 +116,7 @@ public class FactoryBootstrap {
             String[] names = (String[]) namesObj;
             Object[] methodArgs = (Object[]) argsObj;
 
-            Class<Event> aClass = eventGenerator.createEventClass(
+            Class<? extends Event> aClass = eventGenerator.createEventClass(
                     TypeInfo.of(eventType.getTypeClass()).cast(),
                     additionalProperties,
                     extensions

@@ -38,20 +38,20 @@ import java.util.concurrent.ThreadFactory
 
 class CommonEventDispatcher(threadFactory: ThreadFactory,
                             override val logger: LoggerInterface,
-                            val listenersProvider: () -> Collection<EventListenerContainer<*>>) : HelperEventDispatcher() {
+                            private val listenersProvider: () -> Collection<EventListenerContainer<*>>) : HelperEventDispatcher() {
 
     private val executor = Executors.newCachedThreadPool(threadFactory)
 
 
-    override fun <T : Event> dispatch(event: T, eventType: TypeInfo<T>, owner: Any, channel: Int, isAsync: Boolean) {
+    override fun <T : Event> dispatch(event: T, eventType: TypeInfo<T>, dispatcher: Any, channel: Int, isAsync: Boolean) {
         fun tryDispatch(eventListenerContainer: EventListenerContainer<*>) {
 
             if (isAsync) {
                 executor.execute {
-                    dispatchDirect(eventListenerContainer, event, eventType, owner, channel)
+                    dispatchDirect(eventListenerContainer, event, eventType, dispatcher, channel)
                 }
             } else {
-                dispatchDirect(eventListenerContainer, event, eventType, owner, channel)
+                dispatchDirect(eventListenerContainer, event, eventType, dispatcher, channel)
             }
         }
 
@@ -69,18 +69,18 @@ abstract class HelperEventDispatcher : EventDispatcher {
 
     @Suppress("NOTHING_TO_INLINE")
     protected inline fun <T : Event> dispatchDirect(eventListenerContainer: EventListenerContainer<*>,
-                                                  event: T,
-                                                  eventType: TypeInfo<*>,
-                                                  owner: Any,
-                                                  channel: Int) {
+                                                    event: T,
+                                                    eventType: TypeInfo<*>,
+                                                    dispatcher: Any,
+                                                    channel: Int) {
         try {
-            eventListenerContainer.eventListener.helpOnEvent(event, owner)
+            eventListenerContainer.eventListener.helpOnEvent(event, dispatcher)
         } catch (throwable: Throwable) {
             logger.log("Cannot dispatch event $event (of type: ${event.eventTypeInfo})" +
                     " with provided type '$eventType' to listener " +
                     "${eventListenerContainer.eventListener} (of event type: ${eventListenerContainer.eventType}) of owner " +
-                    "$owner. " +
-                    "(Source: $owner, channel: $channel)",
+                    "${eventListenerContainer.owner}. " +
+                    "(Dispatcher: $dispatcher, channel: $channel)",
                     MessageType.EXCEPTION_IN_LISTENER,
                     throwable)
 
@@ -102,7 +102,7 @@ abstract class HelperEventDispatcher : EventDispatcher {
     }
 
     @Suppress("UNCHECKED_CAST")
-    protected fun <T : Event> EventListener<T>.helpOnEvent(event: Any, owner: Any) {
-        this.onEvent(event as T, owner)
+    protected fun <T : Event> EventListener<T>.helpOnEvent(event: Any, dispatcher: Any) {
+        this.onEvent(event as T, dispatcher)
     }
 }

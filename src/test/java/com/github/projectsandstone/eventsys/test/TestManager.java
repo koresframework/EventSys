@@ -73,7 +73,7 @@ public class TestManager {
         manager.getEventGenerator().registerExtension(MessageEvent.class,
                 new ExtensionSpecification(Unit.INSTANCE, null, ProvidedExt.class));
 
-        Class<MyGenericEvent> eventClass = manager.getEventGenerator().createEventClass(
+        Class<? extends MyGenericEvent> eventClass = manager.getEventGenerator().createEventClass(
                 TypeInfo.builderOf(MyGenericEvent.class).of(String.class).build(),
                 Collections.emptyList());
 

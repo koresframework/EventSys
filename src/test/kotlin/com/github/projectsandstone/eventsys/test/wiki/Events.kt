@@ -25,44 +25,30 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.event
+package com.github.projectsandstone.eventsys.test.wiki
 
-/**
- * Listen for an [Event].
- *
- * When [Event] is dispatched in [EventManager], [EventListener.onEvent] is called in its order.
- * (see [EventPriority]).
- *
- * This class can generated via [com.github.projectsandstone.eventsys.gen.event.EventGenerator.createMethodListener]
- */
-interface EventListener<in T : Event> {
+import com.github.projectsandstone.eventsys.event.Event
+import com.github.projectsandstone.eventsys.event.annotation.Extension
 
-    /**
-     * Called when the [event] is dispatched in [EventManager].
-     *
-     * @param event Event
-     * @param dispatcher Dispatcher of the [event].
-     */
-    fun onEvent(event: T, dispatcher: Any)
+interface BuyEvent : Event {
+    val product: Product
+    val amount: Int
+}
 
-    /**
-     * Priority of event, this priority will be used to sort [EventListener] in listener collection.
-     */
-    val priority: EventPriority
-        get() = EventPriority.NORMAL
+interface BusinessRel {
+    val business: Business
+}
 
-    /**
-     * Channel where this listener listen.
-     *
-     * @see ListenerSpec.channel
-     */
-    val channel: Int
-        get() = 0
+interface UserRel {
+    val user: User
+}
 
-    /**
-     * Ignore if event is cancelled.
-     */
-    val ignoreCancelled
-        get() = false
+data class Business(val id: String)
+data class User(val name: String)
 
+@Extension(extensionClass = ApplyExt::class)
+interface TransactionEvent : Event {
+    var amount: Double
+
+    fun apply(f: (amount: Double) -> Double)
 }

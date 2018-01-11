@@ -79,7 +79,7 @@ open class MethodDispatcher(
         }
     }
 
-    override fun onEvent(event: Event, owner: Any) {
+    override fun onEvent(event: Event, dispatcher: Any) {
 
         // Process [parameters]
         if (listenerSpec.firstIsEvent && listenerSpec.parameters.size == 1) {

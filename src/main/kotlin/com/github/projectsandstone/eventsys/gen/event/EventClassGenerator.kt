@@ -153,10 +153,10 @@ internal object EventClassGenerator {
             it.implement?.let {
                 implementations += it
                 extensionImplementations += it
-
-                if (!implementations.contains(ExtensionHolder::class.java))
-                    implementations += ExtensionHolder::class.java
             }
+
+            if (it.extensionClass != null && !implementations.contains(ExtensionHolder::class.java))
+                implementations += ExtensionHolder::class.java
         }
 
 
@@ -764,11 +764,11 @@ fun getProperties(type: Class<*>,
             .filter { it.declaringClass != Any::class.java }
             .toMutableList()
 
-    extensions.map { it.implement }.filterNotNull().forEach {
+    extensions.mapNotNull { it.implement }.forEach {
         methods += it.methods.filter { it.declaringClass != Any::class.java }
     }
 
-    val extensionClasses = extensions.map { it.extensionClass }.filterNotNull()
+    val extensionClasses = extensions.mapNotNull { it.extensionClass }
 
     methods.forEach { method ->
 
