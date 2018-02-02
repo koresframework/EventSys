@@ -1,5 +1,5 @@
 /*
- *      EventSys - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of Kores
  *
  *         The MIT License (MIT)
  *
@@ -28,7 +28,7 @@
 package com.github.projectsandstone.eventsys.util
 
 import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.jwiutils.kt.typeInfo
+import com.github.jonathanxd.iutils.kt.typeInfo
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
 import com.github.projectsandstone.eventsys.event.EventManager

@@ -1,5 +1,5 @@
 /*
- *      EventSys - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of Kores
  *
  *         The MIT License (MIT)
  *
@@ -27,15 +27,14 @@
  */
 package com.github.projectsandstone.eventsys.ap
 
-import com.github.jonathanxd.codeapi.Types
-import com.github.jonathanxd.codeapi.extra.getUnificationInstance
-import com.github.jonathanxd.codeapi.generic.GenericSignature
-import com.github.jonathanxd.codeapi.source.process.PlainSourceGenerator
-import com.github.jonathanxd.codeapi.type.CodeType
-import com.github.jonathanxd.codeapi.type.GenericType
-import com.github.jonathanxd.codeapi.util.*
+import com.github.jonathanxd.kores.Types
+import com.github.jonathanxd.kores.extra.getUnificationInstance
+import com.github.jonathanxd.kores.generic.GenericSignature
+import com.github.jonathanxd.kores.source.process.PlainSourceGenerator
+import com.github.jonathanxd.kores.util.*
 import com.github.jonathanxd.iutils.`object`.Default
-import com.github.jonathanxd.jwiutils.kt.rightOrFail
+import com.github.jonathanxd.iutils.kt.rightOrFail
+import com.github.jonathanxd.kores.type.*
 import com.github.projectsandstone.eventsys.event.Cancellable
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.annotation.Extension
@@ -82,26 +81,26 @@ class AnnotationProcessor : AbstractProcessor() {
 
                 all.forEach { annotation ->
 
-                    val cTypeWithParams = it.getCodeTypeFromTypeParameters(processingEnv.elementUtils).asGeneric
-                    val codeType = it.getCodeType(processingEnv.elementUtils).concreteType
-                    if (!codeType.`is`(PropertyHolder::class.java)
-                            && !codeType.`is`(Event::class.java)) {
+                    val cTypeWithParams = it.getKoresTypeFromTypeParameters(processingEnv.elementUtils).asGeneric
+                    val koresType = it.getKoresType(processingEnv.elementUtils).concreteType
+                    if (!koresType.`is`(PropertyHolder::class.java)
+                            && !koresType.`is`(Event::class.java)) {
                         checkExtension(annotation, it)
-                        val genericCodeType = it.asType().getCodeType(processingEnv.elementUtils)
+                        val genericKoresType = it.asType().getKoresType(processingEnv.elementUtils)
 
                         val properties = getProperties(annotation, it).map { prop ->
                             val propWithParams =
-                                    prop.annotatedElement.getCodeTypeFromTypeParameters(processingEnv.elementUtils).asGeneric
+                                    prop.annotatedElement.getKoresTypeFromTypeParameters(processingEnv.elementUtils).asGeneric
 
                             prop.copy(propertyType = inferType(prop.propertyType,
                                     propWithParams,
                                     cTypeWithParams,
-                                    codeType.defaultResolver,
+                                    koresType.defaultResolver,
                                     ModelResolver(processingEnv.elementUtils))
                             )
                         }
 
-                        val params = it.getCodeTypeFromTypeParameters(processingEnv.elementUtils)
+                        val params = it.getKoresTypeFromTypeParameters(processingEnv.elementUtils)
 
                         val signature: GenericSignature =
                                 if(it.typeParameters.isEmpty()
@@ -111,7 +110,7 @@ class AnnotationProcessor : AbstractProcessor() {
                                 else GenericSignature(params.bounds.map { it.type as GenericType }.toTypedArray())
 
                         propertiesToGen += FactoryInfo(
-                                genericCodeType,
+                                genericKoresType,
                                 it,
                                 signature,
                                 annotation,
@@ -158,11 +157,11 @@ class AnnotationProcessor : AbstractProcessor() {
 
     private fun getFactoryAnnotations(element: Element): List<FactoryUnification> {
         val all = element.annotationMirrors.filter {
-            it.annotationType.getCodeType(processingEnv.elementUtils).concreteType.`is`(Factory::class.java)
+            it.annotationType.getKoresType(processingEnv.elementUtils).concreteType.`is`(Factory::class.java)
         }.toMutableList()
 
         element.annotationMirrors.filter {
-            it.annotationType.getCodeType(processingEnv.elementUtils).concreteType.`is`(Factories::class.java)
+            it.annotationType.getKoresType(processingEnv.elementUtils).concreteType.`is`(Factories::class.java)
         }.forEach {
             it.elementValues.forEach { executableElement, annotationValue ->
                 if(executableElement.simpleName.contentEquals("value")) {
@@ -216,7 +215,7 @@ class AnnotationProcessor : AbstractProcessor() {
             unificationList += FactoryAnnotatedElement(element, getFactoryAnnotations(element))
 
         if (element.superclass.kind != TypeKind.NONE) {
-            val type = element.superclass.getCodeType(processingEnv.elementUtils).concreteType
+            val type = element.superclass.getKoresType(processingEnv.elementUtils).concreteType
             val resolve = type.defaultResolver.resolve(type).rightOrFail
 
             if (resolve is TypeElement) {
@@ -225,7 +224,7 @@ class AnnotationProcessor : AbstractProcessor() {
         }
 
         element.interfaces.forEach {
-            val type = it.getCodeType(processingEnv.elementUtils).concreteType
+            val type = it.getKoresType(processingEnv.elementUtils).concreteType
             val resolve = type.defaultResolver.resolve(type).rightOrFail
 
             if (resolve is TypeElement) {
@@ -234,14 +233,14 @@ class AnnotationProcessor : AbstractProcessor() {
         }
     }
 
-    fun getTypes(element: TypeElement): Set<CodeType> {
-        val types = mutableSetOf<CodeType>()
+    fun getTypes(element: TypeElement): Set<KoresType> {
+        val types = mutableSetOf<KoresType>()
         this.getTypes(element, types)
         return types
     }
 
-    fun getTypes(element: TypeElement, types: MutableSet<CodeType>) {
-        types += element.getCodeType(processingEnv.elementUtils)
+    fun getTypes(element: TypeElement, types: MutableSet<KoresType>) {
+        types += element.getKoresType(processingEnv.elementUtils)
         val superC = element.superclass
 
         val tps = mutableListOf<TypeMirror>()
@@ -253,7 +252,7 @@ class AnnotationProcessor : AbstractProcessor() {
         tps += element.interfaces
 
         tps.forEach {
-            types += it.getCodeType(processingEnv.elementUtils).concreteType.also {
+            types += it.getKoresType(processingEnv.elementUtils).concreteType.also {
                 (it.defaultResolver.resolve(it).rightOrFail as? TypeElement)?.let {
                     this.getTypes(it, types)
                 }
@@ -278,7 +277,7 @@ class AnnotationProcessor : AbstractProcessor() {
                         if (it is ExecutableElement) {
                             if (it.kind == ElementKind.CONSTRUCTOR) {
                                 if (it.parameters.size == 1
-                                        && it.parameters.first().asType().getCodeType(processingEnv.elementUtils).let {
+                                        && it.parameters.first().asType().getKoresType(processingEnv.elementUtils).let {
                                     paramType ->
                                     types.any { type -> type.`is`(paramType) }
                                 })
@@ -311,7 +310,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
             types += element.interfaces
 
-            val itfs = types.map { it.getCodeType(processingEnv.elementUtils).concreteType }.map {
+            val itfs = types.map { it.getKoresType(processingEnv.elementUtils).concreteType }.map {
                 it.defaultResolver.resolve(it)
             }.filter { it.isRight }.map { it.rightOrFail }.toMutableList()
 
@@ -339,14 +338,14 @@ class AnnotationProcessor : AbstractProcessor() {
                               element: TypeElement,
                               list: MutableList<EventSysProperty>) {
 
-        val codeType = element.getCodeType(processingEnv.elementUtils).concreteType
+        val koresType = element.getKoresType(processingEnv.elementUtils).concreteType
 
-        if (codeType.`is`(Default::class.java))
+        if (koresType.`is`(Default::class.java))
             return
 
-        if (!codeType.`is`(PropertyHolder::class.java)
-                && !codeType.`is`(Event::class.java)
-                && !codeType.`is`(Cancellable::class.java)) {
+        if (!koresType.`is`(PropertyHolder::class.java)
+                && !koresType.`is`(Event::class.java)
+                && !koresType.`is`(Cancellable::class.java)) {
             element.enclosedElements.forEach {
                 if (it is ExecutableElement) {
                     val name = it.simpleName.toString()
@@ -359,8 +358,8 @@ class AnnotationProcessor : AbstractProcessor() {
                                 (if (isGetOrSet) name.substring(3 until name.length) else name.substring(2 until name.length))
                                         .decapitalize()
 
-                        val type = if(isSet) it.parameters.first().asType().getCodeType(processingEnv.elementUtils)
-                        else it.returnType.getCodeType(processingEnv.elementUtils)
+                        val type = if(isSet) it.parameters.first().asType().getKoresType(processingEnv.elementUtils)
+                        else it.returnType.getKoresType(processingEnv.elementUtils)
 
                         if (!type.`is`(Types.VOID)) {
 
@@ -384,7 +383,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
         types += element.interfaces
 
-        val itfs = types.map { it.getCodeType(processingEnv.elementUtils).concreteType }.map {
+        val itfs = types.map { it.getKoresType(processingEnv.elementUtils).concreteType }.map {
             it.defaultResolver.resolve(it)
         }.filter { it.isRight }.map { it.right!! }.toMutableList()
 
@@ -398,15 +397,15 @@ class AnnotationProcessor : AbstractProcessor() {
     }
 
     fun containsMethod(typeElement: TypeElement, executableElement: ExecutableElement): Boolean {
-        if (typeElement.getCodeType(processingEnv.elementUtils).concreteType.`is`(Default::class.java))
+        if (typeElement.getKoresType(processingEnv.elementUtils).concreteType.`is`(Default::class.java))
             return false
 
         typeElement.enclosedElements.forEach {
             if (it is ExecutableElement) {
                 if (it.simpleName.toString() == executableElement.simpleName.toString()
-                        && it.parameters.map { it.asType().getCodeType(processingEnv.elementUtils).concreteType }
+                        && it.parameters.map { it.asType().getKoresType(processingEnv.elementUtils).concreteType }
                         .`is`(executableElement.parameters.map {
-                            it.asType().getCodeType(processingEnv.elementUtils).concreteType
+                            it.asType().getKoresType(processingEnv.elementUtils).concreteType
                         })) {
                     return true
                 }
@@ -421,7 +420,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
         types += typeElement.interfaces
 
-        val itfs = types.map { it.getCodeType(processingEnv.elementUtils).concreteType }.map {
+        val itfs = types.map { it.getKoresType(processingEnv.elementUtils).concreteType }.map {
             it.defaultResolver.resolve(it)
         }.filter { it.isRight }.map { it.right!! }.toMutableList()
 

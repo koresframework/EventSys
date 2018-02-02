@@ -1,5 +1,5 @@
 /*
- *      EventSys - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of Kores
  *
  *         The MIT License (MIT)
  *
@@ -27,8 +27,8 @@
  */
 package com.github.projectsandstone.eventsys.event
 
-import com.github.jonathanxd.codeapi.util.conversion.kotlinParameters
-import com.github.jonathanxd.codeapi.util.isKotlin
+import com.github.jonathanxd.kores.util.conversion.kotlinParameters
+import com.github.jonathanxd.kores.util.isKotlin
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeParameterProvider
 import com.github.jonathanxd.iutils.type.TypeUtil

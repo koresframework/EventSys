@@ -1,5 +1,5 @@
 /*
- *      EventSys - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of Kores
  *
  *         The MIT License (MIT)
  *
@@ -27,10 +27,10 @@
  */
 package com.github.projectsandstone.eventsys.ap
 
-import com.github.jonathanxd.codeapi.extra.UnifiedAnnotation
-import com.github.jonathanxd.codeapi.extra.UnifiedAnnotationData
-import com.github.jonathanxd.codeapi.type.CodeType
-import com.github.jonathanxd.codeapi.util.codeType
+import com.github.jonathanxd.kores.extra.UnifiedAnnotation
+import com.github.jonathanxd.kores.extra.UnifiedAnnotationData
+import com.github.jonathanxd.kores.type.KoresType
+import com.github.jonathanxd.kores.type.koresType
 import com.github.projectsandstone.eventsys.event.annotation.Extension
 
 interface FactoryUnification : UnifiedAnnotation {
@@ -47,6 +47,6 @@ interface FactoriesUnification : UnifiedAnnotation {
 }
 
 interface ExtensionUnification : UnifiedAnnotation {
-    fun implement(): CodeType
-    fun extensionClass(): CodeType
+    fun implement(): KoresType
+    fun extensionClass(): KoresType
 }

@@ -1,5 +1,5 @@
 /*
- *      EventSys - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of Kores
  *
  *         The MIT License (MIT)
  *
@@ -27,14 +27,14 @@
  */
 package com.github.projectsandstone.eventsys.gen
 
-import com.github.jonathanxd.codeapi.type.Generic
-import com.github.jonathanxd.codeapi.type.GenericType
-import com.github.jonathanxd.codeapi.util.codeType
+import com.github.jonathanxd.kores.type.Generic
+import com.github.jonathanxd.kores.type.GenericType
+import com.github.jonathanxd.kores.type.koresType
 import com.github.jonathanxd.iutils.type.TypeInfo
 
 fun genericFromTypeInfo(typeInfo: TypeInfo<*>): GenericType {
 
-    var generic = Generic.type(typeInfo.typeClass.codeType)
+    var generic = Generic.type(typeInfo.typeClass.koresType)
 
     typeInfo.typeParameters.forEach {
         generic = generic.of(genericFromTypeInfo(it))

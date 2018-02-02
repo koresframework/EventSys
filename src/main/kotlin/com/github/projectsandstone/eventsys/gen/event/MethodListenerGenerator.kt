@@ -1,5 +1,5 @@
 /*
- *      EventSys - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of Kores
  *
  *         The MIT License (MIT)
  *
@@ -27,23 +27,23 @@
  */
 package com.github.projectsandstone.eventsys.gen.event
 
-import com.github.jonathanxd.codeapi.CodeInstruction
-import com.github.jonathanxd.codeapi.CodeSource
-import com.github.jonathanxd.codeapi.MutableCodeSource
-import com.github.jonathanxd.codeapi.Types
-import com.github.jonathanxd.codeapi.base.*
-import com.github.jonathanxd.codeapi.bytecode.VISIT_LINES
-import com.github.jonathanxd.codeapi.bytecode.VisitLineType
-import com.github.jonathanxd.codeapi.bytecode.extra.Dup
-import com.github.jonathanxd.codeapi.bytecode.extra.Pop
-import com.github.jonathanxd.codeapi.bytecode.processor.BytecodeGenerator
-import com.github.jonathanxd.codeapi.common.Stack
-import com.github.jonathanxd.codeapi.factory.*
-import com.github.jonathanxd.codeapi.literal.Literals
-import com.github.jonathanxd.codeapi.type.Generic
-import com.github.jonathanxd.codeapi.util.Alias
-import com.github.jonathanxd.codeapi.util.codeType
-import com.github.jonathanxd.codeapi.util.conversion.toInvocation
+import com.github.jonathanxd.kores.Instruction
+import com.github.jonathanxd.kores.Instructions
+import com.github.jonathanxd.kores.MutableInstructions
+import com.github.jonathanxd.kores.Types
+import com.github.jonathanxd.kores.base.*
+import com.github.jonathanxd.kores.bytecode.VISIT_LINES
+import com.github.jonathanxd.kores.bytecode.VisitLineType
+import com.github.jonathanxd.kores.bytecode.extra.Dup
+import com.github.jonathanxd.kores.bytecode.extra.Pop
+import com.github.jonathanxd.kores.bytecode.processor.BytecodeGenerator
+import com.github.jonathanxd.kores.common.Stack
+import com.github.jonathanxd.kores.factory.*
+import com.github.jonathanxd.kores.literal.Literals
+import com.github.jonathanxd.kores.type.Generic
+import com.github.jonathanxd.kores.base.Alias
+import com.github.jonathanxd.kores.type.koresType
+import com.github.jonathanxd.kores.util.conversion.toInvocation
 import com.github.projectsandstone.eventsys.Debug
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
@@ -97,9 +97,9 @@ internal object MethodListenerGenerator {
         val (field, constructor, methods) = genBody(method, instance, listenerSpec)
 
         val codeClass = ClassDeclaration.Builder.builder()
-                .modifiers(CodeModifier.PUBLIC)
+                .modifiers(KoresModifier.PUBLIC)
                 .qualifiedName(name)
-                .implementations(Generic.type(EventListener::class.java.codeType).of(eventType.toGeneric()))
+                .implementations(Generic.type(EventListener::class.java.koresType).of(eventType.toGeneric()))
                 .superClass(Types.OBJECT)
                 .fields(field?.let(::listOf) ?: emptyList())
                 .constructors(constructor?.let(::listOf) ?: emptyList())
@@ -133,14 +133,14 @@ internal object MethodListenerGenerator {
         val isStatic = Modifier.isStatic(method.modifiers)
 
         val (field, constructor) = if (!isStatic) {
-            val instanceType = instance!!::class.java.codeType
+            val instanceType = instance!!::class.java.koresType
 
             fieldDec()
-                    .modifiers(CodeModifier.PRIVATE, CodeModifier.FINAL)
+                    .modifiers(KoresModifier.PRIVATE, KoresModifier.FINAL)
                     .type(instanceType)
                     .name(instanceFieldName)
                     .build() to constructorDec()
-                    .modifiers(CodeModifier.PUBLIC)
+                    .modifiers(KoresModifier.PUBLIC)
                     .parameters(parameter(type = instanceType, name = instanceFieldName))
                     .body(source(
                             setFieldValue(localization = Alias.THIS,
@@ -159,20 +159,20 @@ internal object MethodListenerGenerator {
         val methods = mutableListOf<MethodDeclaration>()
 
         val isStatic = Modifier.isStatic(method.modifiers)
-        val eventType = Event::class.java.codeType
+        val eventType = Event::class.java.koresType
 
         // This is hard to maintain, but, is funny :D
-        fun genOnEventBody(): CodeSource {
-            val body = MutableCodeSource.create()
+        fun genOnEventBody(): Instructions {
+            val body = MutableInstructions.create()
 
             val parameters = listenerSpec.parameters
 
-            val arguments = mutableListOf<CodeInstruction>()
+            val arguments = mutableListOf<Instruction>()
 
             val accessEventVar = accessVariable(eventType, eventVariableName)
 
             if (listenerSpec.firstIsEvent)
-                arguments.add(cast(eventType, listenerSpec.eventType.typeClass.codeType, accessEventVar))
+                arguments.add(cast(eventType, listenerSpec.eventType.typeClass.koresType, accessEventVar))
 
             parameters.forEachIndexed { i, param ->
                 if (!listenerSpec.firstIsEvent || i > 0) {
@@ -209,7 +209,7 @@ internal object MethodListenerGenerator {
             } else {
                 body.add(method.toInvocation(
                         invokeType = null,
-                        target = accessThisField(instance!!::class.java.codeType, instanceFieldName),
+                        target = accessThisField(instance!!::class.java.koresType, instanceFieldName),
                         arguments = arguments))
             }
 
@@ -218,7 +218,7 @@ internal object MethodListenerGenerator {
 
         val onEvent = MethodDeclaration.Builder.builder()
                 .annotations(overrideAnnotation())
-                .modifiers(CodeModifier.PUBLIC)
+                .modifiers(KoresModifier.PUBLIC)
                 .body(genOnEventBody())
                 .returnType(Types.VOID)
                 .name("onEvent")
@@ -231,20 +231,20 @@ internal object MethodListenerGenerator {
 
         val getPriorityMethod = MethodDeclaration.Builder.builder()
                 .annotations(overrideAnnotation())
-                .modifiers(CodeModifier.PUBLIC)
+                .modifiers(KoresModifier.PUBLIC)
                 .body(source(
                         returnValue(EventPriority::class.java,
                                 accessStaticField(EventPriority::class.java, EventPriority::class.java, listenerSpec.priority.name)
                         )
                 ))
                 .name("getPriority")
-                .returnType(EventPriority::class.java.codeType)
+                .returnType(EventPriority::class.java.koresType)
                 .build()
 
         methods += getPriorityMethod
 
         val getPhaseMethod = MethodDeclaration.Builder.builder()
-                .modifiers(CodeModifier.PUBLIC)
+                .modifiers(KoresModifier.PUBLIC)
                 .annotations(overrideAnnotation())
                 .body(source(
                         returnValue(Types.INT, Literals.INT(listenerSpec.channel))
@@ -257,7 +257,7 @@ internal object MethodListenerGenerator {
 
         val ignoreCancelledMethod = MethodDeclaration.Builder.builder()
                 .annotations(overrideAnnotation())
-                .modifiers(CodeModifier.PUBLIC)
+                .modifiers(KoresModifier.PUBLIC)
                 .body(source(
                         returnValue(Types.BOOLEAN, Literals.BOOLEAN(listenerSpec.ignoreCancelled))
                 ))
@@ -269,7 +269,7 @@ internal object MethodListenerGenerator {
 
         val toStringMethod = MethodDeclaration.Builder.builder()
                 .annotations(overrideAnnotation())
-                .modifiers(CodeModifier.PUBLIC)
+                .modifiers(KoresModifier.PUBLIC)
                 .body(source(
                         returnValue(Types.STRING,
                                 Literals.STRING("GeneratedMethodListener[\"${method.toSimpleString()}\"]")
@@ -286,15 +286,15 @@ internal object MethodListenerGenerator {
 
     private fun getPropertyAccessName(name: String) = "prop\$$name"
 
-    private fun callGetPropertyDirectOn(target: CodeInstruction,
+    private fun callGetPropertyDirectOn(target: Instruction,
                                         name: String,
                                         type: Class<*>,
                                         propertyOnly: Boolean,
                                         isOptional: Boolean,
                                         optType: Type?,
-                                        shouldLookup: Boolean): CodeSource {
+                                        shouldLookup: Boolean): Instructions {
 
-        val source = MutableCodeSource.create()
+        val source = MutableInstructions.create()
 
         val getPropertyMethod = invokeInterface(PropertyHolder::class.java, target,
                 when {
@@ -317,7 +317,7 @@ internal object MethodListenerGenerator {
         source += getPropertyVariable
         source += propertyValue
 
-        val elsePart: CodeInstruction =
+        val elsePart: Instruction =
                 if (isOptional) {
                     setVariableValue(propertyValue, optType?.createNone() ?: Literals.NULL)
                 } else {
@@ -342,7 +342,7 @@ internal object MethodListenerGenerator {
                 typeSpec(reifType),
                 emptyList()))
 
-        source += ifStatement(checkNotNull(getPropMethod/*Dup(getPropMethod, GetterProperty::class.codeType)*/),
+        source += ifStatement(checkNotNull(getPropMethod/*Dup(getPropMethod, GetterProperty::class.koresType)*/),
                 // Body
                 source(setVariableValue(propertyValue, optType?.createSome(ret) ?: ret)),
                 // Else
@@ -353,6 +353,6 @@ internal object MethodListenerGenerator {
         return source
     }
 
-    private fun checkNull(part: Typed, else_: CodeInstruction) =
-            ifStatement(checkNull(part as CodeInstruction), source(else_))
+    private fun checkNull(part: Typed, else_: Instruction) =
+            ifStatement(checkNull(part as Instruction), source(else_))
 }

@@ -1,5 +1,5 @@
 /*
- *      EventSys - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of Kores
  *
  *         The MIT License (MIT)
  *
@@ -27,7 +27,7 @@
  */
 package com.github.projectsandstone.eventsys.reflect
 
-import com.github.jonathanxd.codeapi.util.conversion.parameterNames
+import com.github.jonathanxd.kores.util.conversion.parameterNames
 import com.github.jonathanxd.iutils.description.Description
 import com.github.jonathanxd.iutils.description.DescriptionUtil
 import com.github.projectsandstone.eventsys.event.annotation.Name

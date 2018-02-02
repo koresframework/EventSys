@@ -1,5 +1,5 @@
 /*
- *      EventSys - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of Kores
  *
  *         The MIT License (MIT)
  *
@@ -27,31 +27,31 @@
  */
 package com.github.projectsandstone.eventsys.gen.event
 
-import com.github.jonathanxd.codeapi.CodeInstruction
-import com.github.jonathanxd.codeapi.CodeSource
-import com.github.jonathanxd.codeapi.MutableCodeSource
-import com.github.jonathanxd.codeapi.Types
-import com.github.jonathanxd.codeapi.base.*
-import com.github.jonathanxd.codeapi.bytecode.VISIT_LINES
-import com.github.jonathanxd.codeapi.bytecode.VisitLineType
-import com.github.jonathanxd.codeapi.bytecode.processor.BytecodeGenerator
-import com.github.jonathanxd.codeapi.common.DynamicMethodSpec
-import com.github.jonathanxd.codeapi.common.MethodInvokeSpec
-import com.github.jonathanxd.codeapi.common.Nothing
-import com.github.jonathanxd.codeapi.common.VariableRef
-import com.github.jonathanxd.codeapi.factory.*
-import com.github.jonathanxd.codeapi.generic.GenericSignature
-import com.github.jonathanxd.codeapi.literal.Literals
-import com.github.jonathanxd.codeapi.type.CodeType
-import com.github.jonathanxd.codeapi.type.Generic
-import com.github.jonathanxd.codeapi.type.GenericType
-import com.github.jonathanxd.codeapi.type.LoadedCodeType
-import com.github.jonathanxd.codeapi.util.asGeneric
-import com.github.jonathanxd.codeapi.util.canonicalName
-import com.github.jonathanxd.codeapi.util.codeType
-import com.github.jonathanxd.codeapi.util.conversion.parameterNames
-import com.github.jonathanxd.codeapi.util.conversion.toMethodDeclaration
-import com.github.jonathanxd.codeapi.util.conversion.toVariableAccess
+import com.github.jonathanxd.kores.Instruction
+import com.github.jonathanxd.kores.Instructions
+import com.github.jonathanxd.kores.MutableInstructions
+import com.github.jonathanxd.kores.Types
+import com.github.jonathanxd.kores.base.*
+import com.github.jonathanxd.kores.bytecode.VISIT_LINES
+import com.github.jonathanxd.kores.bytecode.VisitLineType
+import com.github.jonathanxd.kores.bytecode.processor.BytecodeGenerator
+import com.github.jonathanxd.kores.common.DynamicMethodSpec
+import com.github.jonathanxd.kores.common.MethodInvokeSpec
+import com.github.jonathanxd.kores.common.Nothing
+import com.github.jonathanxd.kores.common.VariableRef
+import com.github.jonathanxd.kores.factory.*
+import com.github.jonathanxd.kores.generic.GenericSignature
+import com.github.jonathanxd.kores.literal.Literals
+import com.github.jonathanxd.kores.type.KoresType
+import com.github.jonathanxd.kores.type.Generic
+import com.github.jonathanxd.kores.type.GenericType
+import com.github.jonathanxd.kores.type.LoadedKoresType
+import com.github.jonathanxd.kores.type.asGeneric
+import com.github.jonathanxd.kores.type.canonicalName
+import com.github.jonathanxd.kores.type.koresType
+import com.github.jonathanxd.kores.util.conversion.parameterNames
+import com.github.jonathanxd.kores.util.conversion.toMethodDeclaration
+import com.github.jonathanxd.kores.util.conversion.toVariableAccess
 import com.github.jonathanxd.iutils.`object`.Default
 import com.github.jonathanxd.iutils.collection.Collections3
 import com.github.jonathanxd.iutils.type.TypeInfo
@@ -100,19 +100,19 @@ internal object EventFactoryClassGenerator {
         val eventGeneratorField = VariableRef(EventGenerator::class.java, "eventGenerator")
 
         val declaration = ClassDeclaration.Builder.builder()
-                .modifiers(CodeModifier.PUBLIC)
+                .modifiers(KoresModifier.PUBLIC)
                 .qualifiedName("${factoryClass.canonicalName}\$Impl")
-                .implementations(factoryClass.codeType)
+                .implementations(factoryClass.koresType)
                 .superClass(Types.OBJECT)
                 .fields(FieldDeclaration.Builder()
-                        .modifiers(CodeModifier.PRIVATE, CodeModifier.FINAL)
+                        .modifiers(KoresModifier.PRIVATE, KoresModifier.FINAL)
                         .base(eventGeneratorField)
                         .build()
                 )
                 .constructors(ConstructorDeclaration.Builder.builder()
-                        .modifiers(CodeModifier.PUBLIC)
+                        .modifiers(KoresModifier.PUBLIC)
                         .parameters(parameter(name = eventGeneratorField.name, type = eventGeneratorField.type))
-                        .body(CodeSource.fromVarArgs(
+                        .body(Instructions.fromVarArgs(
                                 setThisFieldValue(eventGeneratorField.type, eventGeneratorField.name,
                                         accessVariable(eventGeneratorField))
                         ))
@@ -129,7 +129,7 @@ internal object EventFactoryClassGenerator {
                             if (kFunc != null && impl != null) {
 
                                 val methodDeclaration = factoryMethod.toMethodDeclaration()
-                                val methodBody = methodDeclaration.body as MutableCodeSource
+                                val methodBody = methodDeclaration.body as MutableInstructions
                                 methodBody.add(this.genDefaultInvocation(kFunc, impl))
 
                                 return@mMap methodDeclaration
@@ -163,7 +163,7 @@ internal object EventFactoryClassGenerator {
                                     parameterNames[index]
                                 }
 
-                                val methodBody = methodDeclaration.body as MutableCodeSource
+                                val methodBody = methodDeclaration.body as MutableInstructions
 
                                 if (isLazyGen) {
                                     // || isSpecialized
@@ -274,29 +274,29 @@ internal object EventFactoryClassGenerator {
 
     }
 
-    private fun genDefaultInvocation(kFunc: Method, impl: Pair<Class<*>, Method>): CodeInstruction {
+    private fun genDefaultInvocation(kFunc: Method, impl: Pair<Class<*>, Method>): Instruction {
         val base = kFunc
         val delegateClass = impl.first
         val delegate = impl.second
 
         val parameters = base.parameterNames.mapIndexed { i, it ->
-            parameter(type = delegate.parameters[i + 1].type.codeType, name = it)
+            parameter(type = delegate.parameters[i + 1].type.koresType, name = it)
         }
 
-        val arguments = mutableListOf<CodeInstruction>(Access.THIS) + parameters.map { it.toVariableAccess() }
+        val arguments = mutableListOf<Instruction>(Access.THIS) + parameters.map { it.toVariableAccess() }
 
         return invoke(
                 InvokeType.INVOKE_STATIC,
-                delegateClass.codeType,
+                delegateClass.koresType,
                 Access.STATIC,
                 delegate.name,
-                typeSpec(delegate.returnType.codeType, delegate.parameters.map { it.type.codeType }),
+                typeSpec(delegate.returnType.koresType, delegate.parameters.map { it.type.koresType }),
                 arguments
         ).let {
             if (kFunc.returnType == Void.TYPE)
                 it
             else
-                returnValue(kFunc.returnType.codeType, it)
+                returnValue(kFunc.returnType.koresType, it)
         }
     }
 
@@ -322,9 +322,9 @@ internal object EventFactoryClassGenerator {
                         validator = parameter.getDeclaredAnnotation(Validate::class.java)?.value?.java,
                         isNotNull = parameter.isAnnotationPresent(NotNullValue::class.java),
                         propertyTypeInfo = PropertyTypeInfo(
-                                parameter.parameterizedType.codeType.asGeneric,
+                                parameter.parameterizedType.koresType.asGeneric,
                                 GenericSignature.create(*factoryMethod.typeParameters
-                                        .map { it.codeType.asGeneric }.toTypedArray())
+                                        .map { it.koresType.asGeneric }.toTypedArray())
                         )
                 )
             }
@@ -337,7 +337,7 @@ internal object EventFactoryClassGenerator {
                                        logger: LoggerInterface,
                                        eventType: Class<*>,
                                        specParam: Parameter?,
-                                       factoryMethod: Method): CodeInstruction {
+                                       factoryMethod: Method): Instruction {
 
         val ctr = implClass.declaredConstructors[0]
 
@@ -345,7 +345,7 @@ internal object EventFactoryClassGenerator {
             ctr.parameterNames
         }
 
-        val arguments = ctr.parameters.mapIndexed<Parameter, CodeInstruction> map@ { index, it ->
+        val arguments = ctr.parameters.mapIndexed<Parameter, Instruction> map@ { index, it ->
 
             if (it.isAnnotationPresent(TypeParam::class.java)) {
                 return@map if (specParam != null)
@@ -358,9 +358,9 @@ internal object EventFactoryClassGenerator {
                     ?: names[index] // Should we remove it?
 
 
-            if (!methodDeclaration.parameters.any { codeParameter ->
-                codeParameter.name == it.name
-                        && codeParameter.type.canonicalName == it.type.canonicalName
+            if (!methodDeclaration.parameters.any { koresParameter ->
+                koresParameter.name == name
+                        && koresParameter.type.canonicalName == it.type.canonicalName
             }) {
                 logger.log("Cannot find property '[name: $name, type: ${it.type.canonicalName}]' in factory method '${factoryMethod.toSimpleString()}'. Please provide a parameter with this name, use '-parameters' javac option to keep annotation names or annotate parameters with '@${Name::class.java.canonicalName}' annotation.",
                         MessageType.INVALID_FACTORY_METHOD,
@@ -373,7 +373,7 @@ internal object EventFactoryClassGenerator {
                     && Cancellable::class.java.isAssignableFrom(eventType))
                 return@map Literals.FALSE
 
-            return@map accessVariable(it.type.codeType, name)
+            return@map accessVariable(it.type.koresType, name)
         }
 
         return returnValue(
@@ -387,7 +387,7 @@ internal object EventFactoryClassGenerator {
                                            additionalProperties: MutableList<PropertyInfo>,
                                            extensions: List<ExtensionSpecification>,
                                            single: Parameter?,
-                                           params: List<CodeParameter>): CodeInstruction {
+                                           params: List<KoresParameter>): Instruction {
 
         val (paramNames, args) = getNamesAndArgsArrs(params)
 
@@ -419,11 +419,11 @@ internal object EventFactoryClassGenerator {
                                                   additionalProperties: MutableList<PropertyInfo>,
                                                   extensions: List<ExtensionSpecification>,
                                                   single: Parameter?,
-                                                  params: List<CodeParameter>): List<CodeInstruction> {
+                                                  params: List<KoresParameter>): List<Instruction> {
 
         val (paramNames, args) = getNamesAndArgsArrs(params)
 
-        val insns = mutableListOf<CodeInstruction>()
+        val insns = mutableListOf<Instruction>()
 
         val eventClassVar = VariableRef(Types.CLASS, "eventClass")
 
@@ -439,11 +439,11 @@ internal object EventFactoryClassGenerator {
                                 )
                         ))
 
-        val getFirstCtr = accessArrayValue(Constructor::class.java.codeType.toArray(1),
+        val getFirstCtr = accessArrayValue(Constructor::class.java.koresType.toArray(1),
                 invokeVirtual(Class::class.java,
                         accessVariable(eventClassVar.type, eventClassVar.name),
                         "getDeclaredConstructors",
-                        TypeSpec(Constructor::class.java.codeType.toArray(1)),
+                        TypeSpec(Constructor::class.java.koresType.toArray(1)),
                         listOf()
                 ),
                 Literals.INT(0),
@@ -475,19 +475,19 @@ internal object EventFactoryClassGenerator {
         return insns
     }
 
-    private fun getNamesAndArgs(params: List<CodeParameter>) =
+    private fun getNamesAndArgs(params: List<KoresParameter>) =
             params.map { Literals.STRING(it.name) } to params.map {
                 it.toVariableAccess()
             }
 
-    private fun getNamesAndArgsArrs(params: List<CodeParameter>) =
+    private fun getNamesAndArgsArrs(params: List<KoresParameter>) =
             getNamesAndArgs(params).let { (pNames, cArgs) ->
                 createArray(Array<String>::class.java, listOf(Literals.INT(pNames.size)),
                         pNames) to createArray(Array<Any>::class.java, listOf(Literals.INT(cArgs.size)),
                         cArgs)
             }
 
-    private fun List<PropertyInfo>.asPropArgs(): CodeInstruction {
+    private fun List<PropertyInfo>.asPropArgs(): Instruction {
         return Collections3::class.java.invokeStatic("listOf",
                 TypeSpec(List::class.java, listOf(Array<Any>::class.java)),
                 listOf(createArray(Array<Any>::class.java, listOf(Literals.INT(this.size)),
@@ -495,7 +495,7 @@ internal object EventFactoryClassGenerator {
                 )))
     }
 
-    private fun List<ExtensionSpecification>.asExtArgs(): CodeInstruction {
+    private fun List<ExtensionSpecification>.asExtArgs(): Instruction {
         return Collections3::class.java.invokeStatic("listOf",
                 TypeSpec(List::class.java, listOf(Array<Any>::class.java)),
                 listOf(createArray(Array<Any>::class.java, listOf(Literals.INT(this.size)),
@@ -503,7 +503,7 @@ internal object EventFactoryClassGenerator {
                 ))
     }
 
-    private fun PropertyInfo.asArg(): CodeInstruction {
+    private fun PropertyInfo.asArg(): Instruction {
         return PropertyInfo::class.java.invokeConstructor(
 
                 constructorTypeSpec(Types.CLASS, // declaringClass
@@ -528,7 +528,7 @@ internal object EventFactoryClassGenerator {
         )
     }
 
-    private fun PropertyTypeInfo.toArg(): CodeInstruction {
+    private fun PropertyTypeInfo.toArg(): Instruction {
         return PropertyTypeInfo::class.java.invokeConstructor(
                 constructorTypeSpec(
                         GenericType::class.java,
@@ -538,7 +538,7 @@ internal object EventFactoryClassGenerator {
         )
     }
 
-    private fun GenericSignature.toArg(): CodeInstruction =
+    private fun GenericSignature.toArg(): Instruction =
             GenericSignature::class.java.invokeStatic(
                     "create",
                     TypeSpec(GenericSignature::class.java, listOf(Array<GenericType>::class.java)),
@@ -549,11 +549,11 @@ internal object EventFactoryClassGenerator {
 
 }
 
-fun GenericType.toArg(): CodeInstruction {
+fun GenericType.toArg(): Instruction {
     val insn = when {
         this.isType -> Generic::class.java.invokeStatic(
                 "type",
-                TypeSpec(Generic::class.java, listOf(CodeType::class.java)),
+                TypeSpec(Generic::class.java, listOf(KoresType::class.java)),
                 listOf(this.resolvedType.toArg())
         )
         this.isWildcard -> Generic::class.java.invokeStatic(
@@ -572,7 +572,7 @@ fun GenericType.toArg(): CodeInstruction {
         insn
     } else {
         val args = this.bounds.toArgs()
-        val arrType = GenericType.Bound::class.java.codeType.toArray(1)
+        val arrType = GenericType.Bound::class.java.koresType.toArray(1)
 
         invokeVirtual(Generic::class.java,
                 insn,
@@ -583,27 +583,27 @@ fun GenericType.toArg(): CodeInstruction {
     }
 }
 
-fun Array<out GenericType.Bound>.toArgs(): List<CodeInstruction> =
+fun Array<out GenericType.Bound>.toArgs(): List<Instruction> =
         this.map { it.toArg() }
 
-fun GenericType.Bound.toArg(): CodeInstruction =
+fun GenericType.Bound.toArg(): Instruction =
         this::class.java.invokeConstructor(
                 constructorTypeSpec(GenericType::class.java),
                 listOf(this.type.toArg())
         )
 
 
-fun CodeInstruction.callGetCodeType(): CodeInstruction =
-        JavaCodePartUtil.callGetCodeType(this)
+fun Instruction.callGetKoresType(): Instruction =
+        JavaCodePartUtil.callGetKoresType(this)
 
-fun CodeType.toArg(): CodeInstruction =
+fun KoresType.toArg(): Instruction =
         when {
-            this is LoadedCodeType<*> -> Literals.CLASS(this.loadedType.codeType).callGetCodeType()
+            this is LoadedKoresType<*> -> Literals.CLASS(this.loadedType.koresType).callGetKoresType()
             this is GenericType -> this.toArg()
-            else -> Literals.CLASS(this).callGetCodeType()
+            else -> Literals.CLASS(this).callGetKoresType()
         }
 
-fun ExtensionSpecification.asArg(): CodeInstruction {
+fun ExtensionSpecification.asArg(): Instruction {
     return ExtensionSpecification::class.java.invokeConstructor(
             // residence, implement, extensionClass
             constructorTypeSpec(Types.OBJECT, Types.CLASS, Types.CLASS),
@@ -615,7 +615,7 @@ fun ExtensionSpecification.asArg(): CodeInstruction {
     )
 }
 
-fun CodeType.usesParameters(parameters: Array<TypeVariable<Method>>): Boolean {
+fun KoresType.usesParameters(parameters: Array<TypeVariable<Method>>): Boolean {
     if (this !is GenericType)
         return false
 
@@ -625,7 +625,7 @@ fun CodeType.usesParameters(parameters: Array<TypeVariable<Method>>): Boolean {
 }
 
 
-fun createTypeInfo(evType: Class<*>): CodeInstruction =
+fun createTypeInfo(evType: Class<*>): Instruction =
         TypeInfo::class.java.invokeStatic("of",
                 TypeSpec(TypeInfo::class.java, listOf(Class::class.java)),
                 listOf(Literals.CLASS(evType))

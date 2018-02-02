@@ -1,5 +1,5 @@
 /*
- *      EventSys - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of Kores
  *
  *         The MIT License (MIT)
  *
@@ -27,20 +27,20 @@
  */
 package com.github.projectsandstone.eventsys.util;
 
-import com.github.jonathanxd.codeapi.CodeInstruction;
-import com.github.jonathanxd.codeapi.factory.Factories;
-import com.github.jonathanxd.codeapi.factory.InvocationFactory;
-import com.github.jonathanxd.codeapi.type.CodeType;
-import com.github.jonathanxd.codeapi.util.CodeTypes;
+import com.github.jonathanxd.kores.Instruction;
+import com.github.jonathanxd.kores.factory.Factories;
+import com.github.jonathanxd.kores.factory.InvocationFactory;
+import com.github.jonathanxd.kores.type.KoresType;
+import com.github.jonathanxd.kores.type.KoresTypes;
 import com.github.jonathanxd.iutils.collection.Collections3;
 
 import java.lang.reflect.Type;
 
 public class JavaCodePartUtil {
 
-    public static CodeInstruction callGetCodeType(CodeInstruction instruction) {
-        return InvocationFactory.invokeStatic(CodeTypes.class, "getCodeType",
-                Factories.typeSpec(CodeType.class, Type.class),
+    public static Instruction callGetKoresType(Instruction instruction) {
+        return InvocationFactory.invokeStatic(KoresTypes.class, "getKoresType",
+                Factories.typeSpec(KoresType.class, Type.class),
                 Collections3.listOf(instruction)
         );
     }

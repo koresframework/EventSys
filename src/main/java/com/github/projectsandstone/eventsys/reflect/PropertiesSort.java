@@ -1,5 +1,5 @@
 /*
- *      EventSys - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of Kores
  *
  *         The MIT License (MIT)
  *
@@ -27,12 +27,16 @@
  */
 package com.github.projectsandstone.eventsys.reflect;
 
+import com.github.jonathanxd.iutils.object.Lazy;
+import com.github.jonathanxd.kores.base.KoresParameter;
+import com.github.jonathanxd.kores.util.conversion.ConversionsKt;
 import com.github.projectsandstone.eventsys.event.Cancellable;
 import com.github.projectsandstone.eventsys.event.annotation.Name;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
+import java.util.List;
 
 public class PropertiesSort {
 
@@ -43,6 +47,7 @@ public class PropertiesSort {
 
         boolean isCancellable = Cancellable.class.isAssignableFrom(aClass);
         Parameter[] parameters = constructor.getParameters();
+        Lazy<List<KoresParameter>> lazyParameters = Lazy.nonNull(Lazy.lazy(() -> ConversionsKt.getKoresParameters(constructor)));
 
         for (int i = 0; i < parameters.length; i++) {
 
@@ -50,10 +55,15 @@ public class PropertiesSort {
 
             final String name;
 
-            if (parameter.isAnnotationPresent(Name.class))
+            if (parameter.isAnnotationPresent(Name.class)) {
                 name = parameter.getDeclaredAnnotation(Name.class).value();
-            else
-                name = parameter.getName();
+            } else {
+                String tmp = parameter.getName();
+                if (tmp.startsWith("arg"))
+                    name = lazyParameters.get().get(i).getName();
+                else
+                    name = tmp;
+            }
 
             boolean found = false;
 

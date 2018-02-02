@@ -1,5 +1,5 @@
 /*
- *      EventSys - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of Kores
  *
  *         The MIT License (MIT)
  *
@@ -27,9 +27,9 @@
  */
 package com.github.projectsandstone.eventsys.util
 
-import com.github.jonathanxd.codeapi.CodeInstruction
-import com.github.jonathanxd.codeapi.factory.invokeStatic
-import com.github.jonathanxd.codeapi.factory.typeSpec
+import com.github.jonathanxd.kores.Instruction
+import com.github.jonathanxd.kores.factory.invokeStatic
+import com.github.jonathanxd.kores.factory.typeSpec
 import com.github.jonathanxd.iutils.opt.Opt
 import com.github.jonathanxd.iutils.opt.specialized.*
 import java.lang.reflect.Type
@@ -58,7 +58,7 @@ fun Type.createSomeRuntime(value: Any?): Any =
             OptFloat::class.java -> Opt.someFloat(value as Float)
             OptLong::class.java -> Opt.someLong(value as Long)
             OptDouble::class.java -> Opt.someDouble(value as Double)
-            OptObject::class.java -> Opt.some<Any?>(value)
+            OptObject::class.java -> Opt.someNullable(value)
             else -> throw IllegalArgumentException("Cannot get primitive type of opt '$this'.")
         }
 
@@ -88,10 +88,10 @@ fun Type.primitiveType() = when (this) {
     else -> throw IllegalArgumentException("Cannot get primitive type of opt '$this'.")
 }
 
-fun Type.createNone(): CodeInstruction =
+fun Type.createNone(): Instruction =
         Opt::class.java.invokeStatic(this.noneName(), typeSpec(this), emptyList())
 
-fun Type.createSome(receiver: CodeInstruction): CodeInstruction =
+fun Type.createSome(receiver: Instruction): Instruction =
         Opt::class.java.invokeStatic(this.someName(), typeSpec(this, this.primitiveType()), listOf(receiver))
 
 fun Type.someName() = when (this) { // class.simpleName.capitalize()

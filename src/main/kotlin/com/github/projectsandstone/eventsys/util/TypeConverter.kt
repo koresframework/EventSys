@@ -1,5 +1,5 @@
 /*
- *      EventSys - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of Kores
  *
  *         The MIT License (MIT)
  *
@@ -27,18 +27,18 @@
  */
 package com.github.projectsandstone.eventsys.util
 
-import com.github.jonathanxd.codeapi.type.Generic
-import com.github.jonathanxd.codeapi.util.codeType
+import com.github.jonathanxd.kores.type.Generic
+import com.github.jonathanxd.kores.type.koresType
 import com.github.jonathanxd.iutils.type.TypeInfo
 
 /**
- * Convert type info to CodeAPI [Generic].
+ * Convert type info to Kores [Generic].
  */
 fun <T: Any> TypeInfo<T>.toGeneric(): Generic {
     val aClass = this.typeClass
     val related = this.typeParameters
 
-    var generic = Generic.type(aClass.codeType)
+    var generic = Generic.type(aClass.koresType)
 
     if (related.isNotEmpty()) {
         generic = generic.of(*related.map { it.toGeneric() }.toTypedArray())

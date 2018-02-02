@@ -1,5 +1,5 @@
 /*
- *      EventSys - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of Kores
  *
  *         The MIT License (MIT)
  *
@@ -27,8 +27,8 @@
  */
 package com.github.projectsandstone.eventsys.gen.event
 
-import com.github.jonathanxd.codeapi.base.TypeDeclaration
-import com.github.jonathanxd.codeapi.bytecode.classloader.CodeClassLoader
+import com.github.jonathanxd.kores.base.TypeDeclaration
+import com.github.jonathanxd.kores.bytecode.classloader.CodeClassLoader
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
 import java.util.*

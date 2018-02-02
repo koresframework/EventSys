@@ -1,5 +1,5 @@
 /*
- *      EventSys - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of Kores
  *
  *         The MIT License (MIT)
  *
@@ -27,16 +27,17 @@
  */
 package com.github.projectsandstone.eventsys.ap
 
-import com.github.jonathanxd.codeapi.base.*
-import com.github.jonathanxd.codeapi.base.Annotation
-import com.github.jonathanxd.codeapi.factory.parameter
-import com.github.jonathanxd.codeapi.generic.GenericSignature
-import com.github.jonathanxd.codeapi.type.CodeType
-import com.github.jonathanxd.codeapi.type.Generic
-import com.github.jonathanxd.codeapi.util.codeType
-import com.github.jonathanxd.codeapi.util.eraseType
 import com.github.jonathanxd.iutils.`object`.Default
 import com.github.jonathanxd.iutils.type.TypeInfo
+import com.github.jonathanxd.kores.base.*
+import com.github.jonathanxd.kores.base.Annotation
+import com.github.jonathanxd.kores.base.Retention
+import com.github.jonathanxd.kores.factory.parameter
+import com.github.jonathanxd.kores.generic.GenericSignature
+import com.github.jonathanxd.kores.type.Generic
+import com.github.jonathanxd.kores.type.KoresType
+import com.github.jonathanxd.kores.type.koresType
+import com.github.jonathanxd.kores.util.eraseType
 import com.github.projectsandstone.eventsys.event.annotation.Extension
 import com.github.projectsandstone.eventsys.event.annotation.LazyGeneration
 import com.github.projectsandstone.eventsys.event.annotation.Name
@@ -50,87 +51,95 @@ import javax.lang.model.element.TypeElement
  */
 object FactoryInterfaceGenerator {
 
-    private val DEFAULT = Default::class.java.codeType
+    private val DEFAULT = Default::class.java.koresType
 
     fun processNamed(name: String, factoryInfoList: List<FactoryInfo>): TypeDeclaration {
         return InterfaceDeclaration.Builder.builder()
-                .modifiers(CodeModifier.PUBLIC)
-                .name(name)
-                .methods(createMethods(factoryInfoList))
-                .build()
+            .modifiers(KoresModifier.PUBLIC)
+            .name(name)
+            .methods(createMethods(factoryInfoList))
+            .build()
     }
 
-    private fun createMethods(factoryInfoList: List<FactoryInfo>,
-                              descs: MutableList<MethodDesc> = mutableListOf()): List<MethodDeclaration> =
-            factoryInfoList.map {
-                val annotations: MutableList<Annotation> = it.factoryUnification.extensions()
-                        .filter {
-                            !it.implement().`is`(DEFAULT)
-                                    || !it.extensionClass().`is`(DEFAULT)
-                        }
-                        .map {
-                            val values = mutableMapOf<String, Any>()
-
-                            if (!it.implement().`is`(DEFAULT)) {
-                                values.put("implement", it.implement())
-                            }
-
-                            if (!it.extensionClass().`is`(DEFAULT)) {
-                                values.put("extensionClass", it.extensionClass())
-                            }
-
-                            Annotation.Builder.builder()
-                                    .visible(true)
-                                    .type(Extension::class.java)
-                                    .values(values)
-                                    .build()
-                        }
-                        .toMutableList()
-
-                if (it.factoryUnification.lazy())
-                    annotations += Annotation.Builder.builder()
-                            .visible(true)
-                            .type(LazyGeneration::class.java)
-                            .build()
-
-                val parameters = mutableListOf<CodeParameter>()
-
-                val gT = Generic.type(TypeInfo::class.java).of(it.type)
-
-                if (it.element.typeParameters.isNotEmpty() && !it.factoryUnification.omitTypeParam())
-                    parameters += parameter(type = gT, name = eventTypeInfoFieldName, annotations = listOf(
-                            Annotation.Builder.builder()
-                                    .type(TypeParam::class.java)
-                                    .visible(true)
-                                    .build()
-                    ))
-
-                parameters += it.properties.map {
-                    parameter(type = it.propertyType, name = it.propertyName, annotations = listOf(
-                            Annotation.Builder.builder()
-                                    .type(Name::class.java)
-                                    .visible(true)
-                                    .values(mapOf("value" to it.propertyName))
-                                    .build()
-                    ))
+    private fun createMethods(
+        factoryInfoList: List<FactoryInfo>,
+        descs: MutableList<MethodDesc> = mutableListOf()
+    ): List<MethodDeclaration> =
+        factoryInfoList.map {
+            val annotations: MutableList<Annotation> = it.factoryUnification.extensions()
+                .filter {
+                    !it.implement().`is`(DEFAULT)
+                            || !it.extensionClass().`is`(DEFAULT)
                 }
+                .map {
+                    val values = mutableMapOf<String, Any>()
 
-                val desc = MethodDesc(it.name, parameters.size)
+                    if (!it.implement().`is`(DEFAULT)) {
+                        values.put("implement", it.implement())
+                    }
 
-                val name = getUniqueName(desc, descs)
-                descs += desc.copy(name = name)
+                    if (!it.extensionClass().`is`(DEFAULT)) {
+                        values.put("extensionClass", it.extensionClass())
+                    }
 
-                val signature = it.signature
-
-                MethodDeclaration.Builder.builder()
-                        .annotations(annotations)
-                        .modifiers(CodeModifier.PUBLIC)
-                        .genericSignature(it.signature)
-                        .name(name)
-                        .returnType(eraseType(it.type, signature))
-                        .parameters(parameters.map { it.builder().type(eraseType(it.type, signature)).build() })
+                    Annotation.Builder.builder()
+                        .retention(Retention.RUNTIME)
+                        .type(Extension::class.java)
+                        .values(values)
                         .build()
+                }
+                .toMutableList()
+
+            if (it.factoryUnification.lazy())
+                annotations += Annotation.Builder.builder()
+                    .retention(Retention.RUNTIME)
+                    .type(LazyGeneration::class.java)
+                    .build()
+
+            val parameters = mutableListOf<KoresParameter>()
+
+            val gT = Generic.type(TypeInfo::class.java).of(it.type)
+
+            if (it.element.typeParameters.isNotEmpty() && !it.factoryUnification.omitTypeParam())
+                parameters += parameter(
+                    type = gT, name = eventTypeInfoFieldName, annotations = listOf(
+                        Annotation.Builder.builder()
+                            .type(TypeParam::class.java)
+                            .retention(Retention.RUNTIME)
+                            .build()
+                    )
+                )
+
+            parameters += it.properties.map {
+                parameter(
+                    type = it.propertyType, name = it.propertyName, annotations = listOf(
+                        Annotation.Builder.builder()
+                            .type(Name::class.java)
+                            .retention(Retention.RUNTIME)
+                            .values(mapOf("value" to it.propertyName))
+                            .build()
+                    )
+                )
             }
+
+            val desc = MethodDesc(it.name, parameters.size)
+
+            val name = getUniqueName(desc, descs)
+            descs += desc.copy(name = name)
+
+            val signature = it.signature
+
+            MethodDeclaration.Builder.builder()
+                .annotations(annotations)
+                .modifiers(KoresModifier.PUBLIC)
+                .genericSignature(it.signature)
+                .name(name)
+                .returnType(eraseType(it.type, signature))
+                .parameters(parameters.map {
+                    it.builder().type(eraseType(it.type, signature)).build()
+                })
+                .build()
+        }
 
 }
 
@@ -174,14 +183,18 @@ fun TypeElement.name(): String {
     return builder.toString()
 }
 
-class FactoryInfo(val type: CodeType,
-                  val element: TypeElement,
-                  val signature: GenericSignature,
-                  val factoryUnification: FactoryUnification,
-                  val properties: List<EventSysProperty>,
-                  val name: String,
-                  val origin: Element)
+class FactoryInfo(
+    val type: KoresType,
+    val element: TypeElement,
+    val signature: GenericSignature,
+    val factoryUnification: FactoryUnification,
+    val properties: List<EventSysProperty>,
+    val name: String,
+    val origin: Element
+)
 
-data class EventSysProperty(val annotatedElement: TypeElement,
-                            val propertyType: CodeType,
-                            val propertyName: String)
+data class EventSysProperty(
+    val annotatedElement: TypeElement,
+    val propertyType: KoresType,
+    val propertyName: String
+)

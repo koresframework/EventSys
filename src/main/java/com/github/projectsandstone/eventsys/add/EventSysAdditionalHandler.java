@@ -1,5 +1,5 @@
 /*
- *      EventSys - Event implementation generator written on top of CodeAPI
+ *      EventSys - Event implementation generator written on top of Kores
  *
  *         The MIT License (MIT)
  *
@@ -27,17 +27,17 @@
  */
 package com.github.projectsandstone.eventsys.add;
 
-import com.github.jonathanxd.codeapi.CodeSource;
-import com.github.jonathanxd.codeapi.MutableCodeSource;
-import com.github.jonathanxd.codeapi.base.ConstructorDeclaration;
-import com.github.jonathanxd.codeapi.base.FieldDeclaration;
-import com.github.jonathanxd.codeapi.base.MethodDeclaration;
-import com.github.jonathanxd.codeapi.base.TypeSpec;
-import com.github.jonathanxd.codeapi.common.MethodTypeSpec;
-import com.github.jonathanxd.codeapi.factory.Factories;
-import com.github.jonathanxd.codeapi.factory.InvocationFactory;
-import com.github.jonathanxd.codeapi.literal.Literals;
-import com.github.jonathanxd.codeapi.type.TypeRef;
+import com.github.jonathanxd.kores.Instructions;
+import com.github.jonathanxd.kores.MutableInstructions;
+import com.github.jonathanxd.kores.base.ConstructorDeclaration;
+import com.github.jonathanxd.kores.base.FieldDeclaration;
+import com.github.jonathanxd.kores.base.MethodDeclaration;
+import com.github.jonathanxd.kores.base.TypeSpec;
+import com.github.jonathanxd.kores.common.MethodTypeSpec;
+import com.github.jonathanxd.kores.factory.Factories;
+import com.github.jonathanxd.kores.factory.InvocationFactory;
+import com.github.jonathanxd.kores.literal.Literals;
+import com.github.jonathanxd.kores.type.TypeRef;
 import com.github.jonathanxd.iutils.collection.Collections3;
 import com.github.jonathanxd.iutils.data.TypedData;
 import com.github.jonathanxd.iutils.object.TypedKey;
@@ -77,7 +77,7 @@ public class EventSysAdditionalHandler {
     }
 
     @NotNull
-    public static CodeSource generateAdditionalConstructorBody(@NotNull ConstructorDeclaration constructorDeclaration,
+    public static Instructions generateAdditionalConstructorBody(@NotNull ConstructorDeclaration constructorDeclaration,
                                                                @NotNull TypeRef owner,
                                                                @NotNull Class<?> base,
                                                                @NotNull TypedData data) {
@@ -86,14 +86,14 @@ public class EventSysAdditionalHandler {
         List<PropertyInfo> props = PROP_INFO_KEY.getOrNull(data);
 
         if (props != null) {
-            MutableCodeSource source = MutableCodeSource.create();
+            MutableInstructions source = MutableInstructions.create();
 
             EventClassGeneratorKt.genConstructorPropertiesMap(source, props);
 
             return source.toImmutable();
         }
 
-        return CodeSource.empty();
+        return Instructions.empty();
     }
 
 
@@ -124,7 +124,7 @@ public class EventSysAdditionalHandler {
 
                 return Optional.of(declaration)
                         .map(it -> it.builder()
-                                .body(CodeSource.fromPart(Factories.returnValue(TypeInfo.class,
+                                .body(Instructions.fromPart(Factories.returnValue(TypeInfo.class,
                                         InvocationFactory.invokeStatic(
                                                 TypeInfo.class,
                                                 "of",
@@ -136,7 +136,7 @@ public class EventSysAdditionalHandler {
             } else if (declaration.getName().equals("getProperties")) {
                 return Optional.of(declaration)
                         .map(it -> it.builder()
-                                .body(CodeSource.fromPart(Factories.returnValue(Map.class,
+                                .body(Instructions.fromPart(Factories.returnValue(Map.class,
                                         Factories.accessThisField(EventClassGeneratorKt.getPropertiesFieldType(),
                                                 EventClassGeneratorKt.propertiesUnmodName)
                                 )))
