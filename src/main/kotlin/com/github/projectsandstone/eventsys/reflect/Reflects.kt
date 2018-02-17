@@ -27,15 +27,8 @@
  */
 package com.github.projectsandstone.eventsys.reflect
 
-import com.github.jonathanxd.kores.util.conversion.parameterNames
-import com.github.jonathanxd.iutils.description.Description
-import com.github.jonathanxd.iutils.description.DescriptionUtil
-import com.github.projectsandstone.eventsys.event.annotation.Name
-import com.github.projectsandstone.eventsys.event.property.Property
+import com.github.projectsandstone.eventsys.util.NameCaching
 import java.lang.reflect.Method
-import kotlin.reflect.KFunction
-import kotlin.reflect.full.findAnnotation
-import kotlin.reflect.full.valueParameters
 
 fun findImplementation(jClass: Class<*>, method: Method): Pair<Class<*>, Method>? {
     val paramTypes = arrayOf(method.declaringClass) + method.parameterTypes
@@ -75,7 +68,7 @@ fun Method.isEqual(other: Method): Boolean =
                 && this.returnType == other.returnType
                 && this.parameterTypes.contentEquals(other.parameterTypes)
 
-internal fun getName(base: String): String {
+internal fun getName(base: String, nameCaching: NameCaching): String {
 
     var base_ = base
     var count = 0
@@ -85,7 +78,7 @@ internal fun getName(base: String): String {
                 Class.forName(base)
                 true
             } catch (t: Throwable) {
-                false
+                !nameCaching.cache(base)
             }
 
     while (findClass(base_)) {

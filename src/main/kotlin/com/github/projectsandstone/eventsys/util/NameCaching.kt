@@ -25,43 +25,21 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.gen.event
+package com.github.projectsandstone.eventsys.util
 
-import com.github.jonathanxd.iutils.option.Option
+import java.util.concurrent.CopyOnWriteArrayList
 
-object EventGeneratorOptions {
+class NameCaching {
 
-    /**
-     * Uses asynchronous executions where possible. This does not make generator faster unless you
-     * have factories with several event classes.
-     */
-    @JvmField
-    val ASYNC = Option(true)
+    private val nameCache: MutableList<String> = CopyOnWriteArrayList()
 
-    /**
-     * True to enable suppression of checks. This is disabled by default.
-     */
-    @JvmField
-    val ENABLE_SUPPRESSION = Option(false)
-
-    /**
-     * Mode of lazy generation of event classes on factory classes.
-     */
-    @JvmField
-    val LAZY_EVENT_GENERATION_MODE = Option(LazyGenerationMode.BOOTSTRAP)
-
-    /**
-     * Enables bridge method generation, this is default in EventSys because kotlin compiler
-     * does not add bridge methods in interfaces like Java 8 do. If you disable this, you will probably
-     * receive log messages about `not implemented methods` in some cases. Bridge methods introduces
-     * a little overhead (depends on the amount of methods in generated class and inherited classes).
-     */
-    @JvmField
-    val ENABLE_BRIDGE = Option(true)
-
-    /**
-     * Parse arguments and dispatch to listener method with Java 7 MethodHandles instead of generating listener class.
-     */
-    @JvmField
-    val USE_METHOD_HANDLE_LISTENER = Option(false)
+    fun cache(name: String): Boolean {
+        synchronized(nameCache) {
+            if (!nameCache.contains(name)) {
+                nameCache.add(name)
+                return true
+            }
+            return false
+        }
+    }
 }

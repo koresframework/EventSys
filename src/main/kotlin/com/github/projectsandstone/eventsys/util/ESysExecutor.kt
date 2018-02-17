@@ -25,43 +25,29 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.gen.event
+package com.github.projectsandstone.eventsys.util
 
-import com.github.jonathanxd.iutils.option.Option
+import com.github.jonathanxd.iutils.option.Options
+import com.github.projectsandstone.eventsys.gen.event.EventGeneratorOptions
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executor
+import java.util.function.Supplier
 
-object EventGeneratorOptions {
+class ESysExecutor(private val options: Options, private val executor: Executor): Executor {
 
-    /**
-     * Uses asynchronous executions where possible. This does not make generator faster unless you
-     * have factories with several event classes.
-     */
-    @JvmField
-    val ASYNC = Option(true)
+    private val async get() = options[EventGeneratorOptions.ASYNC]
 
-    /**
-     * True to enable suppression of checks. This is disabled by default.
-     */
-    @JvmField
-    val ENABLE_SUPPRESSION = Option(false)
+    override fun execute(command: Runnable?) {
+        if (command != null) {
+            if (async) executor.execute(command) else command.run()
+        }
+    }
 
-    /**
-     * Mode of lazy generation of event classes on factory classes.
-     */
-    @JvmField
-    val LAZY_EVENT_GENERATION_MODE = Option(LazyGenerationMode.BOOTSTRAP)
+    fun <T> execute(supplier: Supplier<T>): CompletableFuture<T> =
+        if (!this.async) {
+            CompletableFuture.completedFuture(supplier.get())
+        } else {
+            CompletableFuture.supplyAsync(supplier, executor)
+        }
 
-    /**
-     * Enables bridge method generation, this is default in EventSys because kotlin compiler
-     * does not add bridge methods in interfaces like Java 8 do. If you disable this, you will probably
-     * receive log messages about `not implemented methods` in some cases. Bridge methods introduces
-     * a little overhead (depends on the amount of methods in generated class and inherited classes).
-     */
-    @JvmField
-    val ENABLE_BRIDGE = Option(true)
-
-    /**
-     * Parse arguments and dispatch to listener method with Java 7 MethodHandles instead of generating listener class.
-     */
-    @JvmField
-    val USE_METHOD_HANDLE_LISTENER = Option(false)
 }

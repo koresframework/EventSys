@@ -34,6 +34,7 @@ import com.github.projectsandstone.eventsys.event.property.Property
 import com.github.projectsandstone.eventsys.event.property.primitive.IntGetterProperty
 import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
 import com.github.projectsandstone.eventsys.gen.event.EventClassSpecification
+import com.github.projectsandstone.eventsys.gen.event.EventGeneratorOptions
 import com.github.projectsandstone.eventsys.impl.DefaultEventManager
 import com.github.projectsandstone.eventsys.util.EventListener
 import com.github.projectsandstone.eventsys.util.create
@@ -57,7 +58,7 @@ class EventsWiki {
                 implement = null
         ))
 */
-
+        //manager.eventGenerator.options[EventGeneratorOptions.ASYNC] = true
         val factory = manager.eventGenerator.createFactory<MyFactory>()
         val eventClass = manager.eventGenerator.createEventClass<BuyEvent>()
 

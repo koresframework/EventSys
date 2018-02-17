@@ -72,6 +72,7 @@ import com.github.projectsandstone.eventsys.util.JavaCodePartUtil
 import com.github.projectsandstone.eventsys.util.fail
 import com.github.projectsandstone.eventsys.util.toSimpleString
 import java.lang.reflect.*
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -98,6 +99,8 @@ internal object EventFactoryClassGenerator {
         checkHandler.validateFactoryClass(factoryClass, eventGenerator)
 
         val eventGeneratorField = VariableRef(EventGenerator::class.java, "eventGenerator")
+
+        val futures = mutableListOf<CompletableFuture<*>>()
 
         val declaration = ClassDeclaration.Builder.builder()
                 .modifiers(KoresModifier.PUBLIC)
@@ -193,22 +196,21 @@ internal object EventFactoryClassGenerator {
                                     }
 
                                 } else {
-
-                                    val implClass = eventGenerator.createEventClass(
+                                    futures += eventGenerator.createEventClassAsync(
                                             eventTypeInfo,
                                             additionalProperties,
                                             extensions
-                                    )
-
-                                    methodBody.add(invokeEventConstructor(
-                                            implClass,
+                                    ).thenAccept {
+                                        methodBody.add(invokeEventConstructor(
+                                            it,
                                             eventTypeInfo,
                                             methodDeclaration,
                                             logger,
                                             eventType,
                                             provider.singleOrNull(),
                                             factoryMethod
-                                    ))
+                                        ))
+                                    }
 
                                 }
 
@@ -218,6 +220,10 @@ internal object EventFactoryClassGenerator {
 
                         })
                 .build()
+
+        val c = CompletableFuture.allOf(*futures.toTypedArray())
+
+        c.join()
 
         val generator = BytecodeGenerator()
 

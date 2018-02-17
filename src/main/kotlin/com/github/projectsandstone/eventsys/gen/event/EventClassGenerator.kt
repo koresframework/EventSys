@@ -68,6 +68,7 @@ import com.github.projectsandstone.eventsys.gen.save.ClassSaver
 import com.github.projectsandstone.eventsys.reflect.findImplementation
 import com.github.projectsandstone.eventsys.reflect.getName
 import com.github.projectsandstone.eventsys.reflect.isEqual
+import com.github.projectsandstone.eventsys.util.NameCaching
 import com.github.projectsandstone.eventsys.util.toGeneric
 import com.github.projectsandstone.eventsys.validation.Validator
 import java.lang.reflect.Method
@@ -92,6 +93,8 @@ import java.util.function.*
  * in constructor.
  */
 internal object EventClassGenerator {
+
+    private val nameCaching = NameCaching()
 
     private fun TypeInfo<*>.toStr(): String {
         if (this.typeParameters.isEmpty()) {
@@ -131,7 +134,7 @@ internal object EventClassGenerator {
         val isSpecialized = typeInfo.typeParameters.isNotEmpty()
         val requiresTypeInfo = classType.typeParameters.isNotEmpty()
 
-        val name = getName("${typeInfoLiter}Impl")
+        val name = getName("${typeInfoLiter}Impl", nameCaching)
 
         var classDeclarationBuilder = ClassDeclaration.Builder.builder()
                 .modifiers(KoresModifier.PUBLIC)
@@ -434,7 +437,8 @@ internal object EventClassGenerator {
     }
 
     private fun genMethods(typeInfo: TypeInfo<*>,
-                           requiresTypeInfo: Boolean, properties: List<PropertyInfo>): List<MethodDeclaration> {
+                           requiresTypeInfo: Boolean,
+                           properties: List<PropertyInfo>): List<MethodDeclaration> {
 
         val methods = mutableListOf<MethodDeclaration>()
 

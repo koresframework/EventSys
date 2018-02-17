@@ -66,6 +66,8 @@ import java.lang.reflect.Type
  */
 internal object MethodListenerGenerator {
 
+    private val nameCaching = NameCaching()
+
     fun create(owner: Any, method: Method, instance: Any?, listenerSpec: ListenerSpec): EventListener<Event> {
 
         val klass = this.createClass(owner, instance, method, listenerSpec)
@@ -90,7 +92,7 @@ internal object MethodListenerGenerator {
         val baseCanonicalName = "${EventListener::class.java.`package`.name}.generated."
         val declaringName = method.declaringClass.canonicalName.replace('.', '_')
 
-        val name = getName("${baseCanonicalName}_${declaringName}_${method.name}")
+        val name = getName("${baseCanonicalName}_${declaringName}_${method.name}", nameCaching)
 
         val eventType = listenerSpec.eventType
 
@@ -108,7 +110,7 @@ internal object MethodListenerGenerator {
 
         val generator = BytecodeGenerator()
 
-        generator.options.set(VISIT_LINES, VisitLineType.FOLLOW_CODE_SOURCE)
+        generator.options.set(VISIT_LINES, VisitLineType.GEN_LINE_INSTRUCTION)
 
         val bytecodeClass = generator.process(codeClass)[0]
 

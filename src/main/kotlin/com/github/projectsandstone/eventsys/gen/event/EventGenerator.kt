@@ -36,6 +36,7 @@ import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
 import com.github.projectsandstone.eventsys.gen.check.CheckHandler
 import com.github.projectsandstone.eventsys.logging.LoggerInterface
 import java.lang.reflect.Method
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
 
 /**
@@ -99,7 +100,7 @@ interface EventGenerator {
      *
      * @see EventFactoryClassGenerator
      */
-    fun <T : Any> createFactoryAsync(factoryClass: Class<T>): Future<out T>
+    fun <T : Any> createFactoryAsync(factoryClass: Class<T>): CompletableFuture<out T>
 
     /**
      * Creates event class
@@ -123,7 +124,7 @@ interface EventGenerator {
      *
      * @see EventClassGenerator
      */
-    fun <T : Event> createEventClassAsync(type: TypeInfo<T>, additionalProperties: List<PropertyInfo>): Future<Class<out T>> =
+    fun <T : Event> createEventClassAsync(type: TypeInfo<T>, additionalProperties: List<PropertyInfo>): CompletableFuture<Class<out T>> =
             this.createEventClassAsync(type, additionalProperties, emptyList())
 
     /**
@@ -143,7 +144,7 @@ interface EventGenerator {
      */
     fun <T : Event> createEventClassAsync(type: TypeInfo<T>,
                                           additionalProperties: List<PropertyInfo>,
-                                          extensions: List<ExtensionSpecification>): Future<Class<out T>>
+                                          extensions: List<ExtensionSpecification>): CompletableFuture<Class<out T>>
 
     /**
      * Creates method listener class
@@ -158,6 +159,6 @@ interface EventGenerator {
      *
      * @see MethodListenerGenerator
      */
-    fun createMethodListenerAsync(owner: Any, method: Method, instance: Any?, listenerSpec: ListenerSpec): Future<EventListener<Event>>
+    fun createMethodListenerAsync(owner: Any, method: Method, instance: Any?, listenerSpec: ListenerSpec): CompletableFuture<EventListener<Event>>
 
 }
