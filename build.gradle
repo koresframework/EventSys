@@ -5,6 +5,7 @@ buildscript {
     repositories {
         mavenCentral()
         jcenter()
+        maven { url "https://plugins.gradle.org/m2/" }
     }
 
     dependencies {
@@ -19,7 +20,7 @@ plugins {
 }
 
 group 'com.github.projectsandstone'
-version '1.5.3'
+version '1.5.4'
 
 // IDE
 apply plugin: 'idea'
