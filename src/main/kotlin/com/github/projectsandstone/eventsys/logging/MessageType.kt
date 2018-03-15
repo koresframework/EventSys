@@ -76,4 +76,9 @@ enum class MessageType(val level: Level) {
      */
     EXCEPTION_IN_LISTENER(Level.WARN),
 
+    /**
+     * Standard warning.
+     */
+    STANDARD_WARNING(Level.WARN)
+
 }

@@ -41,6 +41,7 @@ import com.github.projectsandstone.eventsys.gen.event.EventGeneratorOptions
 import com.github.projectsandstone.eventsys.logging.MessageType
 import com.github.projectsandstone.eventsys.util.DeclaredMethod
 import com.github.projectsandstone.eventsys.util.fail
+import com.github.projectsandstone.eventsys.util.toSimpleString
 import java.util.*
 import java.util.concurrent.ConcurrentSkipListSet
 
@@ -85,7 +86,7 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
                 ) {
                     // Suppress
                 } else {
-                    unimplMethods += "$method"
+                    unimplMethods += method.toSimpleString()
                 }
             }
         }

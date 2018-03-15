@@ -27,9 +27,11 @@
  */
 package com.github.projectsandstone.eventsys.util
 
+import com.github.jonathanxd.kores.base.FieldDeclaration
 import com.github.jonathanxd.kores.base.MethodDeclaration
 import com.github.jonathanxd.kores.type.simpleName
 import java.lang.reflect.Method
+import java.lang.reflect.Type
 
 fun Method.toSimpleString() =
     "${this.declaringClass.simpleName}.${this.returnType.simpleName} ${this.name}(${this.parameterTypes.joinToString { it.simpleName }})"
@@ -39,3 +41,15 @@ fun DeclaredMethod.toSimpleString() =
 
 fun MethodDeclaration.toSimpleString() =
     "${this.returnType.simpleName} ${this.name}(${this.parameters.joinToString { it.type.simpleName }})"
+
+fun FieldDeclaration.toSimpleString() =
+    "${this.type.simpleName} ${this.name}"
+
+fun Any.residenceToString(): String =
+    when (this) {
+        is MethodDeclaration -> "method(${this.toSimpleString()})"
+        is FieldDeclaration -> "field(${this.toSimpleString()})"
+        is Type -> "type(${this.simpleName})"
+        is Unit -> "()"
+        else -> this.toString()
+    }

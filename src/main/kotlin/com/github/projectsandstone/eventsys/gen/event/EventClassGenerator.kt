@@ -68,12 +68,11 @@ import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
 import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
 import com.github.projectsandstone.eventsys.gen.ResolvableDeclaration
 import com.github.projectsandstone.eventsys.gen.save.ClassSaver
+import com.github.projectsandstone.eventsys.logging.MessageType
 import com.github.projectsandstone.eventsys.reflect.findImplementation
 import com.github.projectsandstone.eventsys.reflect.getName
 import com.github.projectsandstone.eventsys.reflect.isEqual
-import com.github.projectsandstone.eventsys.util.DeclarationCache
-import com.github.projectsandstone.eventsys.util.NameCaching
-import com.github.projectsandstone.eventsys.util.toStructure
+import com.github.projectsandstone.eventsys.util.*
 import com.github.projectsandstone.eventsys.validation.Validator
 import java.lang.reflect.Type
 import java.util.*
@@ -183,6 +182,7 @@ internal object EventClassGenerator {
         cache: DeclarationCache
     ): ClassDeclaration {
         val checker = eventGenerator.checkHandler
+        val logger = eventGenerator.logger
 
         val eventType = eventClassSpecification.type
         val additionalProperties = eventClassSpecification.additionalProperties
@@ -197,6 +197,13 @@ internal object EventClassGenerator {
         val isSpecialized = eventType is GenericType && eventType.bounds.isNotEmpty()
         val requiresGenericType = eventType.concreteType.toGeneric.bounds.isNotEmpty()
 
+        if (isSpecialized) {
+            logger.log(
+                "The construction of event of type '$eventType' is specialized, specialization is deprecated since 1.6",
+                MessageType.STANDARD_WARNING
+            )
+        }
+
         val name = getName("${eventTypeLiter}Impl", nameCaching)
 
         var classDeclarationBuilder = ClassDeclaration.Builder.builder()
@@ -206,7 +213,7 @@ internal object EventClassGenerator {
         val implementations = mutableListOf<Type>()
 
         val evtGenericType =
-            if (isSpecialized) Generic.type(eventType.concreteType).of(eventType.concreteType.toGeneric.bounds[0].type)
+            if (isSpecialized) Generic.type(eventType.concreteType).of(eventType.asGeneric.bounds[0].type)
             else eventType.concreteType.toGeneric
 
         if (isItf) {
@@ -217,7 +224,8 @@ internal object EventClassGenerator {
         }
 
         if (!isSpecialized && requiresGenericType) {
-            classDeclarationBuilder = classDeclarationBuilder.genericSignature(cache[evtGenericType].genericSignature)
+            classDeclarationBuilder =
+                    classDeclarationBuilder.genericSignature(cache[evtGenericType].genericSignature)
         }
 
         val extensionImplementations = mutableListOf<Type>()
@@ -517,19 +525,6 @@ internal object EventClassGenerator {
                 constructorBody += setFieldValue(
                     Alias.THIS, Access.THIS, Type::class.java, eventTypeFieldName,
                     genericType.toStructure()
-                    /*cast(
-                        Object::class.java, TypeInfo::class.java, invokeInterface(
-                            List::class.java,
-                            TypeInfoUtil::class.java.invokeStatic(
-                                "fromFullString",
-                                typeSpec(List::class.java, String::class.java),
-                                listOf(Literals.STRING(genericType.toTypeInfo().toFullString()))
-                            ),
-                            "get",
-                            typeSpec(Object::class.java, Int::class.javaPrimitiveType!!),
-                            listOf(Literals.INT(0))
-                        )
-                    )*/
                 )
             } else {
 
@@ -590,7 +585,6 @@ internal object EventClassGenerator {
                 Type::class.java,
                 eventTypeFieldName
             )
-
         else createGenericType(eventType)
 
         methods += MethodDeclaration.Builder.builder()
@@ -669,7 +663,7 @@ internal object EventClassGenerator {
                                         .joinToString(
                                             prefix = "[",
                                             postfix = "]"
-                                        ) { "[impl=${it.implement?.simpleName},ext=${it.extensionClass?.simpleName},residence=${it.residence}]" }}"
+                                        ) { "[impl=${it.implement?.simpleName},ext=${it.extensionClass?.simpleName},residence=${it.residence.residenceToString()}]" }}"
                                 )
                             )
                             .concat("}")
