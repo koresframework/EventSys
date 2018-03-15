@@ -27,7 +27,16 @@
  */
 package com.github.projectsandstone.eventsys.util
 
+import com.github.jonathanxd.kores.base.KoresAnnotation
 import com.github.projectsandstone.eventsys.event.annotation.Filter
+import java.lang.reflect.Type
 
 fun Filter?.hasEventFirstArg(): Boolean =
-        this == null || this.useEventArg
+    this == null || this.useEventArg
+
+fun KoresAnnotation?.hasEventFirstArg(): Boolean =
+    this == null || this.values["useEventArg"] == true
+
+@Suppress("UNCHECKED_CAST")
+fun KoresAnnotation.filterValue(): List<Type> =
+    (this.values["value"] as? List<Type>).orEmpty()

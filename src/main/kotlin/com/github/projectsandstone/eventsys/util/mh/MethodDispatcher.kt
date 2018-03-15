@@ -28,6 +28,10 @@
 package com.github.projectsandstone.eventsys.util.mh
 
 import com.github.jonathanxd.iutils.type.TypeInfo
+import com.github.jonathanxd.kores.type.GenericType
+import com.github.jonathanxd.kores.type.`is`
+import com.github.jonathanxd.kores.type.bindedDefaultResolver
+import com.github.jonathanxd.kores.type.concreteType
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
 import com.github.projectsandstone.eventsys.event.EventPriority
@@ -95,11 +99,15 @@ open class MethodDispatcher(
                     val name = spec.name
                     val typeInfo = spec.type
 
-                    val type =
-                            if (typeInfo.typeClass == Property::class.java && typeInfo.typeParameters.size == 1)
-                                typeInfo.getTypeParameter(0).typeClass
+                    val ctype =
+                            if (typeInfo is GenericType
+                                    && typeInfo.concreteType.`is`(Property::class.java)
+                                    && typeInfo.bounds.size == 1)
+                                typeInfo.bounds[0].type
                             else
-                                typeInfo.typeClass
+                                typeInfo
+
+                    val type = ctype.concreteType.bindedDefaultResolver.resolve().right as Class<*>
 
                     val found =
                             if (spec.shouldLookup) event.lookup(type, name) as? GetterProperty<*>

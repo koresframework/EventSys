@@ -27,7 +27,15 @@
  */
 package com.github.projectsandstone.eventsys.util
 
+import com.github.jonathanxd.kores.base.MethodDeclaration
+import com.github.jonathanxd.kores.type.simpleName
 import java.lang.reflect.Method
 
 fun Method.toSimpleString() =
-        "${this.declaringClass.simpleName}.${this.returnType.simpleName} ${this.name}(${this.parameterTypes.joinToString { it.simpleName }})"
+    "${this.declaringClass.simpleName}.${this.returnType.simpleName} ${this.name}(${this.parameterTypes.joinToString { it.simpleName }})"
+
+fun DeclaredMethod.toSimpleString() =
+    "${this.type.simpleName}.${this.methodDeclaration.returnType.simpleName} ${this.methodDeclaration.name}(${this.methodDeclaration.parameters.joinToString { it.type.simpleName }})"
+
+fun MethodDeclaration.toSimpleString() =
+    "${this.returnType.simpleName} ${this.name}(${this.parameters.joinToString { it.type.simpleName }})"

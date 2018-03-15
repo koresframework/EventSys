@@ -41,7 +41,7 @@ public class Constant {
     }
 
     public static void initialize(EventManager manager) {
-        Constant.MY_FACTORY_INSTANCE = manager.getEventGenerator().createFactory(MyFactory.class);
+        Constant.MY_FACTORY_INSTANCE = manager.getEventGenerator().<MyFactory>createFactory(MyFactory.class).invoke();
     }
 
 }

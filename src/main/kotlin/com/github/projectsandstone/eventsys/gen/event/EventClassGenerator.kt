@@ -27,6 +27,9 @@
  */
 package com.github.projectsandstone.eventsys.gen.event
 
+import com.github.jonathanxd.iutils.function.consumer.BooleanConsumer
+import com.github.jonathanxd.iutils.kt.rightOrFail
+import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.kores.Instruction
 import com.github.jonathanxd.kores.Instructions
 import com.github.jonathanxd.kores.MutableInstructions
@@ -45,12 +48,12 @@ import com.github.jonathanxd.kores.generic.GenericSignature
 import com.github.jonathanxd.kores.helper.ConcatHelper
 import com.github.jonathanxd.kores.helper.invokeToString
 import com.github.jonathanxd.kores.literal.Literals
-import com.github.jonathanxd.kores.util.*
-import com.github.jonathanxd.kores.util.conversion.*
-import com.github.jonathanxd.iutils.function.consumer.BooleanConsumer
-import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.iutils.type.TypeInfoUtil
 import com.github.jonathanxd.kores.type.*
+import com.github.jonathanxd.kores.util.MixedResolver
+import com.github.jonathanxd.kores.util.conversion.access
+import com.github.jonathanxd.kores.util.conversion.toVariableAccess
+import com.github.jonathanxd.kores.util.inferType
+import com.github.jonathanxd.kores.util.toSourceString
 import com.github.projectsandstone.eventsys.Debug
 import com.github.projectsandstone.eventsys.event.Cancellable
 import com.github.projectsandstone.eventsys.event.Event
@@ -63,16 +66,15 @@ import com.github.projectsandstone.eventsys.event.property.primitive.*
 import com.github.projectsandstone.eventsys.extension.ExtensionHolder
 import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
 import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
-import com.github.projectsandstone.eventsys.gen.genericFromTypeInfo
+import com.github.projectsandstone.eventsys.gen.ResolvableDeclaration
 import com.github.projectsandstone.eventsys.gen.save.ClassSaver
 import com.github.projectsandstone.eventsys.reflect.findImplementation
 import com.github.projectsandstone.eventsys.reflect.getName
 import com.github.projectsandstone.eventsys.reflect.isEqual
+import com.github.projectsandstone.eventsys.util.DeclarationCache
 import com.github.projectsandstone.eventsys.util.NameCaching
-import com.github.projectsandstone.eventsys.util.toGeneric
+import com.github.projectsandstone.eventsys.util.toStructure
 import com.github.projectsandstone.eventsys.validation.Validator
-import java.lang.reflect.Method
-import java.lang.reflect.Modifier
 import java.lang.reflect.Type
 import java.util.*
 import java.util.function.*
@@ -104,7 +106,8 @@ internal object EventClassGenerator {
 
             base.append("_of_")
             this.typeParameters.forEach {
-                base.append(it.toFullString()
+                base.append(
+                    it.toFullString()
                         .replace(".", "_")
                         .replace("<", "_of_")
                         .replace(">", "__")
@@ -118,37 +121,106 @@ internal object EventClassGenerator {
         }
     }
 
+    private fun KoresType.xtoStr(): String =
+        if (this is GenericType && this.bounds.isNotEmpty()) {
+            this.toSourceString()
+                .replace(".", "_")
+                .replace("<", "_of_")
+                .replace(">", "__")
+                .replace(", ", "and")
+        } else {
+            this.canonicalName.replace('.', '_')
+        }
+
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> genImplementation(eventClassSpecification: EventClassSpecification<T>,
-                                      eventGenerator: EventGenerator): Class<T> {
+    fun <T : Event> genImplementation(
+        eventClassSpecification: EventClassSpecification,
+        eventGenerator: EventGenerator,
+        cache: DeclarationCache
+    ): ResolvableDeclaration<Class<T>> {
+        val classDeclaration =
+            genImplementationDeclaration(eventClassSpecification, eventGenerator, cache)
+
+        return genImplementationFromDeclaration(classDeclaration)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun <T : Event> genImplementationFromDeclaration(eventDeclaration: ClassDeclaration): ResolvableDeclaration<Class<T>> {
+        val resolver = lazy(LazyThreadSafetyMode.NONE) {
+            val generator = BytecodeGenerator()
+
+            generator.options.set(VISIT_LINES, VisitLineType.GEN_LINE_INSTRUCTION)
+
+            val bytecodeClass = generator.process(eventDeclaration)[0]
+
+            val bytes = bytecodeClass.bytecode
+            val disassembled = lazy { bytecodeClass.disassembledCode }
+
+            try {
+                val generatedEventClass = EventGenClassLoader.defineClass(
+                    eventDeclaration,
+                    bytes,
+                    disassembled
+                ) as GeneratedEventClass<T>
+
+                if (Debug.EVENT_GEN_DEBUG) {
+                    ClassSaver.save("eventgen", generatedEventClass)
+                }
+
+                return@lazy generatedEventClass.javaClass
+            } catch (t: Throwable) {
+                throw RuntimeException("Disassembled: \n${disassembled.value}", t)
+            }
+        }
+
+        return ResolvableDeclaration(eventDeclaration, resolver)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun genImplementationDeclaration(
+        eventClassSpecification: EventClassSpecification,
+        eventGenerator: EventGenerator,
+        cache: DeclarationCache
+    ): ClassDeclaration {
         val checker = eventGenerator.checkHandler
 
-        val typeInfo = eventClassSpecification.typeInfo
+        val eventType = eventClassSpecification.type
         val additionalProperties = eventClassSpecification.additionalProperties
         val extensions = eventClassSpecification.extensions
-        val type: KoresType = genericFromTypeInfo(typeInfo)
-        val classType = typeInfo.typeClass
+        //val type: KoresType = genericFromTypeInfo(eventType)
+        val classType = eventType.concreteType
         val isItf = classType.isInterface
+        val eventTypeDeclaration =
+            classType.bindedDefaultResolver.resolveTypeDeclaration().rightOrFail
 
-        val typeInfoLiter = typeInfo.toStr()
-        val isSpecialized = typeInfo.typeParameters.isNotEmpty()
-        val requiresTypeInfo = classType.typeParameters.isNotEmpty()
+        val eventTypeLiter = eventType.koresType.xtoStr()
+        val isSpecialized = eventType is GenericType && eventType.bounds.isNotEmpty()
+        val requiresGenericType = eventType.concreteType.toGeneric.bounds.isNotEmpty()
 
-        val name = getName("${typeInfoLiter}Impl", nameCaching)
+        val name = getName("${eventTypeLiter}Impl", nameCaching)
 
         var classDeclarationBuilder = ClassDeclaration.Builder.builder()
-                .modifiers(KoresModifier.PUBLIC)
-                .qualifiedName(name)
+            .modifiers(KoresModifier.PUBLIC)
+            .qualifiedName(name)
 
         val implementations = mutableListOf<Type>()
 
-        if (isItf) {
-            implementations += type
-            classDeclarationBuilder = classDeclarationBuilder.superClass(Types.OBJECT)
-        } else
-            classDeclarationBuilder = classDeclarationBuilder.superClass(type)
+        val evtGenericType =
+            if (isSpecialized) Generic.type(eventType.concreteType).of(eventType.concreteType.toGeneric.bounds[0].type)
+            else eventType.concreteType.toGeneric
 
-        val extensionImplementations = mutableListOf<Class<*>>()
+        if (isItf) {
+            implementations += evtGenericType
+            classDeclarationBuilder = classDeclarationBuilder.superClass(Types.OBJECT)
+        } else {
+            classDeclarationBuilder = classDeclarationBuilder.superClass(evtGenericType)
+        }
+
+        if (!isSpecialized && requiresGenericType) {
+            classDeclarationBuilder = classDeclarationBuilder.genericSignature(cache[evtGenericType].genericSignature)
+        }
+
+        val extensionImplementations = mutableListOf<Type>()
 
         extensions.forEach {
             it.implement?.let {
@@ -165,21 +237,43 @@ internal object EventClassGenerator {
 
         val plain = classDeclarationBuilder.build()
 
-        val properties = getProperties(classType, additionalProperties, extensions).map {
-            it.copy(inferredType = getPropInferredType(it, isSpecialized, plain))
-        }
+        val properties =
+            getProperties(eventTypeDeclaration, additionalProperties, extensions, cache).map {
+                it.copy(inferredType = getPropInferredType(it, isSpecialized, plain))
+            }
 
         classDeclarationBuilder = classDeclarationBuilder
-                .fields(this.genFields(properties, extensions, plain, typeInfo, requiresTypeInfo, eventGenerator))
-                .constructors(this.genConstructor(classType, typeInfo, requiresTypeInfo, isSpecialized, properties))
+            .fields(
+                this.genFields(
+                    properties,
+                    extensions,
+                    plain,
+                    eventType,
+                    requiresGenericType,
+                    eventGenerator,
+                    cache
+                )
+            )
+            .constructors(
+                this.genConstructor(
+                    eventTypeDeclaration,
+                    eventType,
+                    requiresGenericType,
+                    isSpecialized,
+                    properties
+                )
+            )
 
-        val methods = this.genMethods(typeInfo, requiresTypeInfo, properties).toMutableList()
+        val methods = this.genMethods(eventType, requiresGenericType, properties).toMutableList()
 
         methods += this.genToStringMethod(properties, extensions)
 
         extensions.forEach { ext ->
-            ext.extensionClass?.let {
-                methods += this.genExtensionMethods(it)
+            ext.extensionClass?.also {
+                methods += this.genExtensionMethods(
+                    it.bindedDefaultResolver.resolveTypeDeclaration().rightOrFail,
+                    cache
+                )
             }
         }
 
@@ -189,7 +283,7 @@ internal object EventClassGenerator {
         // Gen getProperties & getProperty & hasProperty
         methods += this.genPropertyHolderMethods()
 
-        methods += this.genDefaultMethodsImpl(classType, methods)
+        methods += this.genDefaultMethodsImpl(eventTypeDeclaration, methods, cache)
 
         val classDeclaration = classDeclarationBuilder.methods(methods).build().let {
             if (eventGenerator.options[EventGeneratorOptions.ENABLE_BRIDGE]) {
@@ -200,69 +294,79 @@ internal object EventClassGenerator {
         }
 
         checker.checkDuplicatedMethods(classDeclaration.methods)
-        this.validateExtensions(extensions, classDeclaration, eventGenerator)
-        checker.checkImplementation(classDeclaration.methods, classType, extensions, eventGenerator)
+        this.validateExtensions(extensions, classDeclaration, eventGenerator, cache)
+        checker.checkImplementation(
+            classDeclaration.methods,
+            eventTypeDeclaration,
+            extensions,
+            eventGenerator
+        )
 
-
-        val generator = BytecodeGenerator()
-
-        generator.options.set(VISIT_LINES, VisitLineType.GEN_LINE_INSTRUCTION)
-
-        val bytecodeClass = generator.process(classDeclaration)[0]
-
-        val bytes = bytecodeClass.bytecode
-        val disassembled = lazy { bytecodeClass.disassembledCode }
-
-        val generatedEventClass = EventGenClassLoader.defineClass(classDeclaration, bytes, disassembled) as GeneratedEventClass<T>
-
-        if (Debug.EVENT_GEN_DEBUG) {
-            ClassSaver.save("eventgen", generatedEventClass)
-        }
-
-        return generatedEventClass.javaClass
+        return classDeclaration
     }
 
     private fun genExtensionGetter(extensions: List<ExtensionSpecification>): MethodDeclaration {
-        val extensionClasses = extensions.filter { it.extensionClass != null }.map { it.extensionClass!! }
+        val extensionClasses =
+            extensions.filter { it.extensionClass != null }.map { it.extensionClass!! }
 
         val type = Generic.type("T")
         val variableType = Generic.type(Class::class.java).of("T")
 
         return methodDec().modifiers(KoresModifier.PUBLIC)
-                .name("getExtension")
-                .genericSignature(GenericSignature.create(type))
-                .parameters(parameter(name = "extensionClass", type = variableType))
-                .returnType(type)
-                .body(Instructions.fromPart(
-                        if (extensions.isNotEmpty()) switchStm()
-                                .switchType(SwitchType.STRING)
-                                .value(accessVariable(variableType, "extensionClass").invokeVirtual(
-                                        Class::class.java,
-                                        "getCanonicalName",
-                                        typeSpec(String::class.java),
-                                        emptyList()))
-                                .cases(
-                                        extensionClasses.map {
-                                            val ref = getExtensionFieldRef(it)
-                                            caseStm()
-                                                    .value(Literals.STRING(it.canonicalName))
-                                                    .body(Instructions.fromPart(returnValue(type, fieldAccess().base(ref).build())))
-                                                    .build()
-                                        } + caseStm().defaultCase().body(Instructions.fromVarArgs(returnValue(type, Literals.NULL)))
-                                                .build()
+            .name("getExtension")
+            .genericSignature(GenericSignature.create(type))
+            .parameters(parameter(name = "extensionClass", type = variableType))
+            .returnType(type)
+            .body(Instructions.fromPart(
+                if (extensions.isNotEmpty()) switchStm()
+                    .switchType(SwitchType.STRING)
+                    .value(
+                        accessVariable(variableType, "extensionClass").invokeVirtual(
+                            Class::class.java,
+                            "getCanonicalName",
+                            typeSpec(String::class.java),
+                            emptyList()
+                        )
+                    )
+                    .cases(
+                        extensionClasses.map {
+                            val ref = getExtensionFieldRef(it)
+                            caseStm()
+                                .value(Literals.STRING(it.canonicalName))
+                                .body(
+                                    Instructions.fromPart(
+                                        returnValue(
+                                            type,
+                                            fieldAccess().base(ref).build()
+                                        )
+                                    )
                                 )
                                 .build()
-                        else returnValue(type, Literals.NULL)
-                ))
-                .build()
+                        } + caseStm().defaultCase().body(
+                            Instructions.fromVarArgs(
+                                returnValue(
+                                    type,
+                                    Literals.NULL
+                                )
+                            )
+                        )
+                            .build()
+                    )
+                    .build()
+                else returnValue(type, Literals.NULL)
+            ))
+            .build()
     }
 
-    private fun genFields(properties: List<PropertyInfo>,
-                          extensions: List<ExtensionSpecification>,
-                          type: Type,
-                          typeInfo: TypeInfo<*>,
-                          requiresType: Boolean,
-                          eventGenerator: EventGenerator): List<FieldDeclaration> {
+    private fun genFields(
+        properties: List<PropertyInfo>,
+        extensions: List<ExtensionSpecification>,
+        type: ClassDeclaration,
+        genericType: Type,
+        requiresType: Boolean,
+        eventGenerator: EventGenerator,
+        cache: DeclarationCache
+    ): List<FieldDeclaration> {
         val fields = properties.map {
             val name = it.propertyName
 
@@ -276,14 +380,14 @@ internal object EventClassGenerator {
         }.toMutableList()
 
         fields += getPropertyFields()
-        fields += genExtensionsFields(extensions, type, eventGenerator)
+        fields += genExtensionsFields(extensions, type, eventGenerator, cache)
 
         if (requiresType) {
             fields += fieldDec()
-                    .modifiers(KoresModifier.PRIVATE, KoresModifier.FINAL)
-                    .type(getEventTypeInfoSignature(typeInfo))
-                    .name(eventTypeInfoFieldName)
-                    .build()
+                .modifiers(KoresModifier.PRIVATE, KoresModifier.FINAL)
+                .type(Type::class.java)
+                .name(eventTypeFieldName)
+                .build()
         }
 
         return fields
@@ -292,74 +396,83 @@ internal object EventClassGenerator {
 
     fun getPropInferredType(property: PropertyInfo, isSpecialized: Boolean, type: Type): Type {
         if (!isSpecialized
-                || property.declaringType == Nothing::class.java
-                || property.declaringType.typeParameters.isEmpty()) {
+                || property.declaringType.`is`(typeOf<Nothing>())
+                || property.declaringType !is GenericType
+                || property.declaringType.bounds.isEmpty()
+        ) {
             return property.type
         } else {
-            val infer = inferType(property.propertyTypeInfo.type,
-                    Generic.type(property.declaringType).of(*property.declaringType.typeParameters
-                            .map { it.koresType }.toTypedArray()),
-                    type.asGeneric,
-                    type.defaultResolver,
-                    MixedResolver(null)
+            val infer = inferType(
+                property.propertyType.type,
+                property.declaringType.concreteType.toGeneric,
+                type.asGeneric,
+                type.defaultResolver,
+                MixedResolver(null)
             ) { n ->
-                property.propertyTypeInfo.definedParams.types
-                        .none { !it.isType && !it.isWildcard && it.name == n }
+                property.propertyType.definedParams.types
+                    .none { !it.isType && !it.isWildcard && it.name == n }
             }
 
-            return if (infer.`is`(property.propertyTypeInfo.type))
+            return if (infer.`is`(property.propertyType.type))
                 property.type
             else infer
         }
     }
 
-    private fun getExtensionFieldRef(extensionClass: Class<*>): FieldRef =
-            extensionClass.let {
-                FieldRef(localization = Alias.THIS,
-                        target = Access.THIS,
-                        name = "extension#${it.simpleName}",
-                        type = it)
-            }
+    private fun getExtensionFieldRef(extensionClass: Type): FieldRef =
+        extensionClass.let {
+            FieldRef(
+                localization = Alias.THIS,
+                target = Access.THIS,
+                name = "extension#${it.simpleName}",
+                type = it
+            )
+        }
 
     private fun getExtensionFieldRef(extension: ExtensionSpecification): FieldRef? =
-            extension.extensionClass?.let(this::getExtensionFieldRef)
+        extension.extensionClass?.let(this::getExtensionFieldRef)
 
-    private fun genExtensionsFields(extensions: List<ExtensionSpecification>,
-                                    type: Type,
-                                    eventGenerator: EventGenerator): List<FieldDeclaration> =
-            extensions
-                    .filter { it.extensionClass != null }
-                    .map {
-                        it.extensionClass!! // Safe: null filtered above
-                        val ref = this.getExtensionFieldRef(it)!!
-                        val ctr = eventGenerator.checkHandler
-                                .validateExtension(it, it.extensionClass, type, eventGenerator)
-                        fieldDec()
-                                .modifiers(KoresModifier.PRIVATE, KoresModifier.FINAL)
-                                .type(ref.type)
-                                .name(ref.name)
-                                .value(it.extensionClass.invokeConstructor(ctr.typeSpec, listOf(Access.THIS)))
-                                .build()
-                    }
+    private fun genExtensionsFields(
+        extensions: List<ExtensionSpecification>,
+        type: ClassDeclaration,
+        eventGenerator: EventGenerator,
+        cache: DeclarationCache
+    ): List<FieldDeclaration> =
+        extensions
+            .filter { it.extensionClass != null }
+            .map {
+                it.extensionClass!! // Safe: null filtered above
+                val ref = this.getExtensionFieldRef(it)!!
+                val ctr = eventGenerator.checkHandler
+                    .validateExtension(it, cache[it.extensionClass], type, eventGenerator)
+                fieldDec()
+                    .modifiers(KoresModifier.PRIVATE, KoresModifier.FINAL)
+                    .type(ref.type)
+                    .name(ref.name)
+                    .value(it.extensionClass.invokeConstructor(ctr.typeSpec, listOf(Access.THIS)))
+                    .build()
+            }
 
-    private fun genConstructor(base: Class<*>,
-                               typeInfo: TypeInfo<*>,
-                               requiresType: Boolean,
-                               isSpecialized: Boolean,
-                               properties: List<PropertyInfo>): ConstructorDeclaration {
-        val eventTypeInfoSignature = getEventTypeInfoSignature(typeInfo)
-
+    private fun genConstructor(
+        base: TypeDeclaration,
+        genericType: Type,
+        requiresType: Boolean,
+        isSpecialized: Boolean,
+        properties: List<PropertyInfo>
+    ): ConstructorDeclaration {
         val parameters = mutableListOf<KoresParameter>()
 
         if (requiresType && !isSpecialized) {
             parameters += parameter(
-                    name = eventTypeInfoFieldName,
-                    type = eventTypeInfoSignature,
-                    annotations = listOf(
-                            runtimeAnnotation(TypeParam::class.java, mapOf()),
-                        runtimeAnnotation(Name::class.java,
-                                    mapOf<String, Any>("value" to eventTypeInfoFieldName))
+                name = eventTypeFieldName,
+                type = Type::class.java,
+                annotations = listOf(
+                    runtimeAnnotation(TypeParam::class.java, mapOf()),
+                    runtimeAnnotation(
+                        Name::class.java,
+                        mapOf<String, Any>("value" to eventTypeFieldName)
                     )
+                )
             )
         }
 
@@ -372,49 +485,64 @@ internal object EventClassGenerator {
                 return@forEach
 
             parameters += parameter(
-                    name = name,
-                    type = it.inferredType,
-                    annotations = listOf(runtimeAnnotation(Name::class.java, mapOf<String, Any>("value" to name)))
+                name = name,
+                type = it.inferredType,
+                annotations = listOf(
+                    runtimeAnnotation(
+                        Name::class.java,
+                        mapOf<String, Any>("value" to name)
+                    )
+                )
             )
         }
 
         val constructor = ConstructorDeclaration.Builder.builder()
-                .modifiers(KoresModifier.PUBLIC)
-                .parameters(parameters)
-                .body(MutableInstructions.create())
-                .build()
+            .modifiers(KoresModifier.PUBLIC)
+            .parameters(parameters)
+            .body(MutableInstructions.create())
+            .build()
 
         val constructorBody = constructor.body as MutableInstructions
 
         properties.filter { it.isNotNull }.forEach {
-            constructorBody += Objects::class.java.invokeStatic("requireNonNull",
-                    TypeSpec(Types.OBJECT, listOf(Types.OBJECT)),
-                    listOf(accessVariable(it.inferredType.koresType, it.propertyName))
+            constructorBody += Objects::class.java.invokeStatic(
+                "requireNonNull",
+                TypeSpec(Types.OBJECT, listOf(Types.OBJECT)),
+                listOf(accessVariable(it.inferredType.koresType, it.propertyName))
             )
         }
 
         if (requiresType) {
             if (isSpecialized) {
-                constructorBody += setFieldValue(Alias.THIS, Access.THIS, eventTypeInfoSignature, eventTypeInfoFieldName,
-                        cast(Object::class.java, TypeInfo::class.java, invokeInterface(List::class.java,
-                                TypeInfoUtil::class.java.invokeStatic(
-                                        "fromFullString",
-                                        typeSpec(List::class.java, String::class.java),
-                                        listOf(Literals.STRING(typeInfo.toFullString()))
-                                ),
-                                "get",
-                                typeSpec(Object::class.java, Int::class.javaPrimitiveType!!),
-                                listOf(Literals.INT(0)))
-                        ))
+                constructorBody += setFieldValue(
+                    Alias.THIS, Access.THIS, Type::class.java, eventTypeFieldName,
+                    genericType.toStructure()
+                    /*cast(
+                        Object::class.java, TypeInfo::class.java, invokeInterface(
+                            List::class.java,
+                            TypeInfoUtil::class.java.invokeStatic(
+                                "fromFullString",
+                                typeSpec(List::class.java, String::class.java),
+                                listOf(Literals.STRING(genericType.toTypeInfo().toFullString()))
+                            ),
+                            "get",
+                            typeSpec(Object::class.java, Int::class.javaPrimitiveType!!),
+                            listOf(Literals.INT(0))
+                        )
+                    )*/
+                )
             } else {
 
-                constructorBody += Objects::class.java.invokeStatic("requireNonNull",
-                        TypeSpec(Types.OBJECT, listOf(Types.OBJECT)),
-                        listOf(accessVariable(eventTypeInfoSignature, eventTypeInfoFieldName))
+                constructorBody += Objects::class.java.invokeStatic(
+                    "requireNonNull",
+                    TypeSpec(Types.OBJECT, listOf(Types.OBJECT)),
+                    listOf(accessVariable(Type::class.java, eventTypeFieldName))
                 )
 
-                constructorBody += setFieldValue(Alias.THIS, Access.THIS, eventTypeInfoSignature, eventTypeInfoFieldName,
-                        accessVariable(eventTypeInfoSignature, eventTypeInfoFieldName))
+                constructorBody += setFieldValue(
+                    Alias.THIS, Access.THIS, Type::class.java, eventTypeFieldName,
+                    accessVariable(Type::class.java, eventTypeFieldName)
+                )
             }
 
         }
@@ -425,8 +553,10 @@ internal object EventClassGenerator {
             constructorBody += if (cancellable && it.propertyName == "cancelled") {
                 setFieldValue(Alias.THIS, Access.THIS, valueType, it.propertyName, Literals.FALSE)
             } else {
-                setFieldValue(Alias.THIS, Access.THIS, valueType, it.propertyName,
-                        accessVariable(valueType, it.propertyName))
+                setFieldValue(
+                    Alias.THIS, Access.THIS, valueType, it.propertyName,
+                    accessVariable(valueType, it.propertyName)
+                )
             }
         }
 
@@ -436,9 +566,11 @@ internal object EventClassGenerator {
 
     }
 
-    private fun genMethods(typeInfo: TypeInfo<*>,
-                           requiresTypeInfo: Boolean,
-                           properties: List<PropertyInfo>): List<MethodDeclaration> {
+    private fun genMethods(
+        eventType: Type,
+        requiresTypeInfo: Boolean,
+        properties: List<PropertyInfo>
+    ): List<MethodDeclaration> {
 
         val methods = mutableListOf<MethodDeclaration>()
 
@@ -453,102 +585,150 @@ internal object EventClassGenerator {
         }
 
         val toReturn: Instruction = if (requiresTypeInfo)
-            getEventTypeInfoSignature(typeInfo).let { accessThisField(it, eventTypeInfoFieldName) }
-        else createTypeInfo(typeInfo.typeClass)
+
+            accessThisField(
+                Type::class.java,
+                eventTypeFieldName
+            )
+
+        else createGenericType(eventType)
 
         methods += MethodDeclaration.Builder.builder()
-                .annotations(overrideAnnotation())
-                .modifiers(KoresModifier.PUBLIC)
-                .returnType(erasedTypeInfo)
-                .name("get${eventTypeInfoFieldName.capitalize()}")
-                .body(Instructions.fromPart(
-                        returnValue(erasedTypeInfo,
-                                toReturn
-                        )
-                ))
-                .build()
+            .annotations(overrideAnnotation())
+            .modifiers(KoresModifier.PUBLIC)
+            .returnType(Type::class.java)
+            .name("get${eventTypeFieldName.capitalize()}")
+            .body(
+                Instructions.fromPart(
+                    returnValue(
+                        Type::class.java,
+                        toReturn
+                    )
+                )
+            )
+            .build()
 
         return methods
     }
 
-    private fun getEventTypeInfoSignature(typeInfo: TypeInfo<*>): GenericType =
-            Generic.type(TypeInfo::class.java).of(typeInfo.toGeneric())
-
-    private val erasedTypeInfo: GenericType =
-            Generic.type(TypeInfo::class.java).of(Generic.wildcard().`extends$`(Event::class.java))
-
-    private fun genToStringMethod(properties: List<PropertyInfo>,
-                                  extensions: List<ExtensionSpecification>): MethodDeclaration =
-            MethodDeclaration.Builder.builder()
-                    .annotations(overrideAnnotation())
-                    .modifiers(KoresModifier.PUBLIC)
-                    .returnType(Types.STRING)
-                    .name("toString")
-                    .body(Instructions.fromPart(
-                            returnValue(Types.STRING,
-                                    ConcatHelper.builder()
-                                            .concat("{")
-                                            .concat(Literals.STRING("class="))
-                                            .concat(invokeVirtual(
-                                                    Class::class.java,
-                                                    invokeVirtual(Object::class.java, Access.THIS,
-                                                            "getClass",
-                                                            TypeSpec(Class::class.java),
-                                                            listOf()),
-                                                    "getSimpleName",
-                                                    TypeSpec(String::class.java),
-                                                    listOf()
-                                            ))
-                                            .concat(Literals.STRING(","))
-                                            .concat(Literals.STRING("type="))
-                                            .concat(invokeInterface(
-                                                    Event::class.java,
-                                                    Access.THIS,
-                                                    "getEventTypeInfo",
-                                                    TypeSpec(TypeInfo::class.java),
-                                                    listOf()
-                                            ).invokeToString())
-                                            .concat(Literals.STRING(","))
-                                            .concat(Literals.STRING("properties=${properties
-                                                    .joinToString(prefix = "[", postfix = "]") { it.propertyName }}"
-                                            ))
-                                            .concat(Literals.STRING(","))
-                                            .concat(Literals.STRING("extensions=${extensions
-                                                    .joinToString(prefix = "[", postfix = "]") { "[impl=${it.implement?.simpleName},ext=${it.extensionClass?.simpleName},residence=${it.residence}]" }}"))
-                                            .concat("}")
-                                            .build()
-
+    private fun genToStringMethod(
+        properties: List<PropertyInfo>,
+        extensions: List<ExtensionSpecification>
+    ): MethodDeclaration =
+        MethodDeclaration.Builder.builder()
+            .annotations(overrideAnnotation())
+            .modifiers(KoresModifier.PUBLIC)
+            .returnType(Types.STRING)
+            .name("toString")
+            .body(
+                Instructions.fromPart(
+                    returnValue(
+                        Types.STRING,
+                        ConcatHelper.builder()
+                            .concat("{")
+                            .concat(Literals.STRING("class="))
+                            .concat(
+                                invokeVirtual(
+                                    Class::class.java,
+                                    invokeVirtual(
+                                        Object::class.java, Access.THIS,
+                                        "getClass",
+                                        TypeSpec(Class::class.java),
+                                        listOf()
+                                    ),
+                                    "getSimpleName",
+                                    TypeSpec(String::class.java),
+                                    listOf()
+                                )
                             )
-                    ))
+                            .concat(Literals.STRING(","))
+                            .concat(Literals.STRING("type="))
+                            .concat(
+                                invokeInterface(
+                                    Event::class.java,
+                                    Access.THIS,
+                                    "getEventType",
+                                    TypeSpec(Type::class.java),
+                                    listOf()
+                                ).invokeToString()
+                            )
+                            .concat(Literals.STRING(","))
+                            .concat(
+                                Literals.STRING(
+                                    "properties=${properties
+                                        .joinToString(
+                                            prefix = "[",
+                                            postfix = "]"
+                                        ) { it.propertyName }}"
+                                )
+                            )
+                            .concat(Literals.STRING(","))
+                            .concat(
+                                Literals.STRING(
+                                    "extensions=${extensions
+                                        .joinToString(
+                                            prefix = "[",
+                                            postfix = "]"
+                                        ) { "[impl=${it.implement?.simpleName},ext=${it.extensionClass?.simpleName},residence=${it.residence}]" }}"
+                                )
+                            )
+                            .concat("}")
+                            .build()
+
+                    )
+                )
+            )
+            .build()
+
+    private fun genExtensionMethods(
+        extensionClass: TypeDeclaration,
+        cache: DeclarationCache
+    ): List<MethodDeclaration> =
+        cache.getMethods(extensionClass)
+            .filter { (_, it) ->
+                it.modifiers.contains(KoresModifier.PUBLIC) && !it.modifiers.contains(
+                    KoresModifier.STATIC
+                )
+            }
+            .map { (_, it) ->
+
+                val parameters = it.parameters.mapIndexed { index, parameter ->
+                    parameter(type = parameter.type, name = "arg$index")
+                }
+
+                val arguments = parameters.access
+
+                val ref = getExtensionFieldRef(extensionClass)
+
+                MethodDeclaration.Builder.builder()
+                    .modifiers(KoresModifier.PUBLIC)
+                    .name(it.name)
+                    .returnType(it.returnType)
+                    .parameters(parameters)
+                    .body(
+                        Instructions.fromPart(
+                            returnValue(
+                                it.returnType.koresType,
+                                invokeVirtual(
+                                    localization = extensionClass,
+                                    target = ref.let {
+                                        accessField(
+                                            it.localization,
+                                            it.target,
+                                            it.type,
+                                            it.name
+                                        )
+                                    },
+                                    spec = it.typeSpec,
+                                    name = it.name,
+                                    arguments = arguments
+                                )
+                            )
+                        )
+                    )
                     .build()
 
-    private fun genExtensionMethods(extensionClass: Class<*>): List<MethodDeclaration> =
-            extensionClass.declaredMethods
-                    .filter { Modifier.isPublic(it.modifiers) && !Modifier.isStatic(it.modifiers) }
-                    .map {
-
-                        val parameters = it.parameters.mapIndexed { index, parameter ->
-                            parameter(type = parameter.parameterizedType.koresType, name = "arg$index")
-                        }
-
-                        val arguments = parameters.access
-
-                        val ref = getExtensionFieldRef(extensionClass)
-
-                        MethodDeclaration.Builder.builder()
-                                .modifiers(KoresModifier.PUBLIC)
-                                .name(it.name)
-                                .returnType(it.genericReturnType.koresType)
-                                .parameters(parameters)
-                                .body(Instructions.fromPart(
-                                        returnValue(it.returnType.koresType, it.toInvocation(
-                                                InvokeType.INVOKE_VIRTUAL,
-                                                ref.let { accessField(it.localization, it.target, it.type, it.name) },
-                                                arguments))
-                                ))
-                                .build()
-
-                    }
+            }
 
     private fun genGetter(property: PropertyInfo): List<MethodDeclaration> {
 
@@ -562,46 +742,59 @@ internal object EventClassGenerator {
         val inferredType = property.inferredType.koresType
 
         methods += MethodDeclaration.Builder.builder()
-                .modifiers(KoresModifier.PUBLIC)
-                .returnType(fieldType)
-                .name(getterName)
-                .body(Instructions.fromPart(returnValue(fieldType, accessThisField(inferredType, name))))
-                .build()
+            .modifiers(KoresModifier.PUBLIC)
+            .returnType(fieldType)
+            .name(getterName)
+            .body(
+                Instructions.fromPart(
+                    returnValue(
+                        fieldType,
+                        accessThisField(inferredType, name)
+                    )
+                )
+            )
+            .build()
 
         val castType = getCastType(fieldType)
 
         val ret: Return = if (!fieldType.isPrimitive && property.isNotNull)
-            returnValue(fieldType, cast(Types.OBJECT, castType,
+            returnValue(
+                fieldType, cast(
+                    Types.OBJECT, castType,
                     Objects::class.java.invokeStatic(
-                            "requireNonNull",
-                            TypeSpec(Types.OBJECT, listOf(Types.OBJECT)),
-                            listOf(accessThisField(inferredType, name))
+                        "requireNonNull",
+                        TypeSpec(Types.OBJECT, listOf(Types.OBJECT)),
+                        listOf(accessThisField(inferredType, name))
                     )
-            ))
+                )
+            )
         else
-            returnValue(castType,
-                    cast(inferredType, castType, accessThisField(inferredType, name))
+            returnValue(
+                castType,
+                cast(inferredType, castType, accessThisField(inferredType, name))
             )
 
 
         if (!castType.`is`(fieldType)) {
             methods += MethodDeclaration.Builder.builder()
-                    .modifiers(EnumSet.of(KoresModifier.PUBLIC))
-                    .returnType(castType)
-                    .name(getterName)
-                    .body(Instructions.fromPart(ret))
-                    .build()
+                .modifiers(EnumSet.of(KoresModifier.PUBLIC))
+                .returnType(castType)
+                .name(getterName)
+                .body(Instructions.fromPart(ret))
+                .build()
         }
 
         if (!inferredType.`is`(fieldType)) {
             methods += MethodDeclaration.Builder.builder()
-                    .modifiers(EnumSet.of(KoresModifier.PUBLIC))
-                    .returnType(inferredType)
-                    .name(getterName)
-                    .body(Instructions.fromPart(
-                            returnValue(inferredType, cast(ret.type, inferredType, ret.value))
-                    ))
-                    .build()
+                .modifiers(EnumSet.of(KoresModifier.PUBLIC))
+                .returnType(inferredType)
+                .name(getterName)
+                .body(
+                    Instructions.fromPart(
+                        returnValue(inferredType, cast(ret.type, inferredType, ret.value))
+                    )
+                )
+                .build()
         }
 
         return methods
@@ -623,50 +816,65 @@ internal object EventClassGenerator {
         val base = if (validator == null)
             if (!inferredType.isPrimitive && property.isNotNull)
                 Instructions.fromVarArgs(
-                        Objects::class.java.invokeStatic(
-                                "requireNonNull",
-                                TypeSpec(Types.OBJECT, listOf(Types.OBJECT)),
-                                listOf(accessVariable(inferredType, name))
-                        )
+                    Objects::class.java.invokeStatic(
+                        "requireNonNull",
+                        TypeSpec(Types.OBJECT, listOf(Types.OBJECT)),
+                        listOf(accessVariable(inferredType, name))
+                    )
                 )
             else
                 Instructions.empty()
         else
             Instructions.fromVarArgs(
-                    accessStaticField(validator, validator, "INSTANCE").invokeInterface(Validator::class.java,
-                            "validate",
-                            voidTypeSpec(Any::class.java, Property::class.java),
-                            listOf(accessVariable(inferredType, name),
-                                    invokeInterface(
-                                            PropertyHolder::class.java,
-                                            Access.THIS,
-                                            "getProperty",
-                                            typeSpec(Property::class.java, Class::class.java, String::class.java),
-                                            listOf(Literals.CLASS(fieldType), Literals.STRING(name))
-                                    )))
+                accessStaticField(validator, validator, "INSTANCE").invokeInterface(
+                    Validator::class.java,
+                    "validate",
+                    voidTypeSpec(Any::class.java, Property::class.java),
+                    listOf(
+                        accessVariable(inferredType, name),
+                        invokeInterface(
+                            PropertyHolder::class.java,
+                            Access.THIS,
+                            "getProperty",
+                            typeSpec(Property::class.java, Class::class.java, String::class.java),
+                            listOf(Literals.CLASS(fieldType), Literals.STRING(name))
+                        )
+                    )
+                )
             )
 
         methods += MethodDeclaration.Builder.builder()
-                .modifiers(EnumSet.of(KoresModifier.PUBLIC))
-                .returnType(Types.VOID)
-                .parameters(parameter(type = fieldType, name = name))
-                .name(setterName)
-                .body(base +
-                        setFieldValue(Alias.THIS, Access.THIS, fieldType, name,
-                                cast(fieldType, inferredType, accessVariable(fieldType, name))
-                        ))
-                .build()
+            .modifiers(EnumSet.of(KoresModifier.PUBLIC))
+            .returnType(Types.VOID)
+            .parameters(parameter(type = fieldType, name = name))
+            .name(setterName)
+            .body(
+                base +
+                        setFieldValue(
+                            Alias.THIS, Access.THIS, fieldType, name,
+                            cast(fieldType, inferredType, accessVariable(fieldType, name))
+                        )
+            )
+            .build()
 
         val castType = getCastType(fieldType)
 
         if (castType != fieldType) {
             methods += MethodDeclaration.Builder.builder()
-                    .modifiers(EnumSet.of(KoresModifier.PUBLIC))
-                    .returnType(Types.VOID)
-                    .parameters(parameter(type = castType, name = name))
-                    .name(setterName)
-                    .body(base + setFieldValue(Alias.THIS, Access.THIS, fieldType, name, cast(castType, fieldType, accessVariable(castType, name))))
-                    .build()
+                .modifiers(EnumSet.of(KoresModifier.PUBLIC))
+                .returnType(Types.VOID)
+                .parameters(parameter(type = castType, name = name))
+                .name(setterName)
+                .body(
+                    base + setFieldValue(
+                        Alias.THIS,
+                        Access.THIS,
+                        fieldType,
+                        name,
+                        cast(castType, fieldType, accessVariable(castType, name))
+                    )
+                )
+                .build()
         }
 
         return methods
@@ -674,165 +882,204 @@ internal object EventClassGenerator {
 
     private fun genPropertyHolderMethods(): MethodDeclaration {
         return MethodDeclaration.Builder.builder()
-                .modifiers(KoresModifier.PUBLIC)
-                .name("getProperties")
-                .returnType(propertiesFieldType)
-                .annotations(runtimeAnnotation(Override::class.java))
-                .body(Instructions.fromPart(
-                        returnValue(propertiesFieldType, accessThisField(propertiesFieldType, propertiesUnmodName))
-                ))
-                .build()
+            .modifiers(KoresModifier.PUBLIC)
+            .name("getProperties")
+            .returnType(propertiesFieldType)
+            .annotations(runtimeAnnotation(Override::class.java))
+            .body(
+                Instructions.fromPart(
+                    returnValue(
+                        propertiesFieldType,
+                        accessThisField(propertiesFieldType, propertiesUnmodName)
+                    )
+                )
+            )
+            .build()
     }
 
-    private fun validateExtensions(extensions: List<ExtensionSpecification>,
-                                   type: KoresType,
-                                   eventGenerator: EventGenerator) {
+    private fun validateExtensions(
+        extensions: List<ExtensionSpecification>,
+        type: ClassDeclaration,
+        eventGenerator: EventGenerator,
+        cache: DeclarationCache
+    ) {
 
         extensions.forEach { extension ->
             extension.extensionClass?.let {
-                eventGenerator.checkHandler.validateExtension(extension, it, type, eventGenerator)
+                eventGenerator.checkHandler.validateExtension(
+                    extension,
+                    cache[it],
+                    type,
+                    eventGenerator
+                )
             }
         }
     }
 
     internal fun TypeSpec.concrete() =
-            this.copy(returnType = this.returnType.concreteType,
-                    parameterTypes = this.parameterTypes.map { it.concreteType })
+        this.copy(returnType = this.returnType.concreteType,
+            parameterTypes = this.parameterTypes.map { it.concreteType })
 
-    internal fun genDefaultMethodsImpl(baseClass: Class<*>, methods: List<MethodDeclaration>): List<MethodDeclaration> {
-        val funcs = baseClass.methods.map { base ->
-            val spec = base.methodTypeSpec.typeSpec
-
-            if (methods.any {
-                base.name == it.name
-                        && it.typeSpec.concrete() == spec
-            }) null
-            else findImplementation(baseClass, base)?.let { Pair(base, it) }
-        }.filterNotNull()
+    internal fun genDefaultMethodsImpl(
+        baseClass: TypeDeclaration,
+        methods: List<MethodDeclaration>,
+        cache: DeclarationCache
+    ): List<MethodDeclaration> {
+        val funcs = cache.getMethods(baseClass)
+            .filter { base ->
+                methods.none { it.isEqual(base.methodDeclaration) }
+            }
+            .mapNotNull { base ->
+                findImplementation(baseClass, base, cache)?.let { Pair(base, it) }
+            }
 
         return funcs.map {
             val base = it.first
+            val baseDeclaration = base.type
+            val baseMethod = base.methodDeclaration
             val delegateClass = it.second.first
             val delegate = it.second.second
 
-            val parameters = base.parameters.mapIndexed { i, _ ->
+            val parameters = baseMethod.parameters.mapIndexed { i, _ ->
                 parameter(type = delegate.parameters[i + 1].type, name = "arg$i")
             }
 
-            val arguments = mutableListOf<Instruction>(Access.THIS) + parameters.map { it.toVariableAccess() }
+            val arguments =
+                mutableListOf<Instruction>(Access.THIS) + parameters.map { it.toVariableAccess() }
 
             val invoke: Instruction = invoke(
-                    InvokeType.INVOKE_STATIC,
-                    delegateClass.koresType,
-                    Access.STATIC,
-                    delegate.name,
-                    TypeSpec(delegate.returnType, delegate.parameters.map { it.type }),
-                    arguments
+                InvokeType.INVOKE_STATIC,
+                delegateClass.koresType,
+                Access.STATIC,
+                delegate.name,
+                TypeSpec(delegate.returnType, delegate.parameters.map { it.type }),
+                arguments
             ).let {
-                if (base.returnType.`is`(Void.TYPE))
+                if (baseMethod.returnType.`is`(Void.TYPE))
                     it
                 else
-                    returnValue(base.returnType, it)
+                    returnValue(baseMethod.returnType, it)
             }
 
             MethodDeclaration.Builder.builder()
-                    .annotations(overrideAnnotation())
-                    .modifiers(KoresModifier.PUBLIC, KoresModifier.BRIDGE)
-                    .name(base.name)
-                    .returnType(base.returnType)
-                    .parameters(parameters)
-                    .body(Instructions.fromPart(invoke))
-                    .build()
+                .annotations(overrideAnnotation())
+                .modifiers(KoresModifier.PUBLIC, KoresModifier.BRIDGE)
+                .name(baseMethod.name)
+                .returnType(baseMethod.returnType)
+                .parameters(parameters)
+                .body(Instructions.fromPart(invoke))
+                .build()
 
         }
     }
 
 }
 
-const val eventTypeInfoFieldName = "eventTypeInfo"
+const val eventTypeFieldName = "eventType"
 
 const val propertiesFieldName = "#properties"
 const val propertiesUnmodName = "immutable#properties"
 val propertiesFieldType = Generic.type(Map::class.java)
-        .of(Types.STRING)
-        .of(Property::class.java)
+    .of(Types.STRING)
+    .of(Property::class.java)
 
-fun getProperties(type: Class<*>,
-                  additional: List<PropertyInfo>,
-                  extensions: List<ExtensionSpecification>): List<PropertyInfo> {
+fun MethodDeclaration.isAnyMethod(): Boolean =
+    (this.name == "toString" && this.parameters.isEmpty() && this.returnType.`is`(Types.STRING))
+            || (this.name == "hashCode" && this.parameters.isEmpty() && this.returnType.`is`(Types.INT))
+            || (this.name == "equals" && this.parameters.size == 1 && this.returnType.`is`(Types.BOOLEAN))
+            || (this.name == "finalize" && this.parameters.isEmpty() && this.returnType.`is`(Types.VOID))
+
+fun MethodDeclaration.isNative(): Boolean =
+    this.modifiers.contains(KoresModifier.NATIVE)
+
+fun getProperties(
+    type: TypeDeclaration,
+    additional: List<PropertyInfo>,
+    extensions: List<ExtensionSpecification>,
+    cache: DeclarationCache
+): List<PropertyInfo> {
     val list = mutableListOf<PropertyInfo>()
 
-    val methods = type.methods
-            .filter { it.declaringClass != Any::class.java }
-            .toMutableList()
+    /*!it.isAnyMethod() && !it.isNative()*/
+    val methods = cache.getMethods(type)
+        .filter { (type, _) -> !type.`is`(typeOf<Any>()) }
+        .toMutableList()
+
 
     extensions.mapNotNull { it.implement }.forEach {
-        methods += it.methods.filter { it.declaringClass != Any::class.java }
+        /*!it.isAnyMethod() && !it.isNative()*/
+        methods += cache.getMethods(it).filter { (type, _) -> !type.`is`(typeOf<Any>()) }
     }
 
     val extensionClasses = extensions.mapNotNull { it.extensionClass }
 
-    methods.forEach { method ->
+    methods.forEach { (type, method) ->
 
         // Since: 1.1.2: Extensions are allowed to implement properties getter and setter.
-        if (extensionClasses.any { hasMethod(it, method) })
+        if (extensionClasses.any { hasMethod(it, method, cache) })
             return@forEach
 
         val name = method.name
 
-        val isGet = name.startsWith("get") && method.parameterCount == 0
-        val isIs = name.startsWith("is") && method.parameterCount == 0
-        val isSet = name.startsWith("set") && method.parameterCount == 1
+        val isGet = name.startsWith("get") && method.parameters.isEmpty()
+        val isIs = name.startsWith("is") && method.parameters.isEmpty()
+        val isSet = name.startsWith("set") && method.parameters.size == 1
 
         // Skip PropertyHolder methods
         // We could use method.declaringClass == PropertyHolder::class.java
         // but override methods will return false.
-        if (hasMethod(PropertyHolder::class.java, method)
-                || hasMethod(Event::class.java, method))
+        if (hasMethod(typeOf<PropertyHolder>(), method, cache)
+                || hasMethod(typeOf<Event>(), method, cache)
+        )
             return@forEach
 
         if (isGet || isIs || isSet) {
             // hasProperty of PropertyHolder
             // 3 = "get".length & "set".length
             // 2 = "is".length
-            val propertyName = (if (isGet || isSet) name.substring(3 until name.length) else name.substring(2 until name.length))
+            val propertyName =
+                (if (isGet || isSet) name.substring(3 until name.length) else name.substring(2 until name.length))
                     .decapitalize()
 
-            val propertyType = if (isGet || isIs) method.returnType else method.parameterTypes[0]
+            val propertyType = if (isGet || isIs) method.returnType else method.parameters[0].type
 
             val genericPropertyType =
-                    if (isGet || isIs) method.genericReturnType.koresType.asGeneric
-                    else method.genericParameterTypes[0].koresType.asGeneric
+                if (isGet || isIs) method.returnType.asGeneric
+                else method.parameters[0].type.asGeneric
 
             if (!list.any { it.propertyName == propertyName }) {
 
-                val setter = getSetter(type, propertyName, propertyType)
-                        ?: getSetter(method.declaringClass, propertyName, propertyType)
+                val setter = getSetter(type, propertyName, propertyType, cache)
+                //?: getSetter(method.declaringClass, propertyName, propertyType)
 
-                val getter = getGetter(type, propertyName)
-                        ?: getGetter(method.declaringClass, propertyName)
+                val getter = getGetter(type, propertyName, cache)
+                //?: getGetter(method.declaringClass, propertyName)
 
                 val getterName = getter?.name
                 val setterName = setter?.name
 
-                val validator = setter?.getDeclaredAnnotation(Validate::class.java)?.value?.java
-                val isNotNull = setter?.parameterAnnotations?.firstOrNull()?.any { it is NotNullValue } == true
-                        || getter?.isAnnotationPresent(NotNullValue::class.java) == true
-                        || method.isAnnotationPresent(NotNullValue::class.java)
+                val validator = setter?.annotations
+                    ?.firstOrNull { it.type.`is`(typeOf<Validate>()) }
+                    ?.values?.get("value") as? Type
+
+                val isNotNull =
+                    setter?.parameters?.firstOrNull()?.annotations?.any { it.type.`is`(typeOf<NotNullValue>()) } == true
+                            || getter?.annotations?.any { it.type.`is`(typeOf<NotNullValue>()) } == true
+                            || method.annotations.any { it.type.`is`(typeOf<NotNullValue>()) }
 
                 list += PropertyInfo(
-                        method.declaringClass,
-                        propertyName,
-                        getterName,
-                        setterName,
-                        propertyType,
-                        isNotNull,
-                        validator,
-                        PropertyTypeInfo(
-                                genericPropertyType,
-                                GenericSignature.create(*method.typeParameters
-                                        .map { it.koresType.asGeneric }.toTypedArray())
-                        ))
+                    type.toGeneric,
+                    propertyName,
+                    getterName,
+                    setterName,
+                    propertyType,
+                    isNotNull,
+                    validator,
+                    PropertyType(
+                        genericPropertyType,
+                        method.genericSignature
+                    )
+                )
             }
 
         }
@@ -848,52 +1095,67 @@ fun getProperties(type: Class<*>,
 }
 
 fun getPropertyFields(): List<FieldDeclaration> {
-    return listOf(FieldDeclaration.Builder.builder()
+    return listOf(
+        FieldDeclaration.Builder.builder()
             .modifiers(KoresModifier.PRIVATE, KoresModifier.FINAL)
             .type(propertiesFieldType)
             .name(propertiesFieldName)
             .value(HashMap::class.java.invokeConstructor())
             .build(),
-            FieldDeclaration.Builder.builder()
-                    .modifiers(KoresModifier.PRIVATE, KoresModifier.FINAL)
-                    .type(propertiesFieldType)
-                    .name(propertiesUnmodName)
-                    .value(Collections::class.java.invokeStatic("unmodifiableMap",
-                            typeSpec(Map::class.java, Map::class.java),
-                            listOf(accessThisField(propertiesFieldType, propertiesFieldName))))
-                    .build())
+        FieldDeclaration.Builder.builder()
+            .modifiers(KoresModifier.PRIVATE, KoresModifier.FINAL)
+            .type(propertiesFieldType)
+            .name(propertiesUnmodName)
+            .value(
+                Collections::class.java.invokeStatic(
+                    "unmodifiableMap",
+                    typeSpec(Map::class.java, Map::class.java),
+                    listOf(accessThisField(propertiesFieldType, propertiesFieldName))
+                )
+            )
+            .build()
+    )
 }
 
-private fun getSetter(type: Class<*>, name: String, propertyType: Class<*>): Method? {
+private fun getSetter(
+    type: TypeDeclaration,
+    name: String,
+    propertyType: Type,
+    cache: DeclarationCache
+): MethodDeclaration? {
 
     val capitalized = name.capitalize()
+    val setterName = "set$capitalized"
 
-    return try {
-        type.getMethod("set$capitalized", propertyType)
-    } catch (t: Throwable) {
-        null
+    return cache.getMethods(type).map { (_, it) -> it }.firstOrNull {
+        it.name == setterName && it.parameters.singleOrNull()?.type?.`is`(
+            propertyType
+        ) == true
     }
 }
 
-private fun getGetter(type: Class<*>, name: String): Method? {
+private fun getGetter(
+    type: TypeDeclaration,
+    name: String,
+    cache: DeclarationCache
+): MethodDeclaration? {
 
     val capitalized = name.capitalize()
+    val getterName = "get$capitalized"
+    val isName = "is$capitalized"
 
-    return try {
-        type.getMethod("is$capitalized")
-    } catch (t: Throwable) {
-        null
-    } ?: try {
-        type.getMethod("get$capitalized")
-    } catch (t: Throwable) {
-        null
+    return cache.getMethods(type).map { (_, it) -> it }.firstOrNull {
+        it.name == getterName || it.name == isName
     }
 }
 
-private fun hasMethod(klass: Class<*>, method: Method): Boolean = klass.methods.any { it.isEqual(method) }
+private fun hasMethod(klass: Type, method: MethodDeclaration, cache: DeclarationCache): Boolean =
+    cache.getMethods(klass.koresType).any { (_, it) -> it.isEqual(method) }
 
-fun genConstructorPropertiesMap(constructorBody: MutableInstructions,
-                                properties: List<PropertyInfo>) {
+fun genConstructorPropertiesMap(
+    constructorBody: MutableInstructions,
+    properties: List<PropertyInfo>
+) {
     val accessMap = accessThisField(propertiesFieldType, propertiesFieldName)
 
     properties.forEach {
@@ -901,13 +1163,17 @@ fun genConstructorPropertiesMap(constructorBody: MutableInstructions,
         val inferredType = it.inferredType
 
         constructorBody += if (!inferredType.`is`(realType)) {
-            invokePut(accessMap,
-                    com.github.jonathanxd.kores.literal.Literals.STRING(it.propertyName),
-                    propertyToSProperty(it, inferredType))
+            invokePut(
+                accessMap,
+                com.github.jonathanxd.kores.literal.Literals.STRING(it.propertyName),
+                propertyToSProperty(it, inferredType)
+            )
         } else {
-            invokePut(accessMap,
-                    com.github.jonathanxd.kores.literal.Literals.STRING(it.propertyName),
-                    propertyToSProperty(it, realType))
+            invokePut(
+                accessMap,
+                com.github.jonathanxd.kores.literal.Literals.STRING(it.propertyName),
+                propertyToSProperty(it, realType)
+            )
         }
 
 
@@ -916,7 +1182,13 @@ fun genConstructorPropertiesMap(constructorBody: MutableInstructions,
 }
 
 fun invokePut(accessMap: Instruction, vararg arguments: Instruction): Instruction =
-        invokeInterface(Map::class.java, accessMap, "put", typeSpec(Any::class.java, Any::class.java, Any::class.java), listOf(*arguments))
+    invokeInterface(
+        Map::class.java,
+        accessMap,
+        "put",
+        typeSpec(Any::class.java, Any::class.java, Any::class.java),
+        listOf(*arguments)
+    )
 
 private fun propertyToSProperty(property: PropertyInfo, registryType: Type): Instruction {
 
@@ -955,7 +1227,11 @@ private fun propertyToSProperty(property: PropertyInfo, registryType: Type): Ins
     return typeToInvoke.invokeConstructor(typeSpec, arguments)
 }
 
-private fun invokeGetter(type: Class<*>, supplierInfo: Pair<String, Class<*>>, property: PropertyInfo): Instruction {
+private fun invokeGetter(
+    type: Type,
+    supplierInfo: Pair<String, Type>,
+    property: PropertyInfo
+): Instruction {
     val propertyType = property.type
     val getterName = property.getterName!!
 
@@ -964,133 +1240,139 @@ private fun invokeGetter(type: Class<*>, supplierInfo: Pair<String, Class<*>>, p
     val rtype = if (type.isPrimitive) realType /*type.koresType*/ else Types.OBJECT
 
     val spec = MethodInvokeSpec(
-            InvokeType.INVOKE_VIRTUAL,
-            MethodTypeSpec(
-                    Alias.THIS,
-                    getterName,
-                    typeSpec(realType)
-            )
+        InvokeType.INVOKE_VIRTUAL,
+        MethodTypeSpec(
+            Alias.THIS,
+            getterName,
+            typeSpec(realType)
+        )
     )
 
     return InvokeDynamic.LambdaMethodRef.Builder.builder()
-            .methodRef(spec)
-            .target(Access.THIS)
-            .baseSam(MethodTypeSpec(supplierType, supplierInfo.first, typeSpec(rtype)))
-            .expectedTypes(typeSpec(realType /*propertyType*/))
-            .build()
+        .methodRef(spec)
+        .target(Access.THIS)
+        .baseSam(MethodTypeSpec(supplierType, supplierInfo.first, typeSpec(rtype)))
+        .expectedTypes(typeSpec(realType /*propertyType*/))
+        .build()
 }
 
-private fun invokeSetter(type: Class<*>, consumerType: KoresType, property: PropertyInfo): Instruction {
+private fun invokeSetter(
+    type: Type,
+    consumerType: KoresType,
+    property: PropertyInfo
+): Instruction {
     val setterName = property.setterName!!
 
     val realType = getCastType(property.type).koresType
     val ptype = if (type.isPrimitive) realType/*type.koresType*/ else Types.OBJECT
 
     val spec = MethodInvokeSpec(
-            InvokeType.INVOKE_VIRTUAL,
-            MethodTypeSpec(
-                    Alias.THIS,
-                    setterName,
-                    typeSpec(Types.VOID, realType)
-            )
+        InvokeType.INVOKE_VIRTUAL,
+        MethodTypeSpec(
+            Alias.THIS,
+            setterName,
+            typeSpec(Types.VOID, realType)
+        )
     )
 
     return InvokeDynamic.LambdaMethodRef.Builder.builder()
-            .methodRef(spec)
-            .target(Access.THIS)
-            .arguments()
-            .baseSam(MethodTypeSpec(consumerType, "accept", constructorTypeSpec(ptype)))
-            .expectedTypes(constructorTypeSpec(realType/*propertyType*/))
-            .build()
+        .methodRef(spec)
+        .target(Access.THIS)
+        .arguments()
+        .baseSam(MethodTypeSpec(consumerType, "accept", constructorTypeSpec(ptype)))
+        .expectedTypes(constructorTypeSpec(realType/*propertyType*/))
+        .build()
 }
 
-private fun getTypeToInvoke(hasGetter: Boolean, hasSetter: Boolean, type: Class<*>): Class<*> =
-        if (hasGetter && hasSetter) when (type) {
-            java.lang.Byte.TYPE,
-            java.lang.Short.TYPE,
-            java.lang.Character.TYPE,
-            java.lang.Integer.TYPE -> IntGSProperty.Impl::class.java
-            java.lang.Boolean.TYPE -> BooleanGSProperty.Impl::class.java
-            java.lang.Double.TYPE,
-            java.lang.Float.TYPE -> DoubleGSProperty.Impl::class.java
-            java.lang.Long.TYPE -> LongGSProperty.Impl::class.java
-            else -> GSProperty.Impl::class.java
-        } else if (hasGetter) when (type) {
-            java.lang.Byte.TYPE,
-            java.lang.Short.TYPE,
-            Character.TYPE,
-            java.lang.Integer.TYPE -> IntGetterProperty.Impl::class.java
-            java.lang.Boolean.TYPE -> BooleanGetterProperty.Impl::class.java
-            java.lang.Double.TYPE,
-            java.lang.Float.TYPE -> DoubleGetterProperty.Impl::class.java
-            java.lang.Long.TYPE -> LongGetterProperty.Impl::class.java
-            else -> GetterProperty.Impl::class.java
-        } else if (hasSetter) when (type) {
-            java.lang.Byte.TYPE,
-            java.lang.Short.TYPE,
-            java.lang.Character.TYPE,
-            java.lang.Integer.TYPE -> IntSetterProperty.Impl::class.java
-            java.lang.Boolean.TYPE -> BooleanSetterProperty.Impl::class.java
-            java.lang.Double.TYPE,
-            java.lang.Float.TYPE -> DoubleSetterProperty.Impl::class.java
-            java.lang.Long.TYPE -> LongSetterProperty.Impl::class.java
-            else -> SetterProperty.Impl::class.java
-        } else when (type) {
-            java.lang.Byte.TYPE,
-            java.lang.Short.TYPE,
-            java.lang.Character.TYPE,
-            java.lang.Integer.TYPE -> IntProperty.Impl::class.java
-            java.lang.Boolean.TYPE -> BooleanProperty.Impl::class.java
-            java.lang.Double.TYPE,
-            java.lang.Float.TYPE -> DoubleProperty.Impl::class.java
-            java.lang.Long.TYPE -> LongProperty.Impl::class.java
-            else -> Property.Impl::class.java
-        }
+private fun getTypeToInvoke(hasGetter: Boolean, hasSetter: Boolean, type: Type): Class<*> =
+    if (hasGetter && hasSetter) when (type.identification) {
+        java.lang.Byte.TYPE.identification,
+        java.lang.Short.TYPE.identification,
+        java.lang.Character.TYPE.identification,
+        java.lang.Integer.TYPE.identification -> IntGSProperty.Impl::class.java
+        java.lang.Boolean.TYPE.identification -> BooleanGSProperty.Impl::class.java
+        java.lang.Double.TYPE.identification,
+        java.lang.Float.TYPE.identification -> DoubleGSProperty.Impl::class.java
+        java.lang.Long.TYPE.identification -> LongGSProperty.Impl::class.java
+        else -> GSProperty.Impl::class.java
+    } else if (hasGetter) when (type.identification) {
+        java.lang.Byte.TYPE.identification,
+        java.lang.Short.TYPE.identification,
+        Character.TYPE.identification,
+        java.lang.Integer.TYPE.identification -> IntGetterProperty.Impl::class.java
+        java.lang.Boolean.TYPE.identification -> BooleanGetterProperty.Impl::class.java
+        java.lang.Double.TYPE.identification,
+        java.lang.Float.TYPE.identification -> DoubleGetterProperty.Impl::class.java
+        java.lang.Long.TYPE.identification -> LongGetterProperty.Impl::class.java
+        else -> GetterProperty.Impl::class.java
+    } else if (hasSetter) when (type.identification) {
+        java.lang.Byte.TYPE.identification,
+        java.lang.Short.TYPE.identification,
+        java.lang.Character.TYPE.identification,
+        java.lang.Integer.TYPE.identification -> IntSetterProperty.Impl::class.java
+        java.lang.Boolean.TYPE.identification -> BooleanSetterProperty.Impl::class.java
+        java.lang.Double.TYPE.identification,
+        java.lang.Float.TYPE.identification -> DoubleSetterProperty.Impl::class.java
+        java.lang.Long.TYPE.identification -> LongSetterProperty.Impl::class.java
+        else -> SetterProperty.Impl::class.java
+    } else when (type.identification) {
+        java.lang.Byte.TYPE.identification,
+        java.lang.Short.TYPE.identification,
+        java.lang.Character.TYPE.identification,
+        java.lang.Integer.TYPE.identification -> IntProperty.Impl::class.java
+        java.lang.Boolean.TYPE.identification -> BooleanProperty.Impl::class.java
+        java.lang.Double.TYPE.identification,
+        java.lang.Float.TYPE.identification -> DoubleProperty.Impl::class.java
+        java.lang.Long.TYPE.identification -> LongProperty.Impl::class.java
+        else -> Property.Impl::class.java
+    }
 
-private fun getSupplierType(type: Class<*>): Pair<String, Class<*>> = when (type) {
-    java.lang.Byte.TYPE,
-    java.lang.Short.TYPE,
-    java.lang.Character.TYPE,
-    java.lang.Integer.TYPE -> "getAsInt" to IntSupplier::class.java
-    java.lang.Boolean.TYPE -> "getAsBoolean" to BooleanSupplier::class.java
-    java.lang.Double.TYPE,
-    java.lang.Float.TYPE -> "getAsDouble" to DoubleSupplier::class.java
-    java.lang.Long.TYPE -> "getAsLong" to LongSupplier::class.java
+private fun getSupplierType(type: Type): Pair<String, Class<*>> = when (type.identification) {
+    java.lang.Byte.TYPE.identification,
+    java.lang.Short.TYPE.identification,
+    java.lang.Character.TYPE.identification,
+    java.lang.Integer.TYPE.identification -> "getAsInt" to IntSupplier::class.java
+    java.lang.Boolean.TYPE.identification -> "getAsBoolean" to BooleanSupplier::class.java
+    java.lang.Double.TYPE.identification,
+    java.lang.Float.TYPE.identification -> "getAsDouble" to DoubleSupplier::class.java
+    java.lang.Long.TYPE.identification -> "getAsLong" to LongSupplier::class.java
     else -> "get" to Supplier::class.java
 }
 
-private fun getConsumerType(type: Class<*>): Class<*> = when (type) {
-    java.lang.Byte.TYPE,
-    java.lang.Short.TYPE,
-    java.lang.Character.TYPE,
-    java.lang.Integer.TYPE -> IntConsumer::class.java
-    java.lang.Boolean.TYPE -> BooleanConsumer::class.java
-    java.lang.Double.TYPE,
-    java.lang.Float.TYPE -> DoubleConsumer::class.java
-    java.lang.Long.TYPE -> LongConsumer::class.java
+private fun getConsumerType(type: Type): Class<*> = when (type.identification) {
+    java.lang.Byte.TYPE.identification,
+    java.lang.Short.TYPE.identification,
+    java.lang.Character.TYPE.identification,
+    java.lang.Integer.TYPE.identification -> IntConsumer::class.java
+    java.lang.Boolean.TYPE.identification -> BooleanConsumer::class.java
+    java.lang.Double.TYPE.identification,
+    java.lang.Float.TYPE.identification -> DoubleConsumer::class.java
+    java.lang.Long.TYPE.identification -> LongConsumer::class.java
     else -> Consumer::class.java
 }
 
-private fun getCastType(type: Class<*>): Class<*> = when (type) {
-    java.lang.Byte.TYPE, // -> java.lang.Byte.TYPE // Temporary workaround until Kores-BytecodeWriter:hotfix3
-    java.lang.Short.TYPE, // -> java.lang.Short.TYPE // Temporary workaround until Kores-BytecodeWriter:hotfix3
-    java.lang.Character.TYPE, // -> java.lang.Character.TYPE // Temporary workaround until Kores-BytecodeWriter:hotfix3
-    java.lang.Integer.TYPE -> java.lang.Integer.TYPE
-    java.lang.Boolean.TYPE -> java.lang.Boolean.TYPE
-    java.lang.Double.TYPE,
-    java.lang.Float.TYPE -> java.lang.Double.TYPE
-    java.lang.Long.TYPE -> java.lang.Long.TYPE
+/*
+private fun getCastType(type: Type): Class<*> = when (type.identification) {
+    java.lang.Byte.TYPE.identification, // -> java.lang.Byte.TYPE // Temporary workaround until Kores-BytecodeWriter:hotfix3
+    java.lang.Short.TYPE.identification, // -> java.lang.Short.TYPE // Temporary workaround until Kores-BytecodeWriter:hotfix3
+    java.lang.Character.TYPE.identification, // -> java.lang.Character.TYPE // Temporary workaround until Kores-BytecodeWriter:hotfix3
+    java.lang.Integer.TYPE.identification -> java.lang.Integer.TYPE
+    java.lang.Boolean.TYPE.identification -> java.lang.Boolean.TYPE
+    java.lang.Double.TYPE.identification,
+    java.lang.Float.TYPE.identification -> java.lang.Double.TYPE
+    java.lang.Long.TYPE.identification -> java.lang.Long.TYPE
     else -> type
 }
+*/
 
-private fun getCastType(koresType: KoresType): KoresType = when (koresType) {
-    Types.BYTE,
-    Types.SHORT,
-    Types.CHAR,
-    Types.INT -> Types.INT
-    Types.BOOLEAN -> Types.BOOLEAN
-    Types.DOUBLE,
-    Types.FLOAT -> Types.DOUBLE
-    Types.LONG -> Types.LONG
+private fun getCastType(koresType: Type): Type = when (koresType.identification) {
+    Types.BYTE.identification,
+    Types.SHORT.identification,
+    Types.CHAR.identification,
+    Types.INT.identification -> Types.INT
+    Types.BOOLEAN.identification -> Types.BOOLEAN
+    Types.DOUBLE.identification,
+    Types.FLOAT.identification -> Types.DOUBLE
+    Types.LONG.identification -> Types.LONG
     else -> koresType
 }

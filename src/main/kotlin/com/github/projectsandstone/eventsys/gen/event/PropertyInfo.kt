@@ -29,25 +29,28 @@ package com.github.projectsandstone.eventsys.gen.event
 
 import com.github.jonathanxd.kores.generic.GenericSignature
 import com.github.jonathanxd.kores.type.GenericType
-import com.github.projectsandstone.eventsys.validation.Validator
 import java.lang.reflect.Type
 
 /**
  * Information about property to generate.
  */
-data class PropertyInfo @JvmOverloads constructor(val declaringType: Class<*>,
-                                                  val propertyName: String,
-                                                  val getterName: String? = null,
-                                                  val setterName: String? = null,
-                                                  val type: Class<*>,
-                                                  val isNotNull: Boolean,
-                                                  val validator: Class<out Validator<out Any>>? = null,
-                                                  val propertyTypeInfo: PropertyTypeInfo,
-                                                  val inferredType: Type = type) {
+data class PropertyInfo @JvmOverloads constructor(
+    val declaringType: Type,
+    val propertyName: String,
+    val getterName: String? = null,
+    val setterName: String? = null,
+    val type: Type,
+    val isNotNull: Boolean,
+    val validator: Type? = null,
+    val propertyType: PropertyType,
+    val inferredType: Type = type
+) {
     fun hasGetter() = this.getterName != null
     fun hasSetter() = this.setterName != null
     fun isMutable() = this.setterName != null
 }
 
-data class PropertyTypeInfo(val type: GenericType,
-                            val definedParams: GenericSignature)
+data class PropertyType(
+    val type: GenericType,
+    val definedParams: GenericSignature
+)

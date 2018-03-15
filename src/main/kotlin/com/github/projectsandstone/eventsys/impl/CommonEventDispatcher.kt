@@ -27,23 +27,35 @@
  */
 package com.github.projectsandstone.eventsys.impl
 
-import com.github.jonathanxd.iutils.type.TypeInfo
+import com.github.jonathanxd.kores.type.GenericType
+import com.github.jonathanxd.kores.type.asGeneric
+import com.github.jonathanxd.kores.type.isAssignableFrom
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventDispatcher
 import com.github.projectsandstone.eventsys.event.EventListener
 import com.github.projectsandstone.eventsys.logging.LoggerInterface
 import com.github.projectsandstone.eventsys.logging.MessageType
+import com.github.projectsandstone.eventsys.util.isGenericAssignableFrom
+import java.lang.reflect.Type
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadFactory
 
-class CommonEventDispatcher(threadFactory: ThreadFactory,
-                            override val logger: LoggerInterface,
-                            private val listenersProvider: () -> Collection<EventListenerContainer<*>>) : HelperEventDispatcher() {
+class CommonEventDispatcher(
+    threadFactory: ThreadFactory,
+    override val logger: LoggerInterface,
+    private val listenersProvider: () -> Collection<EventListenerContainer<*>>
+) : HelperEventDispatcher() {
 
     private val executor = Executors.newCachedThreadPool(threadFactory)
 
 
-    override fun <T : Event> dispatch(event: T, eventType: TypeInfo<T>, dispatcher: Any, channel: Int, isAsync: Boolean) {
+    override fun <T : Event> dispatch(
+        event: T,
+        eventType: Type,
+        dispatcher: Any,
+        channel: Int,
+        isAsync: Boolean
+    ) {
         fun tryDispatch(eventListenerContainer: EventListenerContainer<*>) {
 
             if (isAsync) {
@@ -68,32 +80,41 @@ abstract class HelperEventDispatcher : EventDispatcher {
     protected abstract val logger: LoggerInterface
 
     @Suppress("NOTHING_TO_INLINE")
-    protected inline fun <T : Event> dispatchDirect(eventListenerContainer: EventListenerContainer<*>,
-                                                    event: T,
-                                                    eventType: TypeInfo<*>,
-                                                    dispatcher: Any,
-                                                    channel: Int) {
+    protected inline fun <T : Event> dispatchDirect(
+        eventListenerContainer: EventListenerContainer<*>,
+        event: T,
+        eventType: Type,
+        dispatcher: Any,
+        channel: Int
+    ) {
         try {
             eventListenerContainer.eventListener.helpOnEvent(event, dispatcher)
         } catch (throwable: Throwable) {
-            logger.log("Cannot dispatch event $event (of type: ${event.eventTypeInfo})" +
-                    " with provided type '$eventType' to listener " +
-                    "${eventListenerContainer.eventListener} (of event type: ${eventListenerContainer.eventType}) of owner " +
-                    "${eventListenerContainer.owner}. " +
-                    "(Dispatcher: $dispatcher, channel: $channel)",
-                    MessageType.EXCEPTION_IN_LISTENER,
-                    throwable)
+            logger.log(
+                "Cannot dispatch event $event (of type: ${event.eventType})" +
+                        " with provided type '$eventType' to listener " +
+                        "${eventListenerContainer.eventListener} (of event type: ${eventListenerContainer.eventType}) of owner " +
+                        "${eventListenerContainer.owner}. " +
+                        "(Dispatcher: $dispatcher, channel: $channel)",
+                MessageType.EXCEPTION_IN_LISTENER,
+                throwable
+            )
 
         }
     }
 
-    protected fun check(container: EventListenerContainer<*>, eventType: TypeInfo<*>, channel: Int): Boolean {
-
+    protected fun check(
+        container: EventListenerContainer<*>,
+        eventType: Type,
+        channel: Int
+    ): Boolean {
         fun checkType(): Boolean {
-            return container.eventType.isAssignableFrom(eventType)
-                    ||
-                    (container.eventType.typeParameters.isEmpty()
-                            && container.eventType.typeClass.isAssignableFrom(eventType.typeClass))
+            return (container.eventType is GenericType
+                    && container.eventType.isGenericAssignableFrom(eventType))
+                    || (container.eventType !is GenericType
+                    && container.eventType.isAssignableFrom(eventType))
+                    || (container.eventType.asGeneric.bounds.isEmpty()
+                    && container.eventType.isAssignableFrom(eventType))
         }
 
         val listenerPhase = container.eventListener.channel

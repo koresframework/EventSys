@@ -32,12 +32,16 @@ import com.github.jonathanxd.kores.util.isKotlin
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeParameterProvider
 import com.github.jonathanxd.iutils.type.TypeUtil
-import com.github.projectsandstone.eventsys.event.annotation.Filter
-import com.github.projectsandstone.eventsys.event.annotation.Listener
-import com.github.projectsandstone.eventsys.event.annotation.Name
-import com.github.projectsandstone.eventsys.event.annotation.OptionalProperty
-import com.github.projectsandstone.eventsys.util.hasEventFirstArg
-import com.github.projectsandstone.eventsys.util.isOptType
+import com.github.jonathanxd.kores.base.EnumValue
+import com.github.jonathanxd.kores.base.KoresAnnotation
+import com.github.jonathanxd.kores.base.MethodDeclaration
+import com.github.jonathanxd.kores.type.GenericType
+import com.github.jonathanxd.kores.type.asGeneric
+import com.github.jonathanxd.kores.type.bindedDefaultResolver
+import com.github.jonathanxd.kores.type.defaultResolver
+import com.github.jonathanxd.kores.util.conversion.koresAnnotation
+import com.github.projectsandstone.eventsys.event.annotation.*
+import com.github.projectsandstone.eventsys.util.*
 import java.lang.reflect.Method
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
@@ -54,7 +58,7 @@ import java.lang.reflect.Type
  * Channel value may vary depending on the event dispatcher. This same event instance can be dispatched in different channels.
  */
 data class ListenerSpec(
-        val eventType: TypeInfo<*>,
+        val eventType: Type,
         val firstIsEvent: Boolean,
         val ignoreCancelled: Boolean = false,
         val priority: EventPriority = EventPriority.NORMAL,
@@ -62,8 +66,8 @@ data class ListenerSpec(
         val channel: Int) {
 
     data class LParameter internal constructor(val name: String,
-                                               val annotations: List<Annotation>,
-                                               val type: TypeInfo<*>,
+                                               val annotations: List<KoresAnnotation>,
+                                               val type: Type,
                                                val isOptional: Boolean,
                                                val optType: Type?,
                                                val shouldLookup: Boolean)
@@ -73,6 +77,7 @@ data class ListenerSpec(
         /**
          * Create listener specification from [method] annotated with [Listener].
          */
+        @Deprecated(message = "Since EventSys 1.6 you should use fromMethodDeclaration function")
         fun fromMethod(method: Method): ListenerSpec {
 
             val firstIsEvent =
@@ -83,10 +88,10 @@ data class ListenerSpec(
                         method.getDeclaredAnnotation(Filter::class.java)?.value?.singleOrNull()?.java?.let {
                             if (it.superclass == TypeParameterProvider::class.java)
                                 (it.genericSuperclass as? ParameterizedType)?.actualTypeArguments
-                                        ?.firstOrNull()?.let { TypeUtil.toTypeInfo(it) } ?: TypeInfo.of(it)
-                            else TypeInfo.of(it)
-                        } ?: TypeInfo.of(Event::class.java)
-                    else TypeUtil.toTypeInfo(method.genericParameterTypes[0])
+                                    ?.firstOrNull()?.asGeneric ?: it
+                            else it
+                        } ?: Event::class.java
+                    else method.genericParameterTypes[0].asGeneric
 
             val listenerAnnotation = method.getDeclaredAnnotation(Listener::class.java)
 
@@ -99,21 +104,21 @@ data class ListenerSpec(
                 val typeIsOptional = it.type.isOptType()
                 val isOptional = typeIsOptional || it.isAnnotationPresent(OptionalProperty::class.java)
 
-                val typeInfo = TypeUtil.toTypeInfo(it.parameterizedType)
+                val generic = it.parameterizedType.asGeneric
                 val parameterType =
-                        if (typeIsOptional) typeInfo.getTypeParameter(0)
-                        else typeInfo
+                        if (typeIsOptional) generic.bounds[0].type
+                        else generic
 
                 val name: String? = it.getDeclaredAnnotation(Name::class.java)?.value
                         ?: (if (it.isNamePresent) it.name else null)
                         ?: ktParameters?.get(i)?.name
 
                 return@mapIndexed LParameter(name ?: it.name,
-                        it.annotations.toList(),
+                        it.annotations.koresAnnotation,
                         parameterType,
                         isOptional,
-                        if (typeIsOptional) typeInfo.typeClass else null,
-                        evType.typeParameters.isNotEmpty()
+                        if (typeIsOptional) generic else null,
+                        evType is GenericType && evType.bounds.isNotEmpty()
                 )
 
             }.toList()
@@ -126,6 +131,57 @@ data class ListenerSpec(
                     channel = listenerAnnotation.channel)
         }
 
+        /**
+         * Create listener specification from [method] annotated with [Listener].
+         */
+        fun fromMethodDeclaration(method: MethodDeclaration): ListenerSpec {
+
+            val firstIsEvent =
+                method.getDeclaredAnnotation(Filter::class.java).hasEventFirstArg()
+
+            val evType: Type =
+                if (!firstIsEvent)
+                    (method.getDeclaredAnnotation(Filter::class.java)?.filterValue()?.singleOrNull()?.let {
+                        val superClass = it.bindedDefaultResolver.getSuperclass()
+                        if (superClass.rightOrNull() == TypeParameterProvider::class.java)
+                            superClass.right?.asGeneric?.bounds?.get(0)?.type ?:it
+                        else it
+                    } ?: Event::class.java)
+                else method.parameters[0].type.asGeneric
+
+            val listenerAnnotation = method.getDeclaredAnnotation(Listener::class.java)
+
+            val namedParameters = method.parameters.mapIndexed { i, it ->
+
+                val typeIsOptional = it.type.isOptType()
+                val isOptional = typeIsOptional || it.isAnnotationPresent(OptionalProperty::class.java)
+
+                val generic = it.type.asGeneric
+                val parameterType =
+                    if (typeIsOptional) generic.bounds[0].type
+                    else generic
+
+                val name: String? = it.getDeclaredAnnotation(Name::class.java)?.values?.get("value") as? String
+                        ?: it.name
+
+                return@mapIndexed LParameter(name ?: it.name,
+                    it.annotations,
+                    parameterType,
+                    isOptional,
+                    if (typeIsOptional) generic else null,
+                    evType is GenericType && evType.bounds.isNotEmpty()
+                )
+
+            }.toList()
+
+            return ListenerSpec(eventType = evType,
+                firstIsEvent = firstIsEvent,
+                ignoreCancelled = listenerAnnotation.listenerIgnoreCancelled,
+                priority = listenerAnnotation.listenerPriority,
+                parameters = namedParameters,
+                channel = listenerAnnotation.listenerChannel
+            )
+        }
     }
 }
 

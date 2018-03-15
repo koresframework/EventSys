@@ -29,17 +29,25 @@ package com.github.projectsandstone.eventsys.gen.event
 
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
+import com.github.projectsandstone.eventsys.util.toGeneric
+import java.lang.reflect.Type
 
 /**
  * Specification of event class to generate.
  *
- * @property typeInfo Type information of the event.
+ * @property type Generic type of event.
  * @property additionalProperties Additional properties of event.
  * @property extension Event extensions.
  */
-data class EventClassSpecification<T>(
-        val typeInfo: TypeInfo<T>,
-        val additionalProperties: List<PropertyInfo>,
-        val extensions: List<ExtensionSpecification>
-)
+data class EventClassSpecification(
+    val type: Type,
+    val additionalProperties: List<PropertyInfo>,
+    val extensions: List<ExtensionSpecification>
+) {
+    constructor(
+        typeInfo: TypeInfo<*>,
+        additionalProperties: List<PropertyInfo>,
+        extensions: List<ExtensionSpecification>
+    ) : this(typeInfo.toGeneric(), additionalProperties, extensions)
+}
 

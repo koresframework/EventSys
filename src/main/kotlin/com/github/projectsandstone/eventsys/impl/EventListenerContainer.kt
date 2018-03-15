@@ -27,10 +27,12 @@
  */
 package com.github.projectsandstone.eventsys.impl
 
-import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
+import java.lang.reflect.Type
 
-data class EventListenerContainer<T : Event>(val owner: Any,
-                                             val eventType: TypeInfo<T>,
-                                             val eventListener: EventListener<T>)
+data class EventListenerContainer<in T : Event>(
+    val owner: Any,
+    val eventType: Type,
+    val eventListener: EventListener<T>
+)

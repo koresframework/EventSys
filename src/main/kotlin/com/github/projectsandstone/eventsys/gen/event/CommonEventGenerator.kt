@@ -29,16 +29,25 @@ package com.github.projectsandstone.eventsys.gen.event
 
 import com.github.jonathanxd.iutils.map.ConcurrentListMap
 import com.github.jonathanxd.iutils.option.Options
-import com.github.jonathanxd.iutils.type.TypeInfo
+import com.github.jonathanxd.kores.base.ClassDeclaration
+import com.github.jonathanxd.kores.base.MethodDeclaration
+import com.github.jonathanxd.kores.type.GenericType
+import com.github.jonathanxd.kores.type.`is`
+import com.github.jonathanxd.kores.type.concreteType
+import com.github.jonathanxd.kores.type.toGeneric
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
 import com.github.projectsandstone.eventsys.event.ListenerSpec
 import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
+import com.github.projectsandstone.eventsys.gen.ResolvableDeclaration
 import com.github.projectsandstone.eventsys.gen.check.CheckHandler
 import com.github.projectsandstone.eventsys.gen.check.DefaultCheckHandler
 import com.github.projectsandstone.eventsys.logging.LoggerInterface
+import com.github.projectsandstone.eventsys.reflect.isEqual
+import com.github.projectsandstone.eventsys.util.DeclarationCache
 import com.github.projectsandstone.eventsys.util.ESysExecutor
 import java.lang.reflect.Method
+import java.lang.reflect.Type
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -46,12 +55,15 @@ import java.util.function.Supplier
 
 class CommonEventGenerator(override val logger: LoggerInterface) : EventGenerator {
 
-    private val factoryImplCache = ConcurrentHashMap<Class<*>, Any>()
-    private val eventImplCache = ConcurrentHashMap<EventClass<*>, Class<*>>()
-    private val listenerImplCache = ConcurrentHashMap<Method, EventListener<Event>>()
+    private val factoryImplCache = ConcurrentHashMap<Type, ResolvableDeclaration<*>>()
+    private val eventImplCache = ConcurrentHashMap<EventClass, ResolvableDeclaration<Class<*>>>()
+    private val listenerImplCache =
+        ConcurrentHashMap<MethodDeclaration, ResolvableDeclaration<Class<out EventListener<Event>>>>()
+
+    private val declarationCache = DeclarationCache()
 
     private val extensionMap =
-        ConcurrentListMap<Class<*>, ExtensionSpecification>(ConcurrentHashMap())
+        ConcurrentListMap<Type, ExtensionSpecification>(ConcurrentHashMap())
 
     // Not synchronized
     override val options: Options = Options(ConcurrentHashMap())
@@ -60,33 +72,52 @@ class CommonEventGenerator(override val logger: LoggerInterface) : EventGenerato
     // Executor
     private val executor = ESysExecutor(this.options, Executors.newCachedThreadPool())
 
-    override fun <T : Any> createFactoryAsync(factoryClass: Class<T>): CompletableFuture<out T> =
+    override fun <T : Any> createFactoryAsync(factoryType: Type): CompletableFuture<ResolvableDeclaration<T>> =
         CompletableFuture.supplyAsync(
-            Supplier<T> { this.createFactory(factoryClass) },
+            Supplier<ResolvableDeclaration<T>> { this.createFactory(factoryType) },
             this.executor
         )
 
 
     override fun <T : Event> createEventClassAsync(
-        type: TypeInfo<T>,
+        type: Type,
         additionalProperties: List<PropertyInfo>,
         extensions: List<ExtensionSpecification>
-    ): CompletableFuture<Class<out T>> =
-        CompletableFuture.supplyAsync(Supplier<Class<out T>> {
+    ): CompletableFuture<ResolvableDeclaration<Class<out T>>> =
+        CompletableFuture.supplyAsync(Supplier<ResolvableDeclaration<Class<out T>>> {
             this.createEventClass(type, additionalProperties, extensions)
         }, this.executor)
 
     override fun createMethodListenerAsync(
-        owner: Any,
+        listenerClass: Type,
         method: Method,
         instance: Any?,
         listenerSpec: ListenerSpec
-    ): CompletableFuture<EventListener<Event>> =
-        CompletableFuture.supplyAsync(Supplier<EventListener<Event>> {
-            this.createMethodListener(owner, method, instance, listenerSpec)
+    ): CompletableFuture<ResolvableDeclaration<EventListener<Event>>> =
+        CompletableFuture.supplyAsync(Supplier<ResolvableDeclaration<EventListener<Event>>> {
+            this.createMethodListener(listenerClass, method, instance, listenerSpec)
         }, this.executor)
 
-    override fun registerExtension(base: Class<*>, extensionSpecification: ExtensionSpecification) {
+    override fun createMethodListenerAsync(
+        listenerClass: Type,
+        method: MethodDeclaration,
+        instance: Any?,
+        listenerSpec: ListenerSpec
+    ): CompletableFuture<ResolvableDeclaration<EventListener<Event>>> =
+        CompletableFuture.supplyAsync(Supplier<ResolvableDeclaration<EventListener<Event>>> {
+            this.createMethodListener(listenerClass, method, instance, listenerSpec)
+        }, this.executor)
+
+    override fun createMethodListenerAsync(
+        listenerClass: Type,
+        method: MethodDeclaration,
+        listenerSpec: ListenerSpec
+    ): CompletableFuture<ResolvableDeclaration<Class<out EventListener<Event>>>> =
+        CompletableFuture.supplyAsync(Supplier<ResolvableDeclaration<Class<out EventListener<Event>>>> {
+            this.createMethodListener(listenerClass, method, listenerSpec)
+        }, this.executor)
+
+    override fun registerExtension(base: Type, extensionSpecification: ExtensionSpecification) {
 
         if (this.extensionMap[base]?.contains(extensionSpecification) == true)
             return
@@ -95,37 +126,49 @@ class CommonEventGenerator(override val logger: LoggerInterface) : EventGenerato
     }
 
     override fun <T : Event> registerEventImplementation(
-        eventClassSpecification: EventClassSpecification<T>,
+        eventClassSpecification: EventClassSpecification,
         implementation: Class<out T>
     ) {
         val evtClass = EventClass(
-            eventClassSpecification.typeInfo,
+            eventClassSpecification.type,
             eventClassSpecification.additionalProperties,
             emptyList(),
             eventClassSpecification.extensions
         )
 
-        this.eventImplCache[evtClass] = implementation
+        this.eventImplCache[evtClass] = ResolvableDeclaration(
+            classDeclaration = declarationCache[implementation] as ClassDeclaration,
+            resolver = { implementation })
     }
 
-    override fun <T : Any> createFactory(factoryClass: Class<T>): T {
+    override fun <T : Any> createFactory(factoryType: Type): ResolvableDeclaration<T> {
         @Suppress("UNCHECKED_CAST")
-        return this.factoryImplCache.computeIfAbsent(factoryClass) {
-            EventFactoryClassGenerator.create(this, factoryClass, this.logger)
-        } as T
+        return this.factoryImplCache.computeIfAbsent(factoryType) {
+            EventFactoryClassGenerator.create<T>(
+                this,
+                factoryType,
+                this.logger,
+                this.declarationCache
+            )
+        } as ResolvableDeclaration<T>
 
     }
 
     override fun <T : Event> createEventClass(
-        type: TypeInfo<T>,
+        type: Type,
         additionalProperties: List<PropertyInfo>,
         extensions: List<ExtensionSpecification>
-    ): Class<out T> {
+    ): ResolvableDeclaration<Class<out T>> {
+
+        val currExts =
+            (this.extensionMap[type]
+                    ?: this.extensionMap.entries
+                        .firstOrNull { (k, _) -> k.`is`(type) }?.value).orEmpty()
 
         val eventClass = EventClass(
             type,
             additionalProperties,
-            this.extensionMap[type.typeClass] ?: emptyList(),
+            currExts,
             extensions
         )
 
@@ -133,14 +176,14 @@ class CommonEventGenerator(override val logger: LoggerInterface) : EventGenerato
 
         @Suppress("UNCHECKED_CAST")
         return this.eventImplCache.computeIfAbsent(eventClass) {
-            EventClassGenerator.genImplementation(eventClass.spec, this)
-        } as Class<T>
+            EventClassGenerator.genImplementation<T>(eventClass.spec, this, this.declarationCache)
+        } as ResolvableDeclaration<Class<out T>>
     }
 
     /**
      * Removes all old event implementation classes that does not have same extensions as current extensions.
      */
-    private fun <T> cleanup(eventClass: EventClass<T>) {
+    private fun cleanup(eventClass: EventClass) {
         synchronized(this.eventImplCache) {
             this.eventImplCache.keys.toSet()
                 .filter { it.currExts != eventClass.currExts && it.userExts == eventClass.userExts }
@@ -149,23 +192,47 @@ class CommonEventGenerator(override val logger: LoggerInterface) : EventGenerato
     }
 
     override fun createMethodListener(
-        owner: Any,
+        listenerClass: Type,
+        method: MethodDeclaration,
+        listenerSpec: ListenerSpec
+    ): ResolvableDeclaration<Class<out EventListener<Event>>> =
+        this.listenerImplCache.computeIfAbsent(method) {
+            MethodListenerGenerator.createClass(listenerClass, it, listenerSpec)
+        }
+
+    override fun createMethodListener(
+        listenerClass: Type,
+        method: MethodDeclaration,
+        instance: Any?,
+        listenerSpec: ListenerSpec
+    ): ResolvableDeclaration<EventListener<Event>> =
+        createMethodListener(listenerClass, method, listenerSpec).let {
+            MethodListenerGenerator.create(it, method, instance)
+        }
+
+    override fun createMethodListener(
+        listenerClass: Type,
         method: Method,
         instance: Any?,
         listenerSpec: ListenerSpec
-    ): EventListener<Event> {
-        return this.listenerImplCache.computeIfAbsent(method) {
-            MethodListenerGenerator.create(owner, method, instance, listenerSpec)
+    ): ResolvableDeclaration<EventListener<Event>> =
+        this.declarationCache[listenerClass].methods.first { it.isEqual(method) }.let {
+            createMethodListener(listenerClass, it, instance, listenerSpec)
         }
-    }
 
-    private data class EventClass<T>(
-        val typeInfo: TypeInfo<T>,
+    override fun createListenerSpecFromMethod(method: Method): ListenerSpec =
+        this.createListenerSpecFromMethod(this.declarationCache[method.declaringClass].methods.first { it.isEqual(method) })
+
+    override fun createListenerSpecFromMethod(method: MethodDeclaration): ListenerSpec =
+        ListenerSpec.fromMethodDeclaration(method)
+
+    private data class EventClass(
+        val typeInfo: Type,
         val additionalProperties: List<PropertyInfo>,
         val currExts: List<ExtensionSpecification>,
         val userExts: List<ExtensionSpecification>
     ) {
-        val spec: EventClassSpecification<T> =
+        val spec: EventClassSpecification =
             EventClassSpecification(typeInfo, additionalProperties, currExts + userExts)
     }
 

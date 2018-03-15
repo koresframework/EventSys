@@ -27,12 +27,12 @@
  */
 package com.github.projectsandstone.eventsys.event
 
-import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
 import com.github.projectsandstone.eventsys.impl.EventListenerContainer
 import com.github.projectsandstone.eventsys.util.getEventType
 import java.lang.reflect.Method
+import java.lang.reflect.Type
 
 /**
  * Event manager.
@@ -57,20 +57,6 @@ interface EventManager {
     /**
      * Register a [EventListener] for a [Event].
      *
-     * If you wan't to register an instance as [EventListener] use [registerListeners].
-     *
-     * @param owner Owner of the [eventListener]
-     * @param eventType Type of event
-     * @param eventListener Listener of the event.
-     * @see [registerListeners]
-     */
-    @Suppress("UNCHECKED_CAST")
-    fun <T : Event> registerListener(owner: Any, eventType: Class<T>, eventListener: EventListener<T>) =
-        this.registerListener(owner, TypeInfo.of(eventType), eventListener)
-
-    /**
-     * Register a [EventListener] for a [Event].
-     *
      * To register class instance listeners use [registerListeners], to register a specific method use
      * [registerMethodListener].
      *
@@ -79,7 +65,7 @@ interface EventManager {
      * @param eventListener Listener of the event.
      * @see [registerListeners]
      */
-    fun <T : Event> registerListener(owner: Any, eventType: TypeInfo<T>, eventListener: EventListener<T>)
+    fun <T : Event> registerListener(owner: Any, eventType: Type, eventListener: EventListener<T>)
 
     /**
      * Register all method event listeners inside the [listener] instance.
@@ -99,6 +85,7 @@ interface EventManager {
      * @param method Method to register
      */
     fun registerMethodListener(owner: Any,
+                               eventClass: Type,
                                instance: Any?,
                                method: Method)
 
@@ -110,7 +97,7 @@ interface EventManager {
      * @param channel Channel of listeners to receive event.
      */
     fun <T : Event> dispatch(event: T, dispatcher: Any, channel: Int) =
-        this.dispatch(event, getEventType(event).cast(), dispatcher, channel)
+        this.dispatch(event, getEventType(event), dispatcher, channel)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
@@ -127,33 +114,33 @@ interface EventManager {
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
      *
-     * This dispatch also includes [generic type information][typeInfo], normally EventSys infer the type
+     * This dispatch also includes [generic type information][type], normally EventSys infer the type
      * from generated event class, but if inference fails, or the class does not have generic information,
      * you need to use this method to dispatch events.
      *
      * @param event [Event] to dispatch do listeners.
-     * @param typeInfo Information of generic event type.
+     * @param type Information of generic event type.
      * @param dispatcher Dispatcher of the [event].
      * @param channel Channel of listeners to receive event.
      */
-    fun <T : Event> dispatch(event: T, typeInfo: TypeInfo<T>, dispatcher: Any, channel: Int) =
-        this.eventDispatcher.dispatch(event, typeInfo, dispatcher, channel, false)
+    fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any, channel: Int) =
+        this.eventDispatcher.dispatch(event, type, dispatcher, channel, false)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
      *
-     * This dispatch also includes [generic type information][typeInfo], normally EventSys infer the type
+     * This dispatch also includes [generic type information][type], normally EventSys infer the type
      * from generated event class, but if inference fails, or the class does not have generic information,
      * you need to use this method to dispatch events.
      *
      * All listeners will be called (no matter the channel it listen).
      *
      * @param event [Event] to dispatch do listeners.
-     * @param typeInfo Information of generic event type.
+     * @param type Information of generic event type.
      * @param dispatcher Dispatcher of the [event].
      */
-    fun <T : Event> dispatch(event: T, typeInfo: TypeInfo<T>, dispatcher: Any) {
-        this.dispatch(event, typeInfo, dispatcher, -1)
+    fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any) {
+        this.dispatch(event, type, dispatcher, -1)
     }
 
     //////////// Async
@@ -169,7 +156,7 @@ interface EventManager {
      */
     @Suppress("UNCHECKED_CAST")
     fun <T : Event> dispatchAsync(event: T, dispatcher: Any, channel: Int) {
-        this.dispatchAsync(event, getEventType(event).cast(), dispatcher, channel)
+        this.dispatchAsync(event, getEventType(event), dispatcher, channel)
     }
 
     /**
@@ -190,25 +177,25 @@ interface EventManager {
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
      *
-     * This dispatch also includes [generic type information][typeInfo], normally EventSys infer the type
+     * This dispatch also includes [generic type information][type], normally EventSys infer the type
      * from generated event class, but if inference fails, or the class does not have generic information,
      * you need to use this method to dispatch events.
      *
      * Non blocking asynchronous dispatch.
      *
      * @param event [Event] to dispatch do listeners.
-     * @param typeInfo Information of generic event type.
+     * @param type Information of generic event type.
      * @param dispatcher Dispatcher of the [event].
      * @param channel Channel to dispatch event.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, dispatcher: Any, channel: Int) =
-        this.eventDispatcher.dispatch(event, typeInfo, dispatcher, channel, false)
+    fun <T : Event> dispatchAsync(event: T, type: Type, dispatcher: Any, channel: Int) =
+        this.eventDispatcher.dispatch(event, type, dispatcher, channel, false)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event].
      *
-     * This dispatch also includes [generic type information][typeInfo], normally EventSys infer the type
+     * This dispatch also includes [generic type information][type], normally EventSys infer the type
      * from generated event class, but if inference fails, or the class does not have generic information,
      * you need to use this method to dispatch events.
      *
@@ -217,12 +204,12 @@ interface EventManager {
      * All listeners will be called (no matter the channel it listen).
      *
      * @param event [Event] to dispatch do listeners.
-     * @param typeInfo Information of generic event type.
+     * @param type Information of generic event type.
      * @param dispatcher Dispatcher of the [event].
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, typeInfo: TypeInfo<T>, dispatcher: Any) =
-        this.dispatchAsync(event, typeInfo, dispatcher, -1)
+    fun <T : Event> dispatchAsync(event: T, type: Type, dispatcher: Any) =
+        this.dispatchAsync(event, type, dispatcher, -1)
 
 
     //////////// /Async
@@ -233,12 +220,12 @@ interface EventManager {
      * @param eventType Type of event.
      * @return Listeners of event ([eventType])
      */
-    fun <T : Event> getListeners(eventType: TypeInfo<T>): Set<Pair<TypeInfo<T>, EventListener<T>>>
+    fun <T : Event> getListeners(eventType: Type): Set<Pair<Type, EventListener<T>>>
 
     /**
      * Gets all listeners of events
      */
-    fun getListeners(): Set<Pair<TypeInfo<*>, EventListener<*>>>
+    fun getListeners(): Set<Pair<Type, EventListener<*>>>
 
     /**
      * Gets all containers of listeners (immutable).
@@ -257,5 +244,5 @@ interface EventDispatcher {
      * all listeners), if [isAsync] is true, each listener may be called on different threads,
      * the behavior depends on implementation, but the dispatch will never block current thread.
      */
-    fun <T: Event> dispatch(event: T, eventType: TypeInfo<T>, dispatcher: Any, channel: Int, isAsync: Boolean)
+    fun <T: Event> dispatch(event: T, eventType: Type, dispatcher: Any, channel: Int, isAsync: Boolean)
 }

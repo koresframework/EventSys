@@ -27,26 +27,30 @@
  */
 package com.github.projectsandstone.eventsys.add;
 
+import com.github.jonathanxd.iutils.collection.Collections3;
+import com.github.jonathanxd.iutils.data.TypedData;
+import com.github.jonathanxd.iutils.kt.EitherUtilKt;
+import com.github.jonathanxd.iutils.object.TypedKey;
+import com.github.jonathanxd.iutils.type.TypeInfo;
+import com.github.jonathanxd.iutils.type.TypeParameterProvider;
 import com.github.jonathanxd.kores.Instructions;
 import com.github.jonathanxd.kores.MutableInstructions;
 import com.github.jonathanxd.kores.base.ConstructorDeclaration;
 import com.github.jonathanxd.kores.base.FieldDeclaration;
 import com.github.jonathanxd.kores.base.MethodDeclaration;
+import com.github.jonathanxd.kores.base.TypeDeclaration;
 import com.github.jonathanxd.kores.base.TypeSpec;
 import com.github.jonathanxd.kores.common.MethodTypeSpec;
 import com.github.jonathanxd.kores.factory.Factories;
 import com.github.jonathanxd.kores.factory.InvocationFactory;
 import com.github.jonathanxd.kores.literal.Literals;
+import com.github.jonathanxd.kores.type.KoresTypes;
 import com.github.jonathanxd.kores.type.TypeRef;
-import com.github.jonathanxd.iutils.collection.Collections3;
-import com.github.jonathanxd.iutils.data.TypedData;
-import com.github.jonathanxd.iutils.object.TypedKey;
-import com.github.jonathanxd.iutils.type.TypeInfo;
-import com.github.jonathanxd.iutils.type.TypeParameterProvider;
 import com.github.projectsandstone.eventsys.event.Event;
 import com.github.projectsandstone.eventsys.event.property.PropertyHolder;
 import com.github.projectsandstone.eventsys.gen.event.EventClassGeneratorKt;
 import com.github.projectsandstone.eventsys.gen.event.PropertyInfo;
+import com.github.projectsandstone.eventsys.util.DeclarationCache;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -62,8 +66,20 @@ public class EventSysAdditionalHandler {
             }.createTypeInfo());
 
     private static void registerPropertiesIfAbsent(TypedData typedData, Class<?> base) {
+        DeclarationCache cache = new DeclarationCache();
+        TypeDeclaration declaration = EitherUtilKt.getRightOrFail(KoresTypes.getKoresType(base)
+                .getBindedDefaultResolver()
+                .resolveTypeDeclaration());
+
         if (!PROP_INFO_KEY.contains(typedData)) {
-            PROP_INFO_KEY.set(typedData, EventClassGeneratorKt.getProperties(base, Collections.emptyList(), Collections.emptyList()));
+            PROP_INFO_KEY.set(typedData,
+                    EventClassGeneratorKt.getProperties(
+                            declaration,
+                            Collections.emptyList(),
+                            Collections.emptyList(),
+                            cache
+                    )
+            );
         }
     }
 
@@ -78,9 +94,9 @@ public class EventSysAdditionalHandler {
 
     @NotNull
     public static Instructions generateAdditionalConstructorBody(@NotNull ConstructorDeclaration constructorDeclaration,
-                                                               @NotNull TypeRef owner,
-                                                               @NotNull Class<?> base,
-                                                               @NotNull TypedData data) {
+                                                                 @NotNull TypeRef owner,
+                                                                 @NotNull Class<?> base,
+                                                                 @NotNull TypedData data) {
         registerPropertiesIfAbsent(data, base);
 
         List<PropertyInfo> props = PROP_INFO_KEY.getOrNull(data);
@@ -128,7 +144,8 @@ public class EventSysAdditionalHandler {
                                         InvocationFactory.invokeStatic(
                                                 TypeInfo.class,
                                                 "of",
-                                                new TypeSpec(TypeInfo.class, Collections.singletonList(Class.class)),
+                                                new TypeSpec(TypeInfo.class,
+                                                        Collections.singletonList(Class.class)),
                                                 Collections.singletonList(Literals.CLASS(itf))
                                         )
                                 )))
@@ -137,7 +154,8 @@ public class EventSysAdditionalHandler {
                 return Optional.of(declaration)
                         .map(it -> it.builder()
                                 .body(Instructions.fromPart(Factories.returnValue(Map.class,
-                                        Factories.accessThisField(EventClassGeneratorKt.getPropertiesFieldType(),
+                                        Factories.accessThisField(
+                                                EventClassGeneratorKt.getPropertiesFieldType(),
                                                 EventClassGeneratorKt.propertiesUnmodName)
                                 )))
                                 .build());

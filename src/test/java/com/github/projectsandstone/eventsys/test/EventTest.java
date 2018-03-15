@@ -28,16 +28,16 @@
 package com.github.projectsandstone.eventsys.test;
 
 import com.github.jonathanxd.iutils.map.MapUtils;
-import com.github.jonathanxd.iutils.type.TypeInfo;
 import com.github.jonathanxd.iutils.type.TypeParameterProvider;
+import com.github.jonathanxd.kores.type.Generic;
+import com.github.jonathanxd.kores.type.KoresTypes;
 import com.github.projectsandstone.eventsys.event.Event;
 import com.github.projectsandstone.eventsys.event.annotation.NotNullValue;
+import com.github.projectsandstone.eventsys.extension.ExtensionSpecification;
 import com.github.projectsandstone.eventsys.gen.event.CommonEventGenerator;
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator;
-import com.github.projectsandstone.eventsys.extension.ExtensionSpecification;
 import com.github.projectsandstone.eventsys.impl.CommonLogger;
 import com.github.projectsandstone.eventsys.util.EventFactoryHelperKt;
-import com.github.projectsandstone.eventsys.util.ExtKt;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -50,9 +50,12 @@ public class EventTest {
     public void impl() {
         EventGenerator generator = new CommonEventGenerator(new CommonLogger());
 
-        Class<? extends LoginEvent> eventClass = generator.createEventClass(TypeInfo.of(LoginEvent.class));
-        LoginEvent loginEvent = EventFactoryHelperKt.create(eventClass, MapUtils.mapOf("name", "Player"));
-        LoginEvent loginEvent2 = EventFactoryHelperKt.create(eventClass, MapUtils.mapOf("name", "Player2"));
+        Class<? extends LoginEvent> eventClass = generator.<LoginEvent>createEventClass(
+                Generic.type(LoginEvent.class)).invoke();
+        LoginEvent loginEvent = EventFactoryHelperKt.create(eventClass,
+                MapUtils.mapOf("name", "Player"));
+        LoginEvent loginEvent2 = EventFactoryHelperKt.create(eventClass,
+                MapUtils.mapOf("name", "Player2"));
 
         Assert.assertEquals("Player", loginEvent.getName());
         Assert.assertEquals("Player2", loginEvent2.getName());
@@ -76,16 +79,17 @@ public class EventTest {
         // Also check warnings may be printed
         // To check this out, disable bridge generation:
         // generator.getOptions().set(EventGeneratorOptions.ENABLE_BRIDGE, Boolean.FALSE);
-        Class<? extends ToStringValueEvent<Integer>> eventClass = generator.createEventClass(
-                new TypeParameterProvider<ToStringValueEvent<Integer>>() {
-                }.createTypeInfo(),
+        Class<? extends ToStringValueEvent<Integer>> eventClass = generator.<ToStringValueEvent<Integer>>createEventClass(
+                KoresTypes.getAsGeneric(KoresTypes.getKoresType(
+                        new TypeParameterProvider<ToStringValueEvent<Integer>>() {
+                        }.getType())),
                 Collections.emptyList(),
                 Collections.singletonList(new ExtensionSpecification(
                         this,
                         null,
                         IntToString.class
                 ))
-        );
+        ).invoke();
 
         TransformEvent<String, Integer> transform = EventFactoryHelperKt.create(eventClass,
                 Collections.emptyMap());

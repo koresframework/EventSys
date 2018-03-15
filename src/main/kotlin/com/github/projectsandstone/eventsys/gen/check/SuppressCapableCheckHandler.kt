@@ -28,6 +28,8 @@
 package com.github.projectsandstone.eventsys.gen.check
 
 import com.github.jonathanxd.iutils.description.Description
+import com.github.jonathanxd.kores.base.MethodDeclaration
+import com.github.jonathanxd.kores.base.TypeDeclaration
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
 import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
 import java.lang.reflect.Method
@@ -47,8 +49,8 @@ interface SuppressCapableCheckHandler : CheckHandler {
     /**
      * Returns true when implementation check against [method] should be suppressed.
      */
-    fun shouldSuppressImplementationCheck(method: Method,
-                                          type: Class<*>,
+    fun shouldSuppressImplementationCheck(method: MethodDeclaration,
+                                          type: TypeDeclaration,
                                           extensions: List<ExtensionSpecification>,
                                           eventGenerator: EventGenerator): Boolean
 

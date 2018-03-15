@@ -31,6 +31,7 @@ import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.projectsandstone.eventsys.event.annotation.Name
 import com.github.projectsandstone.eventsys.event.property.PropertyHolder
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
+import java.lang.reflect.Type
 
 /**
  * [Event] base class.
@@ -68,8 +69,8 @@ interface Event : PropertyHolder {
     /**
      * Type information of event type.
      */
-    val eventTypeInfo: TypeInfo<out Event>
-        get() = TypeInfo.of(this::class.java)
+    val eventType: Type
+        get() = this::class.java
 
     /**
      * Gets the extension of [type] if available.

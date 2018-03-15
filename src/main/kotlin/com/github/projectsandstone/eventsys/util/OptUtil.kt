@@ -32,6 +32,8 @@ import com.github.jonathanxd.kores.factory.invokeStatic
 import com.github.jonathanxd.kores.factory.typeSpec
 import com.github.jonathanxd.iutils.opt.Opt
 import com.github.jonathanxd.iutils.opt.specialized.*
+import com.github.jonathanxd.kores.type.concreteType
+import com.github.jonathanxd.kores.type.koresType
 import java.lang.reflect.Type
 
 fun Type.createNoneRuntime(): Any =
@@ -62,7 +64,7 @@ fun Type.createSomeRuntime(value: Any?): Any =
             else -> throw IllegalArgumentException("Cannot get primitive type of opt '$this'.")
         }
 
-fun Type.isOptType() = when (this) {
+fun Type.isOptType() = when (this.koresType.concreteType) {
     OptBoolean::class.java,
     OptChar::class.java,
     OptByte::class.java,
@@ -75,7 +77,7 @@ fun Type.isOptType() = when (this) {
     else -> false
 }
 
-fun Type.primitiveType() = when (this) {
+fun Type.primitiveType() = when (this.koresType.concreteType) {
     OptBoolean::class.java -> java.lang.Boolean.TYPE
     OptChar::class.java -> java.lang.Character.TYPE
     OptByte::class.java -> java.lang.Byte.TYPE
@@ -94,7 +96,7 @@ fun Type.createNone(): Instruction =
 fun Type.createSome(receiver: Instruction): Instruction =
         Opt::class.java.invokeStatic(this.someName(), typeSpec(this, this.primitiveType()), listOf(receiver))
 
-fun Type.someName() = when (this) { // class.simpleName.capitalize()
+fun Type.someName() = when (this.koresType.concreteType) { // class.simpleName.capitalize()
     OptBoolean::class.java -> "someBoolean"
     OptChar::class.java -> "someChar"
     OptByte::class.java -> "someByte"
@@ -107,7 +109,7 @@ fun Type.someName() = when (this) { // class.simpleName.capitalize()
     else -> throw IllegalArgumentException("Cannot get primitive type of opt '$this'.")
 }
 
-fun Type.noneName() = when (this) { // class.simpleName.capitalize()
+fun Type.noneName() = when (this.koresType.concreteType) { // class.simpleName.capitalize()
     OptBoolean::class.java -> "noneBoolean"
     OptChar::class.java -> "noneChar"
     OptByte::class.java -> "noneByte"

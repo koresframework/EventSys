@@ -27,9 +27,11 @@
  */
 package com.github.projectsandstone.eventsys.gen.check
 
-import com.github.jonathanxd.kores.base.MethodDeclaration
+import com.github.jonathanxd.kores.base.*
+import com.github.jonathanxd.kores.type.KoresType
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
 import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
+import com.github.projectsandstone.eventsys.util.DeclaredMethod
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 import java.lang.reflect.Parameter
@@ -44,7 +46,7 @@ interface CheckHandler {
      * Check if [implementedMethods] contains all non implemented methods of [type].
      */
     fun checkImplementation(implementedMethods: List<MethodDeclaration>,
-                            type: Class<*>,
+                            type: TypeDeclaration,
                             extensions: List<ExtensionSpecification>,
                             eventGenerator: EventGenerator)
 
@@ -60,9 +62,9 @@ interface CheckHandler {
      * This function should also return valid constructor.
      */
     fun validateExtension(extension: ExtensionSpecification,
-                          extensionClass: Class<*>,
-                          type: Type,
-                          eventGenerator: EventGenerator): Constructor<*>
+                          extensionClass: TypeDeclaration,
+                          type: ClassDeclaration,
+                          eventGenerator: EventGenerator): ConstructorDeclaration
 
     // Factory
 
@@ -70,21 +72,21 @@ interface CheckHandler {
      * Validates factory class. Valid factories are those which are interfaces
      * which does not extends any other class.
      */
-    fun validateFactoryClass(type: Class<*>,
+    fun validateFactoryClass(type: TypeDeclaration,
                              eventGenerator: EventGenerator)
 
     /**
      * Validates event class.
      */
-    fun validateEventClass(type: Class<*>,
-                           factoryMethod: Method,
+    fun validateEventClass(type: TypeDeclaration,
+                           factoryMethod: MethodDeclaration,
                            eventGenerator: EventGenerator)
 
     /**
      * Validate type provider parameters.
      */
-    fun validateTypeProvider(providerParams: List<Parameter>,
-                             factoryMethod: Method,
+    fun validateTypeProvider(providerParams: List<KoresParameter>,
+                             factoryMethod: DeclaredMethod,
                              eventGenerator: EventGenerator)
 
 }

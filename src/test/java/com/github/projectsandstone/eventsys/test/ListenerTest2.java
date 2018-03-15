@@ -29,7 +29,6 @@ package com.github.projectsandstone.eventsys.test;
 
 import com.github.jonathanxd.iutils.map.MapUtils;
 import com.github.jonathanxd.iutils.opt.specialized.OptObject;
-import com.github.jonathanxd.iutils.type.TypeInfo;
 import com.github.projectsandstone.eventsys.event.Event;
 import com.github.projectsandstone.eventsys.event.EventManager;
 import com.github.projectsandstone.eventsys.event.annotation.Filter;
@@ -56,7 +55,8 @@ public class ListenerTest2 {
         EventGenerator generator = manager.getEventGenerator();
 
         ConnectEvent event =
-                EventFactoryHelperKt.create(generator.createEventClass(TypeInfo.of(ConnectEvent.class)),
+                EventFactoryHelperKt.<ConnectEvent>create(
+                        generator.createEventClass(ConnectEvent.class).invoke(),
                         MapUtils.mapOf("ip", "127.0.0.1"));
 
         manager.registerListeners(this, this);
@@ -64,7 +64,8 @@ public class ListenerTest2 {
         Assert.assertEquals("127.0.0.1", this.ip);
 
         DisconnectEvent event2 =
-                EventFactoryHelperKt.create(generator.createEventClass(TypeInfo.of(DisconnectEvent.class)),
+                EventFactoryHelperKt.<DisconnectEvent>create(
+                        generator.createEventClass(DisconnectEvent.class).invoke(),
                         MapUtils.mapOf("ip", "0.0.0.0"));
 
         this.ip = null;
@@ -74,7 +75,9 @@ public class ListenerTest2 {
         Assert.assertEquals("0.0.0.0", this.ip);
 
         EmptyEvent event3 =
-                EventFactoryHelperKt.create(generator.createEventClass(TypeInfo.of(EmptyEvent.class)), Collections.emptyMap());
+                EventFactoryHelperKt.<EmptyEvent>create(
+                        generator.createEventClass(EmptyEvent.class).invoke(),
+                        Collections.emptyMap());
 
         this.ip = null;
 

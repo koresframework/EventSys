@@ -25,31 +25,10 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.util
+package com.github.projectsandstone.eventsys.gen
 
-import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.iutils.type.TypeUtil
-import com.github.projectsandstone.eventsys.event.Event
-import java.lang.reflect.Type
-
-fun <T : Event> getEventTypes(event: T): List<TypeInfo<*>> {
-    val jClass = event.javaClass
-    val superClass: Pair<Class<*>?, Type> = jClass.superclass to jClass.genericSuperclass
-    val interfaces: Array<Pair<Class<*>, Type>> = pairFromArrays(jClass.interfaces, jClass.genericInterfaces)
-
-    val types = mutableListOf<TypeInfo<*>>()
-
-    if (superClass.first != null && Event::class.java.isAssignableFrom(superClass.first)) {
-        types += TypeUtil.toTypeInfo(superClass.second)!!
-    }
-
-    for ((itf, type) in interfaces) {
-        if (Event::class.java.isAssignableFrom(itf)) {
-            types += TypeUtil.toTypeInfo(type)!!
-        }
-    }
-
-    return types
-}
-
-fun <T : Event> getEventType(event: T): Type = event.eventType
+/**
+ * Mark elements that requires code generation at runtime, meaning that it may affect performance in the first call.
+ */
+@Retention(AnnotationRetention.SOURCE)
+annotation class Runtime

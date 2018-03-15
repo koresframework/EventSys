@@ -28,7 +28,7 @@
 package com.github.projectsandstone.eventsys.test;
 
 import com.github.jonathanxd.iutils.map.MapUtils;
-import com.github.jonathanxd.iutils.type.TypeInfo;
+import com.github.jonathanxd.kores.type.Generic;
 import com.github.projectsandstone.eventsys.event.Event;
 import com.github.projectsandstone.eventsys.event.EventManager;
 import com.github.projectsandstone.eventsys.event.annotation.Listener;
@@ -52,7 +52,8 @@ public class ListenerTest {
         EventGenerator generator = manager.getEventGenerator();
 
         LoginEvent event =
-                EventFactoryHelperKt.create(generator.createEventClass(TypeInfo.of(LoginEvent.class)),
+                EventFactoryHelperKt.<LoginEvent>create(generator.<LoginEvent>createEventClass(
+                        Generic.type(LoginEvent.class)).invoke(),
                         MapUtils.mapOf("name", "Test"));
 
         manager.registerListeners(this, this);

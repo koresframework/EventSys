@@ -25,31 +25,20 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.util
+package com.github.projectsandstone.eventsys.gen
 
-import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.iutils.type.TypeUtil
-import com.github.projectsandstone.eventsys.event.Event
-import java.lang.reflect.Type
+import com.github.jonathanxd.kores.base.ClassDeclaration
 
-fun <T : Event> getEventTypes(event: T): List<TypeInfo<*>> {
-    val jClass = event.javaClass
-    val superClass: Pair<Class<*>?, Type> = jClass.superclass to jClass.genericSuperclass
-    val interfaces: Array<Pair<Class<*>, Type>> = pairFromArrays(jClass.interfaces, jClass.genericInterfaces)
+data class ResolvableDeclaration<out T>(
+    val classDeclaration: ClassDeclaration,
+    val resolver: () -> T
+) {
 
-    val types = mutableListOf<TypeInfo<*>>()
+    constructor(classDeclaration: ClassDeclaration, lazyResolver: Lazy<T>) : this(
+        classDeclaration,
+        { lazyResolver.value })
 
-    if (superClass.first != null && Event::class.java.isAssignableFrom(superClass.first)) {
-        types += TypeUtil.toTypeInfo(superClass.second)!!
-    }
+    operator fun invoke(): T = this.resolver()
 
-    for ((itf, type) in interfaces) {
-        if (Event::class.java.isAssignableFrom(itf)) {
-            types += TypeUtil.toTypeInfo(type)!!
-        }
-    }
-
-    return types
+    fun resolve(): T = this()
 }
-
-fun <T : Event> getEventType(event: T): Type = event.eventType

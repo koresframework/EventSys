@@ -28,7 +28,7 @@
 package com.github.projectsandstone.eventsys.event.annotation
 
 /**
- * Marks the factory parameter as a `TypeInfo` provider, this is required for generic events.
+ * Marks the factory parameter as a `GenericType` provider, this is required for generic events.
  *
  * When found on constructors denotes the constructor parameter which should receive the type information.
  */

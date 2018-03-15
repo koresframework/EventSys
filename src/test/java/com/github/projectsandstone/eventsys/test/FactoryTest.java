@@ -45,7 +45,7 @@ public class FactoryTest {
     public void factoryTest() {
         EventGenerator generator = new CommonEventGenerator(new CommonLogger());
 
-        MyFactory factory = generator.createFactory(MyFactory.class);
+        MyFactory factory = generator.<MyFactory>createFactory(MyFactory.class).invoke();
 
         RegistryEvent registryEvent = factory.createRegistryEvent("123456");
 
@@ -56,7 +56,7 @@ public class FactoryTest {
     public void lazyFactoryTest() {
         EventGenerator generator = new CommonEventGenerator(new CommonLogger());
 
-        MyFactory factory = generator.createFactory(MyFactory.class);
+        MyFactory factory = generator.<MyFactory>createFactory(MyFactory.class).invoke();
 
         RegistryEvent registryEvent = factory.createRegistryEventLazy("123456");
 

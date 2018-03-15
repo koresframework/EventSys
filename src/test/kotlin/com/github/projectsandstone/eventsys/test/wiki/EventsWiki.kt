@@ -59,8 +59,8 @@ class EventsWiki {
         ))
 */
         //manager.eventGenerator.options[EventGeneratorOptions.ASYNC] = true
-        val factory = manager.eventGenerator.createFactory<MyFactory>()
-        val eventClass = manager.eventGenerator.createEventClass<BuyEvent>()
+        val factory = manager.eventGenerator.createFactory<MyFactory>()()
+        val eventClass = manager.eventGenerator.createEventClass<BuyEvent>()()
 
         val event = create(eventClass, mapOf(
                 "product" to Product("USB Adapter", 10.0),
@@ -69,7 +69,7 @@ class EventsWiki {
 
         manager.dispatch(event, this)
 
-        manager.registerListener(this, typeInfo<BuyEvent>(), EventListener { theEvent, _ ->
+        manager.registerListener<BuyEvent>(this, BuyEvent::class.java, EventListener { theEvent, _ ->
             Assert.assertEquals("USB Adapter", theEvent.product.name)
             Assert.assertEquals(10.0, theEvent.product.price, 0.0)
             Assert.assertEquals(5, theEvent.amount)

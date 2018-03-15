@@ -27,6 +27,8 @@
  */
 package com.github.projectsandstone.eventsys.extension
 
+import java.lang.reflect.Type
+
 /**
  * Specification of event extension. An Extension is a indirect implementation of event methods,
  * the extension may be plugged to event class before `Event class generation` (trying to plug after that
@@ -41,4 +43,8 @@ package com.github.projectsandstone.eventsys.extension
  * a single-arg constructor is required, the first argument must be
  * a type assignable to target event value.
  */
-data class ExtensionSpecification(val residence: Any, val implement: Class<*>?, val extensionClass: Class<*>?)
+data class ExtensionSpecification(
+    val residence: Any,
+    val implement: Type?,
+    val extensionClass: Type?
+)

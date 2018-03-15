@@ -27,18 +27,31 @@
  */
 package com.github.projectsandstone.eventsys.reflect
 
+import com.github.jonathanxd.kores.base.KoresAnnotation
+import com.github.jonathanxd.kores.base.KoresParameter
+import com.github.jonathanxd.kores.base.MethodDeclaration
+import com.github.jonathanxd.kores.base.TypeDeclaration
+import com.github.jonathanxd.kores.type.KoresType
+import com.github.jonathanxd.kores.type.`is`
+import com.github.jonathanxd.kores.util.conversion.koresParameter
+import com.github.projectsandstone.eventsys.util.DeclarationCache
+import com.github.projectsandstone.eventsys.util.DeclaredMethod
 import com.github.projectsandstone.eventsys.util.NameCaching
+import com.github.projectsandstone.eventsys.util.forAllTypes
 import java.lang.reflect.Method
+import java.lang.reflect.Type
 
-fun findImplementation(jClass: Class<*>, method: Method): Pair<Class<*>, Method>? {
-    val paramTypes = arrayOf(method.declaringClass) + method.parameterTypes
-    val retType = method.returnType
+fun findImplementation(jClass: KoresType, method: DeclaredMethod, cache: DeclarationCache): Pair<Type, MethodDeclaration>? {
+    val paramTypes = listOf(method.type) + method.methodDeclaration.parameters.map { it.type }
+    val retType = method.methodDeclaration.returnType
 
-    jClass.classes.filter { it.simpleName == "DefaultImpls" }.forEach { type ->
+    val dec = cache[jClass]
+
+    cache.getInnerClasses(jClass).filter { it.simpleName == "DefaultImpls" }.forEach { type ->
         val found = type.methods.find {
-            it.name == method.name
-                    && it.parameterTypes.contentEquals(paramTypes)
-                    && it.returnType == retType
+            it.name == method.methodDeclaration.name
+                    && it.parameters.map { it.type }.`is`(paramTypes)
+                    && it.returnType.`is`(retType)
         }
 
         found?.let {
@@ -46,7 +59,7 @@ fun findImplementation(jClass: Class<*>, method: Method): Pair<Class<*>, Method>
         }
     }
 
-    val superclasses = mutableListOf<Class<*>>()
+    /*val superclasses = mutableListOf<Class<*>>()
 
     if (jClass.superclass != null && jClass.superclass != Any::class.java)
         superclasses += jClass.superclass
@@ -58,15 +71,34 @@ fun findImplementation(jClass: Class<*>, method: Method): Pair<Class<*>, Method>
 
         if (find != null)
             return find
-    }
+    }*/
 
     return null
 }
 
 fun Method.isEqual(other: Method): Boolean =
-        this.name == other.name
-                && this.returnType == other.returnType
-                && this.parameterTypes.contentEquals(other.parameterTypes)
+    this.name == other.name
+            && this.returnType == other.returnType
+            && this.parameterTypes.contentEquals(other.parameterTypes)
+
+fun MethodDeclaration.isEqual(other: MethodDeclaration): Boolean =
+    this.name == other.name
+            && this.returnType.`is`(other.returnType)
+            && this.parameters.eq(other.parameters)
+
+fun MethodDeclaration.isEqual(other: Method): Boolean =
+    this.name == other.name
+            && this.returnType.`is`(other.returnType)
+            && this.parameters.eqType(other.genericParameterTypes.toList())
+
+fun List<KoresParameter>.eq(other: List<KoresParameter>): Boolean =
+    if (this.size != other.size) false
+    else this.withIndex().all { (index, parameter) -> other[index].type.`is`(parameter.type) }
+
+fun List<KoresParameter>.eqType(other: List<Type>): Boolean =
+    if (this.size != other.size) false
+    else this.withIndex().all { (index, parameter) -> other[index].`is`(parameter.type) }
+
 
 internal fun getName(base: String, nameCaching: NameCaching): String {
 
@@ -74,12 +106,12 @@ internal fun getName(base: String, nameCaching: NameCaching): String {
     var count = 0
 
     fun findClass(base: String): Boolean =
-            try {
-                Class.forName(base)
-                true
-            } catch (t: Throwable) {
-                !nameCaching.cache(base)
-            }
+        try {
+            Class.forName(base)
+            true
+        } catch (t: Throwable) {
+            !nameCaching.cache(base)
+        }
 
     while (findClass(base_)) {
         base_ = "$base\$$count"
@@ -95,7 +127,10 @@ fun <T : Annotation> Class<*>.getAllAnnotationsOfType(type: Class<out T>): List<
     return list
 }
 
-private fun <T : Annotation> Class<*>.addAllAnnotationsOfTypeTo(destination: MutableList<T>, type: Class<out T>) {
+private fun <T : Annotation> Class<*>.addAllAnnotationsOfTypeTo(
+    destination: MutableList<T>,
+    type: Class<out T>
+) {
     destination += this.getDeclaredAnnotationsByType(type)
 
     if (this.superclass != null && this.superclass != Any::class.java)
@@ -104,4 +139,28 @@ private fun <T : Annotation> Class<*>.addAllAnnotationsOfTypeTo(destination: Mut
     this.interfaces.forEach {
         it.addAllAnnotationsOfTypeTo(destination, type)
     }
+}
+
+fun TypeDeclaration.getAllKoresAnnotationsOfType(type: Type): List<KoresAnnotation> {
+    val list = mutableListOf<KoresAnnotation>()
+    this.addAllKoresAnnotationsOfTypeTo(list, type)
+    return list
+}
+
+private fun TypeDeclaration.addAllKoresAnnotationsOfTypeTo(
+    destination: MutableList<KoresAnnotation>,
+    type: Type
+) {
+
+    this.forAllTypes {
+        destination += this.annotations.filter { it.type.`is`(type) }
+    }
+    /*destination += this.annotations.filter { it.type.`is`(type) }
+
+    if (this.superclass != null && this.superclass != Any::class.java)
+        this.superclass.addAllAnnotationsOfTypeTo(destination, type)
+
+    this.interfaces.forEach {
+        it.addAllAnnotationsOfTypeTo(destination, type)
+    }*/
 }

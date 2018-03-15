@@ -30,10 +30,8 @@ package com.github.projectsandstone.eventsys.gen.check
 import com.github.jonathanxd.iutils.description.Description
 import com.github.jonathanxd.iutils.description.DescriptionUtil
 import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.kores.base.MethodDeclaration
-import com.github.jonathanxd.kores.type.canonicalName
-import com.github.jonathanxd.kores.type.concreteType
-import com.github.jonathanxd.kores.type.defaultResolver
+import com.github.jonathanxd.kores.base.*
+import com.github.jonathanxd.kores.type.*
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.annotation.Check
 import com.github.projectsandstone.eventsys.event.annotation.SuppressCheck
@@ -41,11 +39,9 @@ import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator
 import com.github.projectsandstone.eventsys.gen.event.EventGeneratorOptions
 import com.github.projectsandstone.eventsys.logging.MessageType
+import com.github.projectsandstone.eventsys.util.DeclaredMethod
 import com.github.projectsandstone.eventsys.util.fail
-import java.lang.reflect.Constructor
-import java.lang.reflect.Method
-import java.lang.reflect.Parameter
-import java.lang.reflect.Type
+import java.util.*
 import java.util.concurrent.ConcurrentSkipListSet
 
 class DefaultCheckHandler : SuppressCapableCheckHandler {
@@ -58,7 +54,7 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
 
     override fun checkImplementation(
         implementedMethods: List<MethodDeclaration>,
-        type: Class<*>,
+        type: TypeDeclaration,
         extensions: List<ExtensionSpecification>,
         eventGenerator: EventGenerator
     ) {
@@ -72,15 +68,14 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
             val hasImpl = implementedMethods.any {
                 it.name == name
                         && it.returnType.canonicalName == method.returnType.canonicalName
-                        && it.parameters.map { it.type.canonicalName } == method.parameterTypes.map { it.canonicalName }
+                        && it.parameters.map { it.type.canonicalName } == method.parameters.map { it.type.canonicalName }
             }
 
-            if (!hasImpl && !method.isDefault) {
+            if (!hasImpl && method.body.isEmpty && !method.modifiers.contains(KoresModifier.DEFAULT)) {
 
                 if (eventGenerator.options[EventGeneratorOptions.ENABLE_SUPPRESSION]
-                        && ((method.isAnnotationPresent(SuppressCheck::class.java)
-                                && method.getDeclaredAnnotation(SuppressCheck::class.java)
-                            .value.contains(Check.IMPLEMENTATION))
+                        && ((method.annotations.any { it.type.`is`(typeOf<SuppressCheck>()) }
+                                && method.containsCheckSuppress("IMPLEMENTATION"))
                                 || this.shouldSuppressImplementationCheck(
                             method,
                             type,
@@ -112,7 +107,7 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
             messages += ""
             if (classes.isEmpty()) messages += "Provide an extension which implement them."
             else {
-                messages += "Provide an extension which implement them or add implementation one of existing extensions:"
+                messages += "Provide an extension which implement them or add implementation in one of existing extensions:"
                 messages += classes.joinToString { it.simpleName }
             }
 
@@ -121,14 +116,46 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
+    private fun Annotable.containsCheckSuppress(name: String) =
+        this.annotations.any {
+            it.type.`is`(typeOf<SuppressCheck>()) && it.containsCheckSuppress(
+                name
+            )
+        }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun KoresAnnotation.containsCheckSuppress(name: String) =
+        this.values["value"].let {
+            it != null && (it as? List<EnumValue>)?.any { it.type.`is`(typeOf<Check>()) && it.name == name } == true
+        }
+
     override fun shouldSuppressImplementationCheck(
-        method: Method,
-        type: Class<*>,
+        method: MethodDeclaration,
+        type: TypeDeclaration,
         extensions: List<ExtensionSpecification>,
         eventGenerator: EventGenerator
     ): Boolean {
-        return suppress.contains(DescriptionUtil.from(method).plainDescription)
+        return suppress.contains(desc(type, method).plainDescription)
     }
+
+    fun desc(type: TypeDeclaration, method: MethodDeclaration): Description {
+        Objects.requireNonNull(method, "Method cannot be null")
+
+        val desc = (type.javaSpecName.fixed()
+                + ":"
+                + method.name
+                + method.parameters.joinToString(
+            separator = "",
+            prefix = "(",
+            postfix = ")"
+        ) { it.type.javaSpecName.fixed() }
+                + method.returnType.javaSpecName.fixed())
+
+        return DescriptionUtil.parseDescription(desc)
+    }
+
+    private fun String.fixed() = this.replace('/', '.')
 
     override fun checkDuplicatedMethods(methods: List<MethodDeclaration>) {
         val methodList = mutableListOf<MethodDeclaration>()
@@ -149,18 +176,18 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
 
     override fun validateExtension(
         extension: ExtensionSpecification,
-        extensionClass: Class<*>,
-        type: Type,
+        extensionClass: TypeDeclaration,
+        type: ClassDeclaration,
         eventGenerator: EventGenerator
-    ): Constructor<*> {
+    ): ConstructorDeclaration {
         val logger = eventGenerator.logger
         val resolver = type.defaultResolver
-        val foundsCtr = mutableListOf<Constructor<*>>()
+        val foundsCtr = mutableListOf<ConstructorDeclaration>()
 
-        extensionClass.declaredConstructors.forEach {
-            if (it.parameterCount == 1) {
+        (extensionClass as? ConstructorsHolder)?.constructors?.forEach {
+            if (it.parameters.size == 1) {
                 if (resolver.isAssignableFrom(
-                            it.parameterTypes.single(),
+                            it.parameters.single().type,
                             type
                         ).run { isRight && right }
                 )
@@ -171,10 +198,10 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
         }
 
         logger.log("Provided extension class '${extensionClass.canonicalName}' (spec: '$extension') does not have a single-arg constructor with an argument which receives a '${type.canonicalName}' (or a super type). Found single-arg constructors: ${foundsCtr.joinToString {
-            it.parameterTypes.joinToString(
+            it.parameters.joinToString(
                 prefix = "(",
                 postfix = ")"
-            ) { it.simpleName }
+            ) { it.type.simpleName }
         }}.", MessageType.INVALID_EXTENSION)
         fail()
     }
@@ -182,9 +209,9 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
 
     // Factory
 
-    override fun validateFactoryClass(type: Class<*>, eventGenerator: EventGenerator) {
+    override fun validateFactoryClass(type: TypeDeclaration, eventGenerator: EventGenerator) {
         val logger = eventGenerator.logger
-        val superClass = type.superclass
+        val superClass = (type as? SuperClassHolder)?.superClass
 
         if (!type.isInterface) {
             logger.log("Factory class must be an interface.", MessageType.INVALID_FACTORY)
@@ -198,8 +225,8 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
     }
 
     override fun validateEventClass(
-        type: Class<*>,
-        factoryMethod: Method,
+        type: TypeDeclaration,
+        factoryMethod: MethodDeclaration,
         eventGenerator: EventGenerator
     ) {
         val logger = eventGenerator.logger
@@ -214,12 +241,12 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
     }
 
     override fun validateTypeProvider(
-        providerParams: List<Parameter>,
-        factoryMethod: Method,
+        providerParams: List<KoresParameter>,
+        factoryMethod: DeclaredMethod,
         eventGenerator: EventGenerator
     ) {
         val logger = eventGenerator.logger
-        val factoryClass = factoryMethod.declaringClass
+        val factoryClass = factoryMethod.type
 
         if (providerParams.isEmpty()) {
             logger.log(

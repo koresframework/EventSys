@@ -31,6 +31,7 @@ import com.github.jonathanxd.iutils.description.Description;
 import com.github.jonathanxd.iutils.description.DescriptionUtil;
 import com.github.jonathanxd.iutils.type.TypeInfo;
 import com.github.jonathanxd.iutils.type.TypeParameterProvider;
+import com.github.jonathanxd.kores.type.Generic;
 import com.github.projectsandstone.eventsys.event.EventListener;
 import com.github.projectsandstone.eventsys.event.EventManager;
 import com.github.projectsandstone.eventsys.gen.check.CheckHandler;
@@ -73,9 +74,9 @@ public class TestManager {
         manager.getEventGenerator().registerExtension(MessageEvent.class,
                 new ExtensionSpecification(Unit.INSTANCE, null, ProvidedExt.class));
 
-        Class<? extends MyGenericEvent> eventClass = manager.getEventGenerator().createEventClass(
-                TypeInfo.builderOf(MyGenericEvent.class).of(String.class).build(),
-                Collections.emptyList());
+        Class<? extends MyGenericEvent> eventClass = manager.getEventGenerator().<MyGenericEvent>createEventClass(
+                Generic.type(MyGenericEvent.class).of(String.class),
+                Collections.emptyList()).invoke();
 
         if (checkHandler instanceof SuppressCapableCheckHandler) {
             Description from = DescriptionUtil.from(MessageEvent.class.getDeclaredMethod("getTest", int.class));
@@ -101,18 +102,18 @@ public class TestManager {
 
         MyGenericEvent<String> a = Constant.getMyFactoryInstance()
                 .createMyGenericEvent(new TypeParameterProvider<MyGenericEvent<String>>() {
-                }.createTypeInfo(), "A");
+                }.getType(), "A");
         MyGenericEvent<Integer> b = Constant.getMyFactoryInstance()
                 .createMyGenericEvent(new TypeParameterProvider<MyGenericEvent<Integer>>() {
-                }.createTypeInfo(), 1);
+                }.getType(), 1);
 
         MyGenericEvent<Object> c = Constant.getMyFactoryInstance()
                 .createMyGenericEvent(new TypeParameterProvider<MyGenericEvent<Object>>() {
-                }.createTypeInfo(), "Y");
+                }.getType(), "Y");
 
         MyGenericEvent<Object> d = Constant.getMyFactoryInstance()
                 .createMyGenericEvent(new TypeParameterProvider<MyGenericEvent<Object>>() {
-                }.createTypeInfo(), 7);
+                }.getType(), 7);
 
         manager.dispatch(a, this);
         manager.dispatch(b, this);
@@ -120,10 +121,10 @@ public class TestManager {
         manager.dispatch(d, this);
 
         manager.dispatch(c, new TypeParameterProvider<MyGenericEvent<String>>() {
-        }.createTypeInfo().cast(), this);
+        }.getType(), this);
 
         manager.dispatch(d, new TypeParameterProvider<MyGenericEvent<String>>() {
-        }.createTypeInfo().cast(), this);
+        }.getType(), this); // WRONG
 
         Constant.getMyFactoryInstance().createMyTestEvent("Cup", 100);
         Constant.getMyFactoryInstance().createMyTestEvent2("Cup", 100);

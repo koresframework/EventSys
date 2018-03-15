@@ -27,6 +27,8 @@
  */
 package com.github.projectsandstone.eventsys.event.annotation
 
+import com.github.jonathanxd.kores.base.EnumValue
+import com.github.jonathanxd.kores.base.KoresAnnotation
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventPriority
 import com.github.projectsandstone.eventsys.event.ListenerSpec
@@ -46,6 +48,18 @@ import com.github.projectsandstone.eventsys.event.ListenerSpec
  */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FUNCTION)
-annotation class Listener(val ignoreCancelled: Boolean = false,
-                          val priority: EventPriority = EventPriority.NORMAL,
-                          val channel: Int = -1)
+annotation class Listener(
+    val ignoreCancelled: Boolean = false,
+    val priority: EventPriority = EventPriority.NORMAL,
+    val channel: Int = -1
+)
+
+
+val KoresAnnotation?.listenerIgnoreCancelled get () = this?.values?.get("ignoreCancelled") == true
+
+val KoresAnnotation?.listenerPriority
+    get () = (this?.values?.get("priority") as? EnumValue)?.enumEntry?.let { enumValueOf<EventPriority>(it) }
+            ?: EventPriority.NORMAL
+
+val KoresAnnotation?.listenerChannel
+    get() = (this?.values?.get("channel") as? Int) ?: -1

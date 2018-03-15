@@ -28,6 +28,7 @@
 package com.github.projectsandstone.eventsys.test.factory;
 
 import com.github.jonathanxd.iutils.type.TypeInfo;
+import com.github.jonathanxd.kores.type.GenericType;
 import com.github.projectsandstone.eventsys.event.annotation.Extension;
 import com.github.projectsandstone.eventsys.event.annotation.LazyGeneration;
 import com.github.projectsandstone.eventsys.event.annotation.Name;
@@ -41,6 +42,8 @@ import com.github.projectsandstone.eventsys.test.event.MyTestEvent;
 import com.github.projectsandstone.eventsys.test.extension.MyExtension;
 import com.github.projectsandstone.eventsys.test.extension.PrefixHolder;
 
+import java.lang.reflect.Type;
+
 public interface MyFactory {
 
     @Extension(extensionClass = MyExtension.class, implement = PrefixHolder.class)
@@ -49,7 +52,7 @@ public interface MyFactory {
     KtEvent createKtEvent(@Name("name") String name);
 
     @LazyGeneration
-    <T> MyGenericEvent<T> createMyGenericEvent(@TypeParam TypeInfo<MyGenericEvent<T>> type,
+    <T> MyGenericEvent<T> createMyGenericEvent(@TypeParam Type type,
                                                @Name("obj") T obj);
 
     <T> MyGenericEvent<T> createMyGenericEventGeneric(@Name("obj") T obj);

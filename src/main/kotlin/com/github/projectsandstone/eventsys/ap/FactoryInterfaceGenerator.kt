@@ -42,7 +42,7 @@ import com.github.projectsandstone.eventsys.event.annotation.Extension
 import com.github.projectsandstone.eventsys.event.annotation.LazyGeneration
 import com.github.projectsandstone.eventsys.event.annotation.Name
 import com.github.projectsandstone.eventsys.event.annotation.TypeParam
-import com.github.projectsandstone.eventsys.gen.event.eventTypeInfoFieldName
+import com.github.projectsandstone.eventsys.gen.event.eventTypeFieldName
 import javax.lang.model.element.Element
 import javax.lang.model.element.TypeElement
 
@@ -102,7 +102,7 @@ object FactoryInterfaceGenerator {
 
             if (it.element.typeParameters.isNotEmpty() && !it.factoryUnification.omitTypeParam())
                 parameters += parameter(
-                    type = gT, name = eventTypeInfoFieldName, annotations = listOf(
+                    type = gT, name = eventTypeFieldName, annotations = listOf(
                         Annotation.Builder.builder()
                             .type(TypeParam::class.java)
                             .retention(Retention.RUNTIME)

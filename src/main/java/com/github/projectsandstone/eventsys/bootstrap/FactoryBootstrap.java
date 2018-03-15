@@ -29,10 +29,12 @@ package com.github.projectsandstone.eventsys.bootstrap;
 
 import com.github.jonathanxd.kores.common.MethodTypeSpec;
 import com.github.jonathanxd.kores.factory.Factories;
-import com.github.jonathanxd.iutils.type.TypeInfo;
+import com.github.jonathanxd.kores.type.ImplicitKoresType;
+import com.github.jonathanxd.kores.type.KoresTypes;
 import com.github.projectsandstone.eventsys.event.Cancellable;
 import com.github.projectsandstone.eventsys.event.Event;
 import com.github.projectsandstone.eventsys.event.annotation.Name;
+import com.github.projectsandstone.eventsys.event.annotation.TypeParam;
 import com.github.projectsandstone.eventsys.gen.event.EventGenerator;
 import com.github.projectsandstone.eventsys.extension.ExtensionSpecification;
 import com.github.projectsandstone.eventsys.gen.event.PropertyInfo;
@@ -44,6 +46,7 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.MutableCallSite;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -96,31 +99,31 @@ public class FactoryBootstrap {
             throw new IllegalArgumentException("Illegal dynamic invocation.");
 
         Object generatorObj = args[0];
-        Object typeInfoObj = args[1];
+        Object typeObj = args[1];
         Object additionalPropertiesObj = args[2];
         Object extensionsObj = args[3];
         Object namesObj = args[4];
         Object argsObj = args[5];
 
         if (generatorObj instanceof EventGenerator
-                && typeInfoObj instanceof TypeInfo<?>
+                && typeObj instanceof Type
                 && additionalPropertiesObj instanceof List<?>
                 && extensionsObj instanceof List<?>
                 && namesObj instanceof String[]
                 && argsObj instanceof Object[]) {
 
             EventGenerator eventGenerator = (EventGenerator) generatorObj;
-            TypeInfo<?> eventType = (TypeInfo<?>) typeInfoObj;
+            Type eventType = (Type) typeObj;
             List<PropertyInfo> additionalProperties = (List<PropertyInfo>) additionalPropertiesObj;
             List<ExtensionSpecification> extensions = (List<ExtensionSpecification>) extensionsObj;
             String[] names = (String[]) namesObj;
             Object[] methodArgs = (Object[]) argsObj;
 
             Class<? extends Event> aClass = eventGenerator.createEventClass(
-                    TypeInfo.of(eventType.getTypeClass()).cast(),
+                    ImplicitKoresType.getConcreteType(eventType),
                     additionalProperties,
                     extensions
-            );
+            ).invoke();
 
             if (!propertyOrderCache.containsKey(aClass)) {
                 List<CachedParam> propertyOrder = new ArrayList<>();
@@ -137,7 +140,7 @@ public class FactoryBootstrap {
                     else
                         name = parameter.getName();
 
-                    propertyOrder.add(new CachedParam(parameter.getType(), name));
+                    propertyOrder.add(new CachedParam(parameter.isAnnotationPresent(TypeParam.class), parameter.getType(), name));
 
                 }
 
@@ -147,7 +150,7 @@ public class FactoryBootstrap {
 
             List<CachedParam> cachedParams = propertyOrderCache.get(aClass);
 
-            boolean isCancellable = Cancellable.class.isAssignableFrom(eventType.getTypeClass());
+            boolean isCancellable = KoresTypes.getKoresType(Cancellable.class).isAssignableFrom(eventType);
             Object[] sortedArgs = new Object[cachedParams.size()];
             Class<?>[] types = new Class[cachedParams.size()];
 
@@ -161,6 +164,11 @@ public class FactoryBootstrap {
                 if (isCancellable && name.equals("cancelled")) {
                     found = true;
                     sortedArgs[i] = true;
+                }
+
+                if (cachedParam.isTypeProvider && i == 0) {
+                    found = true;
+                    sortedArgs[i] = methodArgs[i];
                 }
 
                 for (int n = 0; n < names.length; n++) {
@@ -206,10 +214,12 @@ public class FactoryBootstrap {
     }
 
     static class CachedParam {
+        final boolean isTypeProvider;
         final Class<?> type;
         final String name;
 
-        CachedParam(Class<?> type, String name) {
+        CachedParam(boolean isTypeProvider, Class<?> type, String name) {
+            this.isTypeProvider = isTypeProvider;
             this.type = type;
             this.name = name;
         }

@@ -27,10 +27,12 @@
  */
 package com.github.projectsandstone.eventsys.impl
 
-import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.iutils.type.TypeUtil
-import com.github.projectsandstone.eventsys.event.*
+import com.github.jonathanxd.kores.type.compareTo
+import com.github.jonathanxd.kores.type.isAssignableFrom
+import com.github.projectsandstone.eventsys.event.Event
+import com.github.projectsandstone.eventsys.event.EventDispatcher
 import com.github.projectsandstone.eventsys.event.EventListener
+import com.github.projectsandstone.eventsys.event.EventManager
 import com.github.projectsandstone.eventsys.event.annotation.Filter
 import com.github.projectsandstone.eventsys.event.annotation.Listener
 import com.github.projectsandstone.eventsys.gen.event.CommonEventGenerator
@@ -39,10 +41,10 @@ import com.github.projectsandstone.eventsys.gen.event.EventGeneratorOptions
 import com.github.projectsandstone.eventsys.logging.Level
 import com.github.projectsandstone.eventsys.logging.LoggerInterface
 import com.github.projectsandstone.eventsys.logging.MessageType
-import com.github.projectsandstone.eventsys.util.getEventType
 import com.github.projectsandstone.eventsys.util.hasEventFirstArg
 import com.github.projectsandstone.eventsys.util.mh.MethodDispatcher
 import java.lang.reflect.Method
+import java.lang.reflect.Type
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadFactory
@@ -56,10 +58,11 @@ import java.util.concurrent.ThreadFactory
  * @param eventGenerator Event generator instance to generate listener methods.
  */
 open class CommonEventManager(
-        sorter: Comparator<EventListener<*>>,
-        threadFactory: ThreadFactory,
-        val logger: LoggerInterface,
-        override val eventGenerator: EventGenerator) : EventManager {
+    sorter: Comparator<EventListener<*>>,
+    threadFactory: ThreadFactory,
+    val logger: LoggerInterface,
+    override val eventGenerator: EventGenerator
+) : EventManager {
 
     override val eventDispatcher: EventDispatcher = CommonEventDispatcher(threadFactory, logger) {
         this.unmodListeners
@@ -77,21 +80,25 @@ open class CommonEventManager(
 
     override fun getListenersContainers(): Set<EventListenerContainer<*>> = unmodListeners
 
-    override fun getListeners(): Set<Pair<TypeInfo<*>, EventListener<*>>> {
+    override fun getListeners(): Set<Pair<Type, EventListener<*>>> {
         return this.listeners
-                .map { Pair(it.eventType, it.eventListener) }
-                .toSet()
+            .map { Pair(it.eventType, it.eventListener) }
+            .toSet()
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <T : Event> getListeners(eventType: TypeInfo<T>): Set<Pair<TypeInfo<T>, EventListener<T>>> {
+    override fun <T : Event> getListeners(eventType: Type): Set<Pair<Type, EventListener<T>>> {
         return this.listeners
-                .filter { eventType.isAssignableFrom(it.eventType) }
-                .map { Pair(it.eventType, it.eventListener) }
-                .toSet() as Set<Pair<TypeInfo<T>, EventListener<T>>>
+            .filter { eventType.isAssignableFrom(it.eventType) }
+            .map { Pair(it.eventType, it.eventListener) }
+            .toSet() as Set<Pair<Type, EventListener<T>>>
     }
 
-    override fun <T : Event> registerListener(owner: Any, eventType: TypeInfo<T>, eventListener: EventListener<T>) {
+    override fun <T : Event> registerListener(
+        owner: Any,
+        eventType: Type,
+        eventListener: EventListener<T>
+    ) {
         val find = this.findListener(owner, eventType, eventListener)
 
         if (find == null) {
@@ -100,8 +107,12 @@ open class CommonEventManager(
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun <T : Event> registerGenericListener(owner: Any, eventType: TypeInfo<*>, eventListener: EventListener<*>) {
-        this.registerListener(owner, eventType as TypeInfo<T>, eventListener as EventListener<T>)
+    private fun <T : Event> registerGenericListener(
+        owner: Any,
+        eventType: Type,
+        eventListener: EventListener<*>
+    ) {
+        this.registerListener(owner, eventType, eventListener as EventListener<T>)
     }
 
     override fun registerListeners(owner: Any, listener: Any) {
@@ -110,69 +121,94 @@ open class CommonEventManager(
         }
     }
 
-    override fun registerMethodListener(owner: Any, instance: Any?, method: Method) {
-        if (instance != null && owner == instance) {
-
-        } else {
-            this.createMethodListener(
-                    owner = owner,
-                    instance = instance,
-                    method = method).let {
-                this.registerGenericListener<Event>(owner, it.eventType, it.eventListener)
-            }
+    override fun registerMethodListener(
+        owner: Any,
+        eventClass: Type,
+        instance: Any?,
+        method: Method
+    ) {
+        this.createMethodListener(
+            listenerClass = eventClass,
+            owner = owner,
+            instance = instance,
+            method = method
+        ).let {
+            this.registerGenericListener<Event>(owner, it.eventType, it.eventListener)
         }
     }
 
-    private fun <T : Event> findListener(owner: Any, eventType: TypeInfo<T>, eventListener: EventListener<T>) =
-            this.listeners.find { it.owner == owner && it.eventType.compareTo(eventType) == 0 && it.eventListener == eventListener }
+    private fun <T : Event> findListener(
+        owner: Any,
+        eventType: Type,
+        eventListener: EventListener<T>
+    ) =
+        this.listeners.find { it.owner == owner && it.eventType.compareTo(eventType) == 0 && it.eventListener == eventListener }
 
     @Suppress("UNCHECKED_CAST")
-    private fun createMethodListener(owner: Any,
-                                     instance: Any?,
-                                     method: Method): EventListenerContainer<*> {
-
-
-        return ListenerSpec.fromMethod(method).let { spec ->
-            EventListenerContainer(owner,
-                    spec.eventType as TypeInfo<Event>,
-                    this.eventGenerator.createMethodListener(owner, method, instance, spec))
+    private fun createMethodListener(
+        owner: Any,
+        listenerClass: Type,
+        instance: Any?,
+        method: Method
+    ): EventListenerContainer<*> {
+        return this.eventGenerator.createListenerSpecFromMethod(method).let { spec ->
+            EventListenerContainer(
+                owner,
+                spec.eventType,
+                this.eventGenerator.createMethodListener(
+                    listenerClass,
+                    method,
+                    instance,
+                    spec
+                ).resolve()
+            )
         }
     }
 
 
-    private fun createMethodListeners(owner: Any,
-                                      instance: Any): List<EventListenerContainer<*>> {
+    private fun createMethodListeners(
+        owner: Any,
+        instance: Any
+    ): List<EventListenerContainer<*>> {
 
         return instance::class.java.declaredMethods.filter {
             val reqArg = it.getDeclaredAnnotation(Filter::class.java).hasEventFirstArg()
             if (it.getDeclaredAnnotation(Listener::class.java) != null)
                 if (reqArg)
-                        it.parameterCount > 0
-                        && Event::class.java.isAssignableFrom(it.parameterTypes[0])
+                    it.parameterCount > 0
+                            && Event::class.java.isAssignableFrom(it.parameterTypes[0])
                 else true
             else false
 
         }.map {
             if (this.eventGenerator.options[EventGeneratorOptions.USE_METHOD_HANDLE_LISTENER]) {
-                val data = ListenerSpec.fromMethod(it)
+                val data = this.eventGenerator.createListenerSpecFromMethod(it)
 
                 @Suppress("UNCHECKED_CAST")
                 return@map EventListenerContainer(
-                        owner = owner,
-                        eventType = data.eventType as TypeInfo<Event>,
-                        eventListener = MethodDispatcher(data, it, instance))
+                    owner = owner,
+                    eventType = data.eventType,
+                    eventListener = MethodDispatcher(data, it, instance)
+                )
             } else {
                 return@map this.createMethodListener(
-                        owner = owner,
-                        method = it,
-                        instance = instance)
+                    listenerClass = instance::class.java,
+                    owner = owner,
+                    method = it,
+                    instance = instance
+                )
             }
         }
     }
 
 }
 
-class DefaultEventManager : CommonEventManager(COMMON_SORTER, COMMON_THREAD_FACTORY, COMMON_LOGGER, COMMON_EVENT_GENERATOR) {
+class DefaultEventManager : CommonEventManager(
+    COMMON_SORTER,
+    COMMON_THREAD_FACTORY,
+    COMMON_LOGGER,
+    COMMON_EVENT_GENERATOR
+) {
 
     companion object {
         private val COMMON_SORTER = Comparator.comparing(EventListener<*>::priority)

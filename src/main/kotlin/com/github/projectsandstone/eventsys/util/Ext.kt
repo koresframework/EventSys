@@ -29,6 +29,7 @@ package com.github.projectsandstone.eventsys.util
 
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.kt.typeInfo
+import com.github.jonathanxd.kores.type.genericTypeOf
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
 import com.github.projectsandstone.eventsys.event.EventManager
@@ -44,7 +45,7 @@ import com.github.projectsandstone.eventsys.gen.event.PropertyInfo
  */
 inline fun <reified T : Event> EventGenerator.createEventClass(additionalProperties: List<PropertyInfo> = emptyList(),
                                                                extensions: List<ExtensionSpecification> = emptyList()) =
-        this.createEventClass(typeInfo<T>(), additionalProperties, extensions)
+        this.createEventClass<T>(genericTypeOf<T>(), additionalProperties, extensions)
 
 /**
  * Creates implementation class of event [T].
@@ -56,13 +57,13 @@ inline fun <reified T : Event> EventGenerator.createEventClass(additionalPropert
  */
 inline fun <reified T : Event> EventGenerator.createEventClassAsync(additionalProperties: List<PropertyInfo> = emptyList(),
                                                                     extensions: List<ExtensionSpecification> = emptyList()) =
-        this.createEventClassAsync(typeInfo<T>(), additionalProperties, extensions)
+        this.createEventClassAsync<T>(genericTypeOf<T>(), additionalProperties, extensions)
 
 /**
  * Creates implementation of factory [T].
  */
 inline fun <reified T : Any> EventGenerator.createFactory() =
-        this.createFactory(T::class.java)
+        this.createFactory<T>(genericTypeOf<T>())
 
 /**
  * Creates implementation of factory [T].
@@ -70,7 +71,7 @@ inline fun <reified T : Any> EventGenerator.createFactory() =
  * Non blocking asynchronous creation.
  */
 inline fun <reified T : Any> EventGenerator.createFactoryAsync() =
-        this.createFactoryAsync(T::class.java)
+        this.createFactoryAsync<T>(genericTypeOf<T>())
 
 /**
  * Register the listener to [Event] [T].
@@ -80,9 +81,7 @@ inline fun <reified T : Any> EventGenerator.createFactoryAsync() =
  * @param eventListener Event Listener instance.
  */
 inline fun <reified T : Event> EventManager.registerListener(plugin: Any, eventListener: EventListener<T>) {
-    val typeInfo: TypeInfo<T> = typeInfo()
-
-    this.registerListener(plugin, typeInfo, eventListener)
+    this.registerListener(plugin, genericTypeOf<T>(), eventListener)
 }
 
 inline fun <T : Event> EventListener(crossinline f: (event: T, dispatcher: Any) -> Unit): EventListener<T> =

@@ -27,7 +27,6 @@
  */
 package com.github.projectsandstone.eventsys.event.property
 
-import com.github.jonathanxd.iutils.reflection.ClassUtil
 import com.github.jonathanxd.iutils.type.Primitive
 import com.github.projectsandstone.eventsys.event.property.primitive.*
 import com.github.projectsandstone.eventsys.util.cast
@@ -53,7 +52,7 @@ interface PropertyHolder {
      */
     @Suppress("UNCHECKED_CAST")
     fun <R> lookup(type: Class<R>, name: String?): Property<R>? {
-        if(name != null) {
+        if (name != null) {
             val property = this.getProperties()[name]
 
             if (property is GetterProperty<*>) {
@@ -94,15 +93,15 @@ interface PropertyHolder {
     fun <R> getProperty(type: Class<R>, name: String?): Property<R>? {
         // type.isAssignableFrom(propertyType)
         fun checkTypeCompatibility(propType: Class<*>, reqType: Class<*>) =
-                reqType.isAssignableFrom(propType) ||
-                        ((reqType == java.lang.Byte.TYPE
-                                || reqType == java.lang.Short.TYPE
-                                || reqType == java.lang.Character.TYPE
-                                || reqType == java.lang.Integer.TYPE)
-                                && propType == java.lang.Integer.TYPE)
-                        || ((reqType == java.lang.Double.TYPE
-                        || reqType == java.lang.Float.TYPE)
-                        && propType == java.lang.Double.TYPE)
+            reqType.isAssignableFrom(propType) ||
+                    ((reqType == java.lang.Byte.TYPE
+                            || reqType == java.lang.Short.TYPE
+                            || reqType == java.lang.Character.TYPE
+                            || reqType == java.lang.Integer.TYPE)
+                            && propType == java.lang.Integer.TYPE)
+                    || ((reqType == java.lang.Double.TYPE
+                    || reqType == java.lang.Float.TYPE)
+                    && propType == java.lang.Double.TYPE)
 
         if (name == null) {
             this.getProperties().forEach { (_, property) ->
@@ -114,7 +113,11 @@ interface PropertyHolder {
             val property = this.getProperties()[name]
 
             @Suppress("UNCHECKED_CAST")
-            return if (property != null && checkTypeCompatibility(property.type, type)) property as Property<R> else null
+            return if (property != null && checkTypeCompatibility(
+                        property.type,
+                        type
+                    )
+            ) property as Property<R> else null
         }
 
         return null
@@ -130,7 +133,7 @@ interface PropertyHolder {
      * @return Getter version of Property, if exists, or null otherwise.
      */
     fun <R> getGetterProperty(type: Class<R>, name: String): GetterProperty<R>? =
-            this.getProperty(type, name) as? GetterProperty<R>
+        this.getProperty(type, name) as? GetterProperty<R>
 
     /**
      * Gets the setter property of type [type] and name [name]
@@ -142,7 +145,7 @@ interface PropertyHolder {
      * @return Setter version of Property, if exists, or null otherwise.
      */
     fun <R> getSetterProperty(type: Class<R>, name: String): SetterProperty<R>? =
-            this.getProperty(type, name) as? SetterProperty<R>
+        this.getProperty(type, name) as? SetterProperty<R>
 
     /**
      * Gets the GS (getter and setter) property of type [type] and name [name]
@@ -154,7 +157,7 @@ interface PropertyHolder {
      * @return GS version of Property, if exists, or null otherwise.
      */
     fun <R> getGSProperty(type: Class<R>, name: String): GSProperty<R>? =
-            this.getProperty(type, name) as? GSProperty<R>
+        this.getProperty(type, name) as? GSProperty<R>
 
     /**
      * Returns true if the holder has the property.
@@ -185,7 +188,7 @@ interface PropertyHolder {
      * [getProperty]
      */
     fun getBooleanProperty(name: String): BooleanProperty? =
-            this.getProperty(java.lang.Boolean.TYPE, name) as? BooleanProperty
+        this.getProperty(java.lang.Boolean.TYPE, name) as? BooleanProperty
 
     /**
      * Boolean property.
@@ -193,7 +196,7 @@ interface PropertyHolder {
      * [getGetterProperty]
      */
     fun getBooleanGetterProperty(name: String): BooleanGetterProperty? =
-            this.getProperty(java.lang.Boolean.TYPE, name) as? BooleanGetterProperty
+        this.getProperty(java.lang.Boolean.TYPE, name) as? BooleanGetterProperty
 
     /**
      * Boolean property.
@@ -201,7 +204,7 @@ interface PropertyHolder {
      * [getSetterProperty]
      */
     fun getBooleanSetterProperty(name: String): BooleanSetterProperty? =
-            this.getProperty(java.lang.Boolean.TYPE, name) as? BooleanSetterProperty
+        this.getProperty(java.lang.Boolean.TYPE, name) as? BooleanSetterProperty
 
     /**
      * Boolean property.
@@ -209,7 +212,7 @@ interface PropertyHolder {
      * [getGSProperty]
      */
     fun getBooleanGSProperty(name: String): BooleanGSProperty? =
-            this.getProperty(java.lang.Boolean.TYPE, name) as? BooleanGSProperty
+        this.getProperty(java.lang.Boolean.TYPE, name) as? BooleanGSProperty
 
     // Double
 
@@ -219,7 +222,7 @@ interface PropertyHolder {
      * [getProperty]
      */
     fun getDoubleProperty(name: String): DoubleProperty? =
-            this.getProperty(java.lang.Double.TYPE, name) as? DoubleProperty
+        this.getProperty(java.lang.Double.TYPE, name) as? DoubleProperty
 
     /**
      * Double property.
@@ -227,7 +230,7 @@ interface PropertyHolder {
      * [getGetterProperty]
      */
     fun getDoubleGetterProperty(name: String): DoubleGetterProperty? =
-            this.getProperty(java.lang.Double.TYPE, name) as? DoubleGetterProperty
+        this.getProperty(java.lang.Double.TYPE, name) as? DoubleGetterProperty
 
     /**
      * Double property.
@@ -235,7 +238,7 @@ interface PropertyHolder {
      * [getSetterProperty]
      */
     fun getDoubleSetterProperty(name: String): DoubleSetterProperty? =
-            this.getProperty(java.lang.Double.TYPE, name) as? DoubleSetterProperty
+        this.getProperty(java.lang.Double.TYPE, name) as? DoubleSetterProperty
 
     /**
      * Double property.
@@ -243,7 +246,7 @@ interface PropertyHolder {
      * [getGSProperty]
      */
     fun getDoubleGSProperty(name: String): DoubleGSProperty? =
-            this.getProperty(java.lang.Double.TYPE, name) as? DoubleGSProperty
+        this.getProperty(java.lang.Double.TYPE, name) as? DoubleGSProperty
 
     // Int
 
@@ -253,7 +256,7 @@ interface PropertyHolder {
      * [getProperty]
      */
     fun getIntProperty(name: String): IntProperty? =
-            this.getProperty(java.lang.Integer.TYPE, name) as? IntProperty
+        this.getProperty(java.lang.Integer.TYPE, name) as? IntProperty
 
     /**
      * Int property.
@@ -261,7 +264,7 @@ interface PropertyHolder {
      * [getGetterProperty]
      */
     fun getIntGetterProperty(name: String): IntGetterProperty? =
-            this.getProperty(java.lang.Integer.TYPE, name) as? IntGetterProperty
+        this.getProperty(java.lang.Integer.TYPE, name) as? IntGetterProperty
 
     /**
      * Int property.
@@ -269,7 +272,7 @@ interface PropertyHolder {
      * [getSetterProperty]
      */
     fun getIntSetterProperty(name: String): IntSetterProperty? =
-            this.getProperty(java.lang.Integer.TYPE, name) as? IntSetterProperty
+        this.getProperty(java.lang.Integer.TYPE, name) as? IntSetterProperty
 
     /**
      * Int property.
@@ -277,7 +280,7 @@ interface PropertyHolder {
      * [getGSProperty]
      */
     fun getIntGSProperty(name: String): IntGSProperty? =
-            this.getProperty(java.lang.Integer.TYPE, name) as? IntGSProperty
+        this.getProperty(java.lang.Integer.TYPE, name) as? IntGSProperty
 
     // Long
 
@@ -287,7 +290,7 @@ interface PropertyHolder {
      * [getProperty]
      */
     fun getLongProperty(name: String): LongProperty? =
-            this.getProperty(java.lang.Long.TYPE, name) as? LongProperty
+        this.getProperty(java.lang.Long.TYPE, name) as? LongProperty
 
     /**
      * Long property.
@@ -295,7 +298,7 @@ interface PropertyHolder {
      * [getGetterProperty]
      */
     fun getLongGetterProperty(name: String): LongGetterProperty? =
-            this.getProperty(java.lang.Long.TYPE, name) as? LongGetterProperty
+        this.getProperty(java.lang.Long.TYPE, name) as? LongGetterProperty
 
     /**
      * Long property.
@@ -303,7 +306,7 @@ interface PropertyHolder {
      * [getSetterProperty]
      */
     fun getLongSetterProperty(name: String): LongSetterProperty? =
-            this.getProperty(java.lang.Long.TYPE, name) as? LongSetterProperty
+        this.getProperty(java.lang.Long.TYPE, name) as? LongSetterProperty
 
     /**
      * Long property.
@@ -311,6 +314,6 @@ interface PropertyHolder {
      * [getGSProperty]
      */
     fun getLongGSProperty(name: String): LongGSProperty? =
-            this.getProperty(java.lang.Long.TYPE, name) as? LongGSProperty
+        this.getProperty(java.lang.Long.TYPE, name) as? LongGSProperty
 
 }
