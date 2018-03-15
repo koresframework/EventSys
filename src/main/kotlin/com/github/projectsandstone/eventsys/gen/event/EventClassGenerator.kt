@@ -432,7 +432,7 @@ internal object EventClassGenerator {
             FieldRef(
                 localization = Alias.THIS,
                 target = Access.THIS,
-                name = "extension#${it.simpleName}",
+                name = "extension_${it.simpleName}",
                 type = it
             )
         }
@@ -971,8 +971,8 @@ internal object EventClassGenerator {
 
 const val eventTypeFieldName = "eventType"
 
-const val propertiesFieldName = "#properties"
-const val propertiesUnmodName = "immutable#properties"
+const val propertiesFieldName = "_properties"
+const val propertiesUnmodName = "_immutable_properties"
 val propertiesFieldType = Generic.type(Map::class.java)
     .of(Types.STRING)
     .of(Property::class.java)
