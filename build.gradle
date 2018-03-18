@@ -48,10 +48,10 @@ dependencies {
     compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
 
     // Utilities
-    compile 'com.github.JonathanxD.Kores:Kores:4.0.0.35-beta'
-    compile 'com.github.JonathanxD.Kores-SourceWriter:Kores-SourceWriter:4.0.0.21-beta-source'
-    compile 'com.github.JonathanxD.Kores-BytecodeWriter:Kores-BytecodeWriter:4.0.0.30-beta-bytecode'
-    compile 'com.github.JonathanxD:Kores-Extra:1.3.0'
+    compile 'com.github.JonathanxD.Kores:Kores:4.0.0.44-beta'
+    compile 'com.github.JonathanxD.Kores-SourceWriter:Kores-SourceWriter:4.0.0.22-beta-source'
+    compile 'com.github.JonathanxD.Kores-BytecodeWriter:Kores-BytecodeWriter:4.0.0.35-beta-bytecode'
+    compile 'com.github.JonathanxD:Kores-Extra:1.3.1'
     compile 'com.github.JonathanxD:JwIUtils:4.15.2'
     compile "io.github.lukehutch:fast-classpath-scanner:2.0.9"
 
@@ -131,3 +131,6 @@ license {
     }
 }
 
+dokka {
+    enabled = false
+}

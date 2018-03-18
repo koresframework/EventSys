@@ -25,39 +25,40 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.ap
+package com.github.projectsandstone.eventsys.ap;
 
-import com.github.jonathanxd.kores.extra.UnifiedAnnotation
-import com.github.jonathanxd.kores.extra.UnifiedAnnotationData
-import com.github.jonathanxd.kores.type.KoresType
-import com.github.jonathanxd.kores.type.koresType
-import com.github.projectsandstone.eventsys.event.annotation.Extension
+import com.github.projectsandstone.eventsys.event.annotation.Extension;
 
-interface FactoryUnification : UnifiedAnnotation {
-    fun value(): String
-    fun methodName(): String
-    fun extensions(): List<ExtensionUnification>
-    fun inheritProperties(): Boolean
-    fun omitTypeParam(): Boolean
-    fun lazy(): Boolean
-}
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-interface FactoriesUnification : UnifiedAnnotation {
-    fun value(): List<FactoryUnification>
-}
+/**
+ * Specifies extensions of events in factory settings.
+ */
+@Retention(RetentionPolicy.SOURCE)
+@Target(ElementType.TYPE)
+public @interface EventExtension {
 
-interface ExtensionUnification : UnifiedAnnotation {
-    fun implement(): KoresType
-    fun extensionClass(): KoresType
-}
+    /**
+     * Events to match.
+     *
+     * You should use java type representation with canonical names, like:
+     *
+     * <pre>
+     * {@code com.github.my.Event<? extends Hello>}
+     * </pre>
+     *
+     * @return Events to match.
+     */
+    String[] events();
 
-interface FactorySettingsUnification : UnifiedAnnotation {
-    fun value(): String
-    fun compileTimeGenerator(): Boolean
-    fun extensions(): List<EventExtensionUnification>
-}
+    /**
+     * Extensions specification.
+     *
+     * @return Extensions specification.
+     */
+    Extension[] extensions();
 
-interface EventExtensionUnification : UnifiedAnnotation {
-    fun events(): List<String>
-    fun extensions(): List<ExtensionUnification>
 }

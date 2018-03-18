@@ -25,39 +25,26 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.ap
+package com.github.projectsandstone.eventsys.gen
 
-import com.github.jonathanxd.kores.extra.UnifiedAnnotation
-import com.github.jonathanxd.kores.extra.UnifiedAnnotationData
-import com.github.jonathanxd.kores.type.KoresType
-import com.github.jonathanxd.kores.type.koresType
-import com.github.projectsandstone.eventsys.event.annotation.Extension
+import com.github.jonathanxd.kores.type.KoresTypeResolver
+import com.github.jonathanxd.kores.type.defaultResolver
+import com.github.jonathanxd.kores.util.GenericResolver
+import com.github.jonathanxd.kores.util.MixedResolver
+import com.github.projectsandstone.eventsys.util.DeclarationCache
+import java.lang.reflect.Type
 
-interface FactoryUnification : UnifiedAnnotation {
-    fun value(): String
-    fun methodName(): String
-    fun extensions(): List<ExtensionUnification>
-    fun inheritProperties(): Boolean
-    fun omitTypeParam(): Boolean
-    fun lazy(): Boolean
+interface GenerationEnvironment {
+    val declarationCache: DeclarationCache
+    val genericResolver: GenericResolver
+
+    fun getTypeResolver(type: Type): KoresTypeResolver<*>
 }
 
-interface FactoriesUnification : UnifiedAnnotation {
-    fun value(): List<FactoryUnification>
-}
+class CommonGenerationEnvironment : GenerationEnvironment {
+    override val declarationCache: DeclarationCache = DeclarationCache()
+    override val genericResolver: GenericResolver = MixedResolver(null)
 
-interface ExtensionUnification : UnifiedAnnotation {
-    fun implement(): KoresType
-    fun extensionClass(): KoresType
-}
+    override fun getTypeResolver(type: Type): KoresTypeResolver<*> = type.defaultResolver
 
-interface FactorySettingsUnification : UnifiedAnnotation {
-    fun value(): String
-    fun compileTimeGenerator(): Boolean
-    fun extensions(): List<EventExtensionUnification>
-}
-
-interface EventExtensionUnification : UnifiedAnnotation {
-    fun events(): List<String>
-    fun extensions(): List<ExtensionUnification>
 }

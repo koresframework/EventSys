@@ -31,10 +31,16 @@ import com.github.jonathanxd.iutils.option.Options
 import com.github.jonathanxd.kores.base.ClassDeclaration
 import com.github.jonathanxd.kores.base.MethodDeclaration
 import com.github.jonathanxd.kores.type.Generic
+import com.github.jonathanxd.kores.type.asGeneric
+import com.github.jonathanxd.kores.type.koresType
+import com.github.jonathanxd.kores.type.toGeneric
+import com.github.jonathanxd.kores.util.createKoresTypeDescriptor
+import com.github.jonathanxd.kores.util.genericTypeToDescriptor
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
 import com.github.projectsandstone.eventsys.event.ListenerSpec
 import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
+import com.github.projectsandstone.eventsys.gen.GenerationEnvironment
 import com.github.projectsandstone.eventsys.gen.ResolvableDeclaration
 import com.github.projectsandstone.eventsys.gen.Runtime
 import com.github.projectsandstone.eventsys.gen.check.CheckHandler
@@ -62,12 +68,18 @@ interface EventGenerator {
     val logger: LoggerInterface
 
     /**
+     * Generation environment
+     */
+    val generationEnvironment: GenerationEnvironment
+
+    /**
      * Check handler
      */
     var checkHandler: CheckHandler
 
     /**
-     * Plugs an [extension][extensionSpecification] to events of type [base].
+     * Plugs an [extension][extensionSpecification] to events of type [base] and all
+     * other events that derive from [base].
      */
     fun registerExtension(base: Type, extensionSpecification: ExtensionSpecification)
 

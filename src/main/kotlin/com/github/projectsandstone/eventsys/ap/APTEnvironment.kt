@@ -27,37 +27,18 @@
  */
 package com.github.projectsandstone.eventsys.ap
 
-import com.github.jonathanxd.kores.extra.UnifiedAnnotation
-import com.github.jonathanxd.kores.extra.UnifiedAnnotationData
-import com.github.jonathanxd.kores.type.KoresType
-import com.github.jonathanxd.kores.type.koresType
-import com.github.projectsandstone.eventsys.event.annotation.Extension
+import com.github.jonathanxd.kores.type.KoresTypeResolver
+import com.github.jonathanxd.kores.type.defaultResolver
+import com.github.jonathanxd.kores.util.GenericResolver
+import com.github.jonathanxd.kores.util.MixedResolver
+import com.github.projectsandstone.eventsys.gen.GenerationEnvironment
+import com.github.projectsandstone.eventsys.util.DeclarationCache
+import java.lang.reflect.Type
+import javax.lang.model.util.Elements
 
-interface FactoryUnification : UnifiedAnnotation {
-    fun value(): String
-    fun methodName(): String
-    fun extensions(): List<ExtensionUnification>
-    fun inheritProperties(): Boolean
-    fun omitTypeParam(): Boolean
-    fun lazy(): Boolean
-}
+class APTEnvironment(val elements: Elements) : GenerationEnvironment {
+    override val declarationCache: DeclarationCache = DeclarationCache()
+    override val genericResolver: GenericResolver = MixedResolver(this.elements)
 
-interface FactoriesUnification : UnifiedAnnotation {
-    fun value(): List<FactoryUnification>
-}
-
-interface ExtensionUnification : UnifiedAnnotation {
-    fun implement(): KoresType
-    fun extensionClass(): KoresType
-}
-
-interface FactorySettingsUnification : UnifiedAnnotation {
-    fun value(): String
-    fun compileTimeGenerator(): Boolean
-    fun extensions(): List<EventExtensionUnification>
-}
-
-interface EventExtensionUnification : UnifiedAnnotation {
-    fun events(): List<String>
-    fun extensions(): List<ExtensionUnification>
+    override fun getTypeResolver(type: Type): KoresTypeResolver<*> = type.defaultResolver
 }

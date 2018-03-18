@@ -29,6 +29,7 @@ package com.github.projectsandstone.eventsys.gen.event
 
 import com.github.jonathanxd.iutils.`object`.Default
 import com.github.jonathanxd.iutils.collection.Collections3
+import com.github.jonathanxd.iutils.exception.RethrowException
 import com.github.jonathanxd.kores.Instruction
 import com.github.jonathanxd.kores.Instructions
 import com.github.jonathanxd.kores.MutableInstructions
@@ -53,6 +54,7 @@ import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.annotation.*
 import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
 import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
+import com.github.projectsandstone.eventsys.gen.GenerationEnvironment
 import com.github.projectsandstone.eventsys.gen.ResolvableDeclaration
 import com.github.projectsandstone.eventsys.gen.save.ClassSaver
 import com.github.projectsandstone.eventsys.logging.LoggerInterface
@@ -86,10 +88,10 @@ internal object EventFactoryClassGenerator {
         eventGenerator: EventGenerator,
         factoryType: Type,
         logger: LoggerInterface,
-        cache: DeclarationCache
+        generationEnvironment: GenerationEnvironment
     ): ResolvableDeclaration<T> {
         val (declaration, resolves) =
-                createDeclaration(eventGenerator, factoryType, logger, cache)
+                createDeclaration(eventGenerator, factoryType, logger, generationEnvironment)
 
         val resolver = lazy(LazyThreadSafetyMode.NONE) {
             resolves.forEach { it.resolve() }
@@ -129,16 +131,17 @@ internal object EventFactoryClassGenerator {
     }
 
     /**
-     * Create [factoryClass] instance invoking generated event classes constructor.
+     * Create [factoryType] instance invoking generated event classes constructor.
      */
     @Suppress("UNCHECKED_CAST")
     internal fun createDeclaration(
         eventGenerator: EventGenerator,
         factoryType: Type,
         logger: LoggerInterface,
-        cache: DeclarationCache
+        generationEnvironment: GenerationEnvironment
     ): Pair<ClassDeclaration, List<ResolvableDeclaration<*>>> {
 
+        val cache = generationEnvironment.declarationCache
         val factoryDeclaration = cache[factoryType]
         val checkHandler = eventGenerator.checkHandler
 
@@ -249,7 +252,8 @@ internal object EventFactoryClassGenerator {
                                         it
                                     )
                                 )
-                            }
+                            },
+                            body = MutableInstructions.create()
                         )
 
                         val methodBody = methodDeclaration.body as MutableInstructions
@@ -556,6 +560,11 @@ internal object EventFactoryClassGenerator {
                         additionalProperties.asPropArgs(),
                         extensions.asExtArgs()
                     )
+                ).invokeVirtual(
+                    typeOf<ResolvableDeclaration<*>>(),
+                    "resolve",
+                    typeSpec(typeOf<Any>()),
+                    emptyList()
                 )
         )
 
@@ -594,16 +603,48 @@ internal object EventFactoryClassGenerator {
         insns += variable(sortedVar.type, sortedVar.name, sortArgs)
 
         insns += returnValue(
-            evType, invokeVirtual(
-                Constructor::class.java,
-                accessVariable(ctrVar),
-                "newInstance",
-                TypeSpec(Object::class.java, listOf(Array<Any>::class.java)),
-                listOf(accessVariable(sortedVar))
+            evType,
+            cast(
+                typeOf<Any>(), evType,
+                invokeVirtual(
+                    Constructor::class.java,
+                    accessVariable(ctrVar),
+                    "newInstance",
+                    TypeSpec(Object::class.java, listOf(Array<Any>::class.java)),
+                    listOf(accessVariable(sortedVar))
+                )
             )
         )
 
-        return insns
+        return listOf(
+            tryStm()
+                .body(Instructions.fromIterable(insns))
+                .catchStatements(
+                    listOf(
+                        catchStm()
+                            .variable(varDec().name("throwable").type(typeOf<Throwable>()).build())
+                            .exceptionTypes(typeOf<Throwable>())
+                            .body(
+                                Instructions.fromPart(
+                                    throwException(
+                                        invokeStatic(
+                                            typeOf<RethrowException>(),
+                                            Access.STATIC,
+                                            "rethrow",
+                                            typeSpec(
+                                                typeOf<RuntimeException>(),
+                                                typeOf<Throwable>()
+                                            ),
+                                            listOf(accessVariable(typeOf<Throwable>(), "throwable"))
+                                        )
+                                    )
+                                )
+                            )
+                            .build()
+                    )
+                )
+                .build()
+        )
     }
 
     private fun getNamesAndArgs(params: List<KoresParameter>) =
@@ -625,7 +666,7 @@ internal object EventFactoryClassGenerator {
     private fun List<PropertyInfo>.asPropArgs(): Instruction {
         return Collections3::class.java.invokeStatic("listOf",
             TypeSpec(List::class.java, listOf(Array<Any>::class.java)),
-            listOf(createArray(Array<Any>::class.java, listOf(Literals.INT(this.size)),
+            listOf(createArray(Array<PropertyInfo>::class.java, listOf(Literals.INT(this.size)),
                 this.map { it.asArg() }
             )))
     }
@@ -635,7 +676,8 @@ internal object EventFactoryClassGenerator {
             "listOf",
             TypeSpec(List::class.java, listOf(Array<Any>::class.java)),
             listOf(
-                createArray(Array<Any>::class.java, listOf(Literals.INT(this.size)),
+                createArray(Array<ExtensionSpecification>::class.java,
+                    listOf(Literals.INT(this.size)),
                     this.map { it.asArg() })
             )
         )

@@ -27,23 +27,31 @@
  */
 package com.github.projectsandstone.eventsys.ap
 
+import com.github.jonathanxd.iutils.`object`.Default
+import com.github.jonathanxd.iutils.kt.rightOrFail
 import com.github.jonathanxd.kores.Types
+import com.github.jonathanxd.kores.base.TypeDeclaration
+import com.github.jonathanxd.kores.extra.UnifiedAnnotation
 import com.github.jonathanxd.kores.extra.getUnificationInstance
 import com.github.jonathanxd.kores.generic.GenericSignature
 import com.github.jonathanxd.kores.source.process.PlainSourceGenerator
-import com.github.jonathanxd.kores.util.*
-import com.github.jonathanxd.iutils.`object`.Default
-import com.github.jonathanxd.iutils.kt.rightOrFail
 import com.github.jonathanxd.kores.type.*
+import com.github.jonathanxd.kores.util.KoresTypeResolverFunc
+import com.github.jonathanxd.kores.util.fromSourceString
+import com.github.jonathanxd.kores.util.inferType
 import com.github.projectsandstone.eventsys.event.Cancellable
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.annotation.Extension
 import com.github.projectsandstone.eventsys.event.property.PropertyHolder
+import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
+import com.github.projectsandstone.eventsys.gen.GenerationEnvironment
+import com.github.projectsandstone.eventsys.gen.event.*
+import com.github.projectsandstone.eventsys.logging.MessageType
 import java.io.IOException
 import java.util.*
 import javax.annotation.processing.AbstractProcessor
 import javax.annotation.processing.Filer
-import javax.annotation.processing.ProcessingEnvironment
+import javax.annotation.processing.Messager
 import javax.annotation.processing.RoundEnvironment
 import javax.lang.model.SourceVersion
 import javax.lang.model.element.*
@@ -58,117 +66,282 @@ import javax.tools.StandardLocation
  */
 class AnnotationProcessor : AbstractProcessor() {
 
-    override fun process(annotations: MutableSet<out TypeElement>, roundEnv: RoundEnvironment): Boolean {
-        val elements = roundEnv.getElementsAnnotatedWith(Factory::class.java) + roundEnv.getElementsAnnotatedWith(Factories::class.java)
+    private val sourceGen = PlainSourceGenerator()
 
-        val propertiesToGen = mutableListOf<FactoryInfo>()
+    private val logger by lazy { CTLogger(this.processingEnv.messager) }
 
-        elements.forEach {
-            if (it is TypeElement) {
-                val all = getFactoryAnnotations(it).toMutableList()
+    private val env: GenerationEnvironment by lazy {
+        APTEnvironment(this.processingEnv.elementUtils)
+    }
 
-                if(all.isNotEmpty()) {
-                    val annotation = all.first()
+    private val defaultGenerator: EventGenerator by lazy {
+        createGenerator()
+    }
 
-                    if (annotation.inheritProperties()) {
-                        val props = getSubTypesProperties(it, annotation)
+    private val resolver: KoresTypeResolverFunc by lazy {
+        APTResolverFunc(this.processingEnv.elementUtils, this.env.declarationCache)
+    }
 
-                        props.forEach { (_, lannotations) ->
-                            all += lannotations
+    override fun process(
+        annotations: MutableSet<out TypeElement>,
+        roundEnv: RoundEnvironment
+    ): Boolean {
+        val messager = this.processingEnv.messager
+
+        try {
+            val elements =
+                roundEnv.getElementsAnnotatedWith(Factory::class.java) + roundEnv.getElementsAnnotatedWith(
+                    Factories::class.java
+                )
+
+            val settingsElements = roundEnv.getElementsAnnotatedWith(FactorySettings::class.java)
+
+            val propertiesToGen = mutableListOf<FactoryInfo>()
+            val settings = mutableListOf<FactorySettingsAnnotatedElement>()
+
+            elements.forEach {
+                if (it is TypeElement) {
+                    val all = getFactoryAnnotations(it).toMutableList()
+
+                    if (all.isNotEmpty()) {
+                        val annotation = all.first()
+
+                        if (annotation.inheritProperties()) {
+                            val props = getSubTypesProperties(it, annotation)
+
+                            props.forEach { (_, lannotations) ->
+                                all += lannotations
+                            }
                         }
                     }
-                }
 
-                all.forEach { annotation ->
+                    all.forEach { annotation ->
 
-                    val cTypeWithParams = it.getKoresTypeFromTypeParameters(processingEnv.elementUtils).asGeneric
-                    val koresType = it.getKoresType(processingEnv.elementUtils).concreteType
-                    if (!koresType.`is`(PropertyHolder::class.java)
-                            && !koresType.`is`(Event::class.java)) {
-                        checkExtension(annotation, it)
-                        val genericKoresType = it.asType().getKoresType(processingEnv.elementUtils)
+                        val cTypeWithParams =
+                            it.getKoresTypeFromTypeParameters(processingEnv.elementUtils).asGeneric
+                        val koresType = it.getKoresType(processingEnv.elementUtils).concreteType
+                        if (!koresType.`is`(PropertyHolder::class.java)
+                                && !koresType.`is`(Event::class.java)
+                        ) {
+                            checkExtension(annotation, it)
+                            val genericKoresType =
+                                it.asType().getKoresType(processingEnv.elementUtils)
 
-                        val properties = getProperties(annotation, it).map { prop ->
-                            val propWithParams =
-                                    prop.annotatedElement.getKoresTypeFromTypeParameters(processingEnv.elementUtils).asGeneric
+                            val properties = getProperties(annotation, it).map { prop ->
+                                val propWithParams =
+                                    prop.annotatedElement.getKoresTypeFromTypeParameters(
+                                        processingEnv.elementUtils
+                                    )
+                                        .asGeneric
 
-                            prop.copy(propertyType = inferType(prop.propertyType,
-                                    propWithParams,
-                                    cTypeWithParams,
-                                    koresType.defaultResolver,
-                                    ModelResolver(processingEnv.elementUtils))
-                            )
-                        }
+                                prop.copy(
+                                    propertyType = inferType(
+                                        prop.propertyType,
+                                        propWithParams,
+                                        cTypeWithParams,
+                                        koresType.defaultResolver,
+                                        ModelResolver(processingEnv.elementUtils)
+                                    )
+                                )
+                            }
 
-                        val params = it.getKoresTypeFromTypeParameters(processingEnv.elementUtils)
+                            val params =
+                                it.getKoresTypeFromTypeParameters(processingEnv.elementUtils)
 
-                        val signature: GenericSignature =
-                                if(it.typeParameters.isEmpty()
+                            val signature: GenericSignature =
+                                if (it.typeParameters.isEmpty()
                                         || params !is GenericType
                                         // \/ = Defensive check
-                                        || !params.bounds.all { it.type is GenericType }) GenericSignature.empty()
+                                        || !params.bounds.all { it.type is GenericType }
+                                ) GenericSignature.empty()
                                 else GenericSignature(params.bounds.map { it.type as GenericType }.toTypedArray())
 
-                        propertiesToGen += FactoryInfo(
+                            propertiesToGen += FactoryInfo(
                                 genericKoresType,
                                 it,
                                 signature,
                                 annotation,
                                 properties,
-                                if(annotation.methodName().isNotEmpty()) annotation.methodName() else it.factoryName(),
+                                if (annotation.methodName().isNotEmpty()) annotation.methodName() else it.factoryName(),
                                 it
-                        )
+                            )
+                        }
                     }
+                }
+
+            }
+
+            settingsElements.forEach {
+                if (it is TypeElement) {
+                    settings += FactorySettingsAnnotatedElement(it, getFactorySettingsAnnotation(it))
                 }
             }
 
-        }
+            if (!propertiesToGen.isEmpty()) {
 
-        if (!propertiesToGen.isEmpty()) {
-            val sourceGen = PlainSourceGenerator()
+                val grouped = propertiesToGen.groupBy { it.factoryUnification.value() }
+                val groupedSetting = settings.groupBy { it.settings.value() }
 
-            val grouped = propertiesToGen.groupBy { it.factoryUnification.value() }
+                grouped.forEach { name, factInf ->
+                    val setting = groupedSetting[name]
+                    val declaration = FactoryInterfaceGenerator.processNamed(name, factInf)
 
-            grouped.forEach { name, factInf ->
-                val declaration = FactoryInterfaceGenerator.processNamed(name, factInf)
+                    this.save(declaration, *factInf.map { it.origin }.toTypedArray())
 
-                val file = get(processingEnv.filer, declaration.packageName, declaration.simpleName)
+                    if (setting != null && setting.any { it.settings.compileTimeGenerator() }) {
 
-                file.ifPresent { it.delete() }
+                        this.validateSettings(messager, setting)
 
-                val classFile = processingEnv.filer.createSourceFile(declaration.qualifiedName,
-                        *factInf.map { it.origin }.toTypedArray())
+                        val extensions = settings.flatMap { it.settings.extensions() }
 
-                val outputStream = classFile.openOutputStream()
+                        val generator = this.createGenerator(extensions)
+                        this.generateFactory(declaration, generator)
+                    }
 
-                outputStream.write(sourceGen.process(declaration).toByteArray(Charsets.UTF_8))
+                }
 
-                outputStream.flush()
-                outputStream.close()
 
             }
 
+            return true
+        } catch (e: Throwable) {
+            logger.log("Failed to process annotation.", MessageType.STANDARD_FATAL, e)
+            throw e
+        }
+    }
 
+    private fun createGenerator(extensions: List<EventExtensionUnification>) =
+        if (extensions.isEmpty()) this.defaultGenerator
+        else createGenerator().also { gen ->
+            extensions.forEach { eext ->
+                val extensionsSpecs = eext.extensions().map {
+                    ExtensionSpecification(Unit,
+                        it.implement().let {
+                            if (it.`is`(Default::class.java)) null
+                            else it
+                        },
+                        it.extensionClass().let {
+                            if (it.`is`(Default::class.java)) null
+                            else it
+                        }
+                    )
+                }
+
+                extensionsSpecs.forEach { spec ->
+                    eext.events().forEach { evt ->
+                        gen.registerExtension(fromSourceString(evt, this.resolver), spec)
+                    }
+                }
+            }
         }
 
-        return true
+    private fun validateSettings(messager: Messager,
+                                 setting: List<FactorySettingsAnnotatedElement>) {
+        val extensions = setting.map { it.typeElement to it.settings.extensions() }
 
+        extensions.forEach { (type, ext) ->
+            ext.forEach {
+                if (it.events().isEmpty()) {
+                    messager.printError("'events' property should not be empty.", type, it)
+                }
+                if (it.extensions().isEmpty()) {
+                    messager.printError("'extensions' should not be empty.", type, it)
+                }
+            }
+        }
+    }
+
+    fun Messager.printError(msg: String,
+                            type: Element,
+                            annotation: UnifiedAnnotation) {
+        val origin = annotation.getUnifiedAnnotationOrigin()
+
+        if (origin is AnnotationMirror) {
+            this.printMessage(
+                Diagnostic.Kind.WARNING,
+                msg,
+                type, origin
+            )
+        } else {
+            this.printMessage(
+                Diagnostic.Kind.WARNING,
+                msg,
+                type
+            )
+        }
+    }
+
+    private fun createGenerator() =
+        CommonEventGenerator(this.logger, this.env).also {
+            it.options[EventGeneratorOptions.LAZY_EVENT_GENERATION_MODE] = LazyGenerationMode.REFLECTION
+        }
+
+    private fun generateFactory(declaration: TypeDeclaration, eventGenerator: EventGenerator) {
+        val (factory, events) = EventFactoryClassGenerator.createDeclaration(
+            eventGenerator,
+            declaration,
+            eventGenerator.logger,
+            eventGenerator.generationEnvironment
+        )
+
+        events.forEach {
+            this.save(it.classDeclaration)
+        }
+
+        this.save(factory)
+    }
+
+    private fun save(declaration: TypeDeclaration, vararg origin: Element) {
+        val file = get(processingEnv.filer, declaration.packageName, declaration.simpleName)
+
+        file.ifPresent { it.delete() }
+
+        val classFile = processingEnv.filer.createSourceFile(declaration.qualifiedName, *origin)
+
+        val outputStream = classFile.openOutputStream()
+
+        outputStream.write(sourceGen.process(declaration).toByteArray(Charsets.UTF_8))
+
+        outputStream.flush()
+        outputStream.close()
+    }
+
+    private fun getFactorySettingsAnnotation(element: Element): FactorySettingsUnification {
+        val single = element.annotationMirrors.filter {
+            it.annotationType.getKoresType(processingEnv.elementUtils)
+                .concreteType.`is`(FactorySettings::class.java)
+        }.toMutableList().single()
+
+        return getUnificationInstance(
+            annotation = single,
+            unificationInterface = FactorySettingsUnification::class.java,
+            elements = processingEnv.elementUtils,
+            additionalUnificationGetter = {
+                when {
+                    it.`is`(typeOf<EventExtension>()) -> EventExtensionUnification::class.java
+                    it.`is`(Extension::class.java) -> ExtensionUnification::class.java
+                    else -> null
+                }
+            }
+        )
     }
 
     private fun getFactoryAnnotations(element: Element): List<FactoryUnification> {
         val all = element.annotationMirrors.filter {
-            it.annotationType.getKoresType(processingEnv.elementUtils).concreteType.`is`(Factory::class.java)
+            it.annotationType.getKoresType(processingEnv.elementUtils)
+                .concreteType.`is`(Factory::class.java)
         }.toMutableList()
 
         element.annotationMirrors.filter {
-            it.annotationType.getKoresType(processingEnv.elementUtils).concreteType.`is`(Factories::class.java)
+            it.annotationType.getKoresType(processingEnv.elementUtils)
+                .concreteType.`is`(Factories::class.java)
         }.forEach {
             it.elementValues.forEach { executableElement, annotationValue ->
-                if(executableElement.simpleName.contentEquals("value")) {
+                if (executableElement.simpleName.contentEquals("value")) {
                     val value = annotationValue.value
                     if (value is List<*>) {
                         value.forEach {
-                            if(it is AnnotationMirror)
+                            if (it is AnnotationMirror)
                                 all += it
                         }
                     }
@@ -178,17 +351,20 @@ class AnnotationProcessor : AbstractProcessor() {
 
         return all.map {
             getUnificationInstance(
-                    it,
-                    FactoryUnification::class.java, {
-                if (it.`is`(Extension::class.java))
-                    ExtensionUnification::class.java
-                else null
-            }, processingEnv.elementUtils)
+                it,
+                FactoryUnification::class.java, {
+                    if (it.`is`(Extension::class.java))
+                        ExtensionUnification::class.java
+                    else null
+                }, processingEnv.elementUtils
+            )
         }
     }
 
-    private fun getSubTypesProperties(element: TypeElement,
-                                      current: FactoryUnification): List<FactoryAnnotatedElement> {
+    private fun getSubTypesProperties(
+        element: TypeElement,
+        current: FactoryUnification
+    ): List<FactoryAnnotatedElement> {
 
         val all = mutableListOf<FactoryAnnotatedElement>()
         val impls = current.extensions().map { it.implement() }
@@ -199,19 +375,21 @@ class AnnotationProcessor : AbstractProcessor() {
         return all.map {
             FactoryAnnotatedElement(it.typeElement, it.factoryAnnotations.filter {
                 it.extensions().isNotEmpty()
-                && it.extensions().none { out ->
+                        && it.extensions().none { out ->
                     impls.any { out.implement().`is`(it) }
-                        || exts.any { out.extensionClass().`is`(it) }
+                            || exts.any { out.extensionClass().`is`(it) }
                 }
             })
         }.filter { it.factoryAnnotations.isNotEmpty() }
     }
 
-    private fun getSubTypesProperties0(element: TypeElement,
-                                       unificationList: MutableList<FactoryAnnotatedElement>,
-                                       instaInspect: Boolean = true) {
+    private fun getSubTypesProperties0(
+        element: TypeElement,
+        unificationList: MutableList<FactoryAnnotatedElement>,
+        instaInspect: Boolean = true
+    ) {
 
-        if(instaInspect)
+        if (instaInspect)
             unificationList += FactoryAnnotatedElement(element, getFactoryAnnotations(element))
 
         if (element.superclass.kind != TypeKind.NONE) {
@@ -277,29 +455,34 @@ class AnnotationProcessor : AbstractProcessor() {
                         if (it is ExecutableElement) {
                             if (it.kind == ElementKind.CONSTRUCTOR) {
                                 if (it.parameters.size == 1
-                                        && it.parameters.first().asType().getKoresType(processingEnv.elementUtils).let {
-                                    paramType ->
-                                    types.any { type -> type.`is`(paramType) }
-                                })
+                                        && it.parameters.first().asType().getKoresType(processingEnv.elementUtils).let { paramType ->
+                                            types.any { type -> type.`is`(paramType) }
+                                        }
+                                )
                                     found = true
                             }
                         }
                     }
 
                     if (!found) {
-                        processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "Extension class '${impl.simpleName}' requires at least a constructor with only one parameter of one of following types: ${types.joinToString { it.simpleName }}!")
+                        processingEnv.messager.printMessage(
+                            Diagnostic.Kind.ERROR,
+                            "Extension class '${impl.simpleName}' requires at least a constructor with only one parameter of one of following types: ${types.joinToString { it.simpleName }}!"
+                        )
                     }
                 }
             }
         }
     }
 
-    private fun getProperties(factoryUnification: FactoryUnification,
-                              element: TypeElement,
-                              extensionOnly: Boolean = false,
-                              list: MutableList<EventSysProperty> = mutableListOf()): List<EventSysProperty> {
+    private fun getProperties(
+        factoryUnification: FactoryUnification,
+        element: TypeElement,
+        extensionOnly: Boolean = false,
+        list: MutableList<EventSysProperty> = mutableListOf()
+    ): List<EventSysProperty> {
 
-        if(!extensionOnly) {
+        if (!extensionOnly) {
             this.getProperties(factoryUnification, element, list)
 
             val types = mutableListOf<TypeMirror>()
@@ -334,9 +517,11 @@ class AnnotationProcessor : AbstractProcessor() {
         return list
     }
 
-    private fun getProperties(factoryUnification: FactoryUnification,
-                              element: TypeElement,
-                              list: MutableList<EventSysProperty>) {
+    private fun getProperties(
+        factoryUnification: FactoryUnification,
+        element: TypeElement,
+        list: MutableList<EventSysProperty>
+    ) {
 
         val koresType = element.getKoresType(processingEnv.elementUtils).concreteType
 
@@ -345,7 +530,8 @@ class AnnotationProcessor : AbstractProcessor() {
 
         if (!koresType.`is`(PropertyHolder::class.java)
                 && !koresType.`is`(Event::class.java)
-                && !koresType.`is`(Cancellable::class.java)) {
+                && !koresType.`is`(Cancellable::class.java)
+        ) {
             element.enclosedElements.forEach {
                 if (it is ExecutableElement) {
                     val name = it.simpleName.toString()
@@ -355,11 +541,14 @@ class AnnotationProcessor : AbstractProcessor() {
 
                     if (isGetOrSet || isIs) {
                         val propertyName =
-                                (if (isGetOrSet) name.substring(3 until name.length) else name.substring(2 until name.length))
-                                        .decapitalize()
+                            (if (isGetOrSet) name.substring(3 until name.length) else name.substring(
+                                2 until name.length
+                            ))
+                                .decapitalize()
 
-                        val type = if(isSet) it.parameters.first().asType().getKoresType(processingEnv.elementUtils)
-                        else it.returnType.getKoresType(processingEnv.elementUtils)
+                        val type =
+                            if (isSet) it.parameters.first().asType().getKoresType(processingEnv.elementUtils)
+                            else it.returnType.getKoresType(processingEnv.elementUtils)
 
                         if (!type.`is`(Types.VOID)) {
 
@@ -403,10 +592,13 @@ class AnnotationProcessor : AbstractProcessor() {
         typeElement.enclosedElements.forEach {
             if (it is ExecutableElement) {
                 if (it.simpleName.toString() == executableElement.simpleName.toString()
-                        && it.parameters.map { it.asType().getKoresType(processingEnv.elementUtils).concreteType }
-                        .`is`(executableElement.parameters.map {
+                        && it.parameters.map {
                             it.asType().getKoresType(processingEnv.elementUtils).concreteType
-                        })) {
+                        }
+                            .`is`(executableElement.parameters.map {
+                                it.asType().getKoresType(processingEnv.elementUtils).concreteType
+                            })
+                ) {
                     return true
                 }
             }
@@ -436,7 +628,10 @@ class AnnotationProcessor : AbstractProcessor() {
     }
 
 
-    fun containsMethod(executableElement: ExecutableElement, factoryUnification: FactoryUnification): Boolean {
+    fun containsMethod(
+        executableElement: ExecutableElement,
+        factoryUnification: FactoryUnification
+    ): Boolean {
         val extensions = factoryUnification.extensions()
 
         extensions.forEach {
@@ -453,7 +648,10 @@ class AnnotationProcessor : AbstractProcessor() {
     }
 
     override fun getSupportedAnnotationTypes(): MutableSet<String> {
-        return mutableSetOf("com.github.projectsandstone.eventsys.ap.Factory", "com.github.projectsandstone.eventsys.ap.Factories")
+        return mutableSetOf(
+            "com.github.projectsandstone.eventsys.ap.Factory",
+            "com.github.projectsandstone.eventsys.ap.Factories"
+        )
     }
 
     override fun getSupportedSourceVersion(): SourceVersion {
@@ -471,4 +669,12 @@ class AnnotationProcessor : AbstractProcessor() {
     }
 }
 
-data class FactoryAnnotatedElement(val typeElement: TypeElement, val factoryAnnotations: List<FactoryUnification>)
+data class FactoryAnnotatedElement(
+    val typeElement: TypeElement,
+    val factoryAnnotations: List<FactoryUnification>
+)
+
+data class FactorySettingsAnnotatedElement (
+    val typeElement: TypeElement,
+    val settings: FactorySettingsUnification
+)

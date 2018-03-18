@@ -31,20 +31,21 @@ import com.github.jonathanxd.iutils.map.ConcurrentListMap
 import com.github.jonathanxd.iutils.option.Options
 import com.github.jonathanxd.kores.base.ClassDeclaration
 import com.github.jonathanxd.kores.base.MethodDeclaration
-import com.github.jonathanxd.kores.type.GenericType
 import com.github.jonathanxd.kores.type.`is`
-import com.github.jonathanxd.kores.type.concreteType
-import com.github.jonathanxd.kores.type.toGeneric
+import com.github.jonathanxd.kores.type.asGeneric
+import com.github.jonathanxd.kores.type.isAssignableFrom
+import com.github.jonathanxd.kores.util.genericTypeToDescriptor
 import com.github.projectsandstone.eventsys.event.Event
 import com.github.projectsandstone.eventsys.event.EventListener
 import com.github.projectsandstone.eventsys.event.ListenerSpec
 import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
+import com.github.projectsandstone.eventsys.gen.CommonGenerationEnvironment
+import com.github.projectsandstone.eventsys.gen.GenerationEnvironment
 import com.github.projectsandstone.eventsys.gen.ResolvableDeclaration
 import com.github.projectsandstone.eventsys.gen.check.CheckHandler
 import com.github.projectsandstone.eventsys.gen.check.DefaultCheckHandler
 import com.github.projectsandstone.eventsys.logging.LoggerInterface
 import com.github.projectsandstone.eventsys.reflect.isEqual
-import com.github.projectsandstone.eventsys.util.DeclarationCache
 import com.github.projectsandstone.eventsys.util.ESysExecutor
 import java.lang.reflect.Method
 import java.lang.reflect.Type
@@ -53,14 +54,15 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.function.Supplier
 
-class CommonEventGenerator(override val logger: LoggerInterface) : EventGenerator {
+class CommonEventGenerator @JvmOverloads constructor(
+    override val logger: LoggerInterface,
+    override val generationEnvironment: GenerationEnvironment = CommonGenerationEnvironment()
+) : EventGenerator {
 
     private val factoryImplCache = ConcurrentHashMap<Type, ResolvableDeclaration<*>>()
     private val eventImplCache = ConcurrentHashMap<EventClass, ResolvableDeclaration<Class<*>>>()
     private val listenerImplCache =
         ConcurrentHashMap<MethodDeclaration, ResolvableDeclaration<Class<out EventListener<Event>>>>()
-
-    private val declarationCache = DeclarationCache()
 
     private val extensionMap =
         ConcurrentListMap<Type, ExtensionSpecification>(ConcurrentHashMap())
@@ -117,8 +119,10 @@ class CommonEventGenerator(override val logger: LoggerInterface) : EventGenerato
             this.createMethodListener(listenerClass, method, listenerSpec)
         }, this.executor)
 
-    override fun registerExtension(base: Type, extensionSpecification: ExtensionSpecification) {
-
+    override fun registerExtension(
+        base: Type,
+        extensionSpecification: ExtensionSpecification
+    ) {
         if (this.extensionMap[base]?.contains(extensionSpecification) == true)
             return
 
@@ -137,7 +141,7 @@ class CommonEventGenerator(override val logger: LoggerInterface) : EventGenerato
         )
 
         this.eventImplCache[evtClass] = ResolvableDeclaration(
-            classDeclaration = declarationCache[implementation] as ClassDeclaration,
+            classDeclaration = this.generationEnvironment.declarationCache[implementation] as ClassDeclaration,
             resolver = { implementation })
     }
 
@@ -148,7 +152,7 @@ class CommonEventGenerator(override val logger: LoggerInterface) : EventGenerato
                 this,
                 factoryType,
                 this.logger,
-                this.declarationCache
+                this.generationEnvironment
             )
         } as ResolvableDeclaration<T>
 
@@ -176,7 +180,11 @@ class CommonEventGenerator(override val logger: LoggerInterface) : EventGenerato
 
         @Suppress("UNCHECKED_CAST")
         return this.eventImplCache.computeIfAbsent(eventClass) {
-            EventClassGenerator.genImplementation<T>(eventClass.spec, this, this.declarationCache)
+            EventClassGenerator.genImplementation<T>(
+                eventClass.spec,
+                this,
+                this.generationEnvironment
+            )
         } as ResolvableDeclaration<Class<out T>>
     }
 
@@ -216,12 +224,19 @@ class CommonEventGenerator(override val logger: LoggerInterface) : EventGenerato
         instance: Any?,
         listenerSpec: ListenerSpec
     ): ResolvableDeclaration<EventListener<Event>> =
-        this.declarationCache[listenerClass].methods.first { it.isEqual(method) }.let {
+        this.generationEnvironment.declarationCache[listenerClass].methods.first { it.isEqual(method) }.let {
             createMethodListener(listenerClass, it, instance, listenerSpec)
         }
 
     override fun createListenerSpecFromMethod(method: Method): ListenerSpec =
-        this.createListenerSpecFromMethod(this.declarationCache[method.declaringClass].methods.first { it.isEqual(method) })
+        this.createListenerSpecFromMethod(this.generationEnvironment
+            .declarationCache[method.declaringClass]
+            .methods
+            .first {
+                it.isEqual(
+                    method
+                )
+            })
 
     override fun createListenerSpecFromMethod(method: MethodDeclaration): ListenerSpec =
         ListenerSpec.fromMethodDeclaration(method)

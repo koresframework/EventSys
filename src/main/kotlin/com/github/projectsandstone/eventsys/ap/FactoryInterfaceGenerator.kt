@@ -53,7 +53,8 @@ object FactoryInterfaceGenerator {
 
     private val DEFAULT = Default::class.java.koresType
 
-    fun processNamed(name: String, factoryInfoList: List<FactoryInfo>): TypeDeclaration {
+    fun processNamed(name: String,
+                     factoryInfoList: List<FactoryInfo>): TypeDeclaration {
         return InterfaceDeclaration.Builder.builder()
             .modifiers(KoresModifier.PUBLIC)
             .name(name)
@@ -75,11 +76,11 @@ object FactoryInterfaceGenerator {
                     val values = mutableMapOf<String, Any>()
 
                     if (!it.implement().`is`(DEFAULT)) {
-                        values.put("implement", it.implement())
+                        values["implement"] = it.implement()
                     }
 
                     if (!it.extensionClass().`is`(DEFAULT)) {
-                        values.put("extensionClass", it.extensionClass())
+                        values["extensionClass"] = it.extensionClass()
                     }
 
                     Annotation.Builder.builder()

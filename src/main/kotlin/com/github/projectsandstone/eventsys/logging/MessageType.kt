@@ -79,6 +79,16 @@ enum class MessageType(val level: Level) {
     /**
      * Standard warning.
      */
-    STANDARD_WARNING(Level.WARN)
+    STANDARD_WARNING(Level.WARN),
+
+    /**
+     * Standard Error.
+     */
+    STANDARD_ERROR(Level.ERROR),
+
+    /**
+     * Standard Fatal.
+     */
+    STANDARD_FATAL(Level.FATAL)
 
 }

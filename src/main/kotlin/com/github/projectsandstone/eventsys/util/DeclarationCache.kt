@@ -46,6 +46,8 @@ class DeclarationCache {
     private val mcache = mutableMapOf<TypeDeclaration, List<DeclaredMethod>>()
     private val scache = mutableMapOf<TypeDeclaration, List<TypeDeclaration>>()
 
+    fun has(type: Type) = this.cache.contains(type.koresType)
+
     operator fun get(type: Type): TypeDeclaration =
         cache.computeIfAbsent(type.koresType) {
             it.concreteType.bindedDefaultResolver.resolveTypeDeclaration().rightOrFail

@@ -28,6 +28,7 @@
 package com.github.projectsandstone.eventsys.gen.event
 
 import com.github.jonathanxd.iutils.function.consumer.BooleanConsumer
+import com.github.jonathanxd.iutils.kt.get
 import com.github.jonathanxd.iutils.kt.rightOrFail
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.kores.Instruction
@@ -35,6 +36,7 @@ import com.github.jonathanxd.kores.Instructions
 import com.github.jonathanxd.kores.MutableInstructions
 import com.github.jonathanxd.kores.Types
 import com.github.jonathanxd.kores.base.*
+import com.github.jonathanxd.kores.bytecode.GENERATE_BRIDGE_METHODS
 import com.github.jonathanxd.kores.bytecode.VISIT_LINES
 import com.github.jonathanxd.kores.bytecode.VisitLineType
 import com.github.jonathanxd.kores.bytecode.processor.BytecodeGenerator
@@ -42,7 +44,6 @@ import com.github.jonathanxd.kores.bytecode.util.BridgeUtil
 import com.github.jonathanxd.kores.common.FieldRef
 import com.github.jonathanxd.kores.common.MethodInvokeSpec
 import com.github.jonathanxd.kores.common.MethodTypeSpec
-import com.github.jonathanxd.kores.common.Nothing
 import com.github.jonathanxd.kores.factory.*
 import com.github.jonathanxd.kores.generic.GenericSignature
 import com.github.jonathanxd.kores.helper.ConcatHelper
@@ -66,13 +67,17 @@ import com.github.projectsandstone.eventsys.event.property.primitive.*
 import com.github.projectsandstone.eventsys.extension.ExtensionHolder
 import com.github.projectsandstone.eventsys.extension.ExtensionSpecification
 import com.github.projectsandstone.eventsys.gen.GeneratedEventClass
+import com.github.projectsandstone.eventsys.gen.GenerationEnvironment
 import com.github.projectsandstone.eventsys.gen.ResolvableDeclaration
 import com.github.projectsandstone.eventsys.gen.save.ClassSaver
 import com.github.projectsandstone.eventsys.logging.MessageType
 import com.github.projectsandstone.eventsys.reflect.findImplementation
 import com.github.projectsandstone.eventsys.reflect.getName
 import com.github.projectsandstone.eventsys.reflect.isEqual
-import com.github.projectsandstone.eventsys.util.*
+import com.github.projectsandstone.eventsys.util.DeclarationCache
+import com.github.projectsandstone.eventsys.util.NameCaching
+import com.github.projectsandstone.eventsys.util.residenceToString
+import com.github.projectsandstone.eventsys.util.toStructure
 import com.github.projectsandstone.eventsys.validation.Validator
 import java.lang.reflect.Type
 import java.util.*
@@ -122,23 +127,23 @@ internal object EventClassGenerator {
 
     private fun KoresType.xtoStr(): String =
         if (this is GenericType && this.bounds.isNotEmpty()) {
-            this.toSourceString()
+            this.resolvedType.canonicalName + this.toSourceString()
                 .replace(".", "_")
                 .replace("<", "_of_")
                 .replace(">", "__")
                 .replace(", ", "and")
         } else {
-            this.canonicalName.replace('.', '_')
+            this.canonicalName
         }
 
     @Suppress("UNCHECKED_CAST")
     fun <T : Event> genImplementation(
         eventClassSpecification: EventClassSpecification,
         eventGenerator: EventGenerator,
-        cache: DeclarationCache
+        generationEnvironment: GenerationEnvironment
     ): ResolvableDeclaration<Class<T>> {
         val classDeclaration =
-            genImplementationDeclaration(eventClassSpecification, eventGenerator, cache)
+            genImplementationDeclaration(eventClassSpecification, eventGenerator, generationEnvironment)
 
         return genImplementationFromDeclaration(classDeclaration)
     }
@@ -149,6 +154,7 @@ internal object EventClassGenerator {
             val generator = BytecodeGenerator()
 
             generator.options.set(VISIT_LINES, VisitLineType.GEN_LINE_INSTRUCTION)
+            generator.options.set(GENERATE_BRIDGE_METHODS, true)
 
             val bytecodeClass = generator.process(eventDeclaration)[0]
 
@@ -179,8 +185,9 @@ internal object EventClassGenerator {
     fun genImplementationDeclaration(
         eventClassSpecification: EventClassSpecification,
         eventGenerator: EventGenerator,
-        cache: DeclarationCache
+        generationEnvironment: GenerationEnvironment
     ): ClassDeclaration {
+        val cache = generationEnvironment.declarationCache
         val checker = eventGenerator.checkHandler
         val logger = eventGenerator.logger
 
@@ -204,7 +211,10 @@ internal object EventClassGenerator {
             )
         }
 
-        val name = getName("${eventTypeLiter}Impl", nameCaching)
+        val name = getName(
+            "com.github.projectsandstone.eventsys.gen.event.${eventTypeLiter}Impl",
+            nameCaching
+        )
 
         var classDeclarationBuilder = ClassDeclaration.Builder.builder()
             .modifiers(KoresModifier.PUBLIC)
@@ -247,7 +257,7 @@ internal object EventClassGenerator {
 
         val properties =
             getProperties(eventTypeDeclaration, additionalProperties, extensions, cache).map {
-                it.copy(inferredType = getPropInferredType(it, isSpecialized, plain))
+                it.copy(inferredType = getPropInferredType(it, isSpecialized, plain, generationEnvironment))
             }
 
         classDeclarationBuilder = classDeclarationBuilder
@@ -279,32 +289,33 @@ internal object EventClassGenerator {
         extensions.forEach { ext ->
             ext.extensionClass?.also {
                 methods += this.genExtensionMethods(
+                    plain,
                     it.bindedDefaultResolver.resolveTypeDeclaration().rightOrFail,
-                    cache
+                    generationEnvironment
                 )
             }
         }
 
         // gen getExtension method of ExtensionHolder
-        methods += this.genExtensionGetter(extensions)
+        methods += this.genExtensionGetter(extensions, plain)
 
         // Gen getProperties & getProperty & hasProperty
         methods += this.genPropertyHolderMethods()
 
         methods += this.genDefaultMethodsImpl(eventTypeDeclaration, methods, cache)
 
-        val classDeclaration = classDeclarationBuilder.methods(methods).build().let {
-            if (eventGenerator.options[EventGeneratorOptions.ENABLE_BRIDGE]) {
-                // Use generate bridges method instead of bytecode generator option to
-                // Ensure correctness of checker
-                it.builder().methods(it.methods + BridgeUtil.genBridgeMethods(it)).build()
-            } else it
+        val classDeclaration = classDeclarationBuilder.methods(methods).build()
+
+        val bridgedClassDeclaration = classDeclarationBuilder.methods(methods).build().let {
+            // Use generate bridges method instead of bytecode generator option to
+            // Ensure correctness of checker
+            it.builder().methods(it.methods + BridgeUtil.genBridgeMethods(it)).build()
         }
 
-        checker.checkDuplicatedMethods(classDeclaration.methods)
-        this.validateExtensions(extensions, classDeclaration, eventGenerator, cache)
+        checker.checkDuplicatedMethods(bridgedClassDeclaration.methods)
+        this.validateExtensions(extensions, bridgedClassDeclaration, eventGenerator, cache)
         checker.checkImplementation(
-            classDeclaration.methods,
+            bridgedClassDeclaration.methods,
             eventTypeDeclaration,
             extensions,
             eventGenerator
@@ -313,7 +324,8 @@ internal object EventClassGenerator {
         return classDeclaration
     }
 
-    private fun genExtensionGetter(extensions: List<ExtensionSpecification>): MethodDeclaration {
+    private fun genExtensionGetter(extensions: List<ExtensionSpecification>,
+                                   ctype: ClassDeclaration): MethodDeclaration {
         val extensionClasses =
             extensions.filter { it.extensionClass != null }.map { it.extensionClass!! }
 
@@ -338,14 +350,18 @@ internal object EventClassGenerator {
                     )
                     .cases(
                         extensionClasses.map {
-                            val ref = getExtensionFieldRef(it)
+                            val ref = getExtensionFieldRef(it, ctype)
                             caseStm()
                                 .value(Literals.STRING(it.canonicalName))
                                 .body(
                                     Instructions.fromPart(
                                         returnValue(
                                             type,
-                                            fieldAccess().base(ref).build()
+                                            cast(
+                                                typeOf<Any>(),
+                                                type,
+                                                fieldAccess().base(ref).build()
+                                            )
                                         )
                                     )
                                 )
@@ -402,8 +418,35 @@ internal object EventClassGenerator {
 
     }
 
-    fun getPropInferredType(property: PropertyInfo, isSpecialized: Boolean, type: Type): Type {
-        if (!isSpecialized
+    fun getPropInferredType(property: PropertyInfo,
+                            isSpecialized: Boolean,
+                            type: Type,
+                            generationEnvironment: GenerationEnvironment): Type {
+        if ((!property.propertyType.type.isType && !property.propertyType.type.isWildcard)
+                || property.propertyType.type.bounds.isNotEmpty()
+        ) {
+            val infer = inferType(
+                property.propertyType.type,
+                property.declaringType.concreteType.toGeneric,
+                type.asGeneric,
+                type.defaultResolver,
+                generationEnvironment.genericResolver
+            ) { n ->
+                property.propertyType.definedParams.types
+                    .none { !it.isType && !it.isWildcard && it.name == n }
+            }
+
+            return if (infer.`is`(property.propertyType.type))
+                property.type
+            else infer
+        } else {
+            return property.type.let {
+                if (it is GenericType) it.resolvedType
+                else it
+            }
+        }
+
+        /*if (!isSpecialized
                 || property.declaringType.`is`(typeOf<Nothing>())
                 || property.declaringType !is GenericType
                 || property.declaringType.bounds.isEmpty()
@@ -424,21 +467,35 @@ internal object EventClassGenerator {
             return if (infer.`is`(property.propertyType.type))
                 property.type
             else infer
-        }
+        }*/
     }
 
-    private fun getExtensionFieldRef(extensionClass: Type): FieldRef =
+    private fun getExtensionFieldRef(extensionClass: Type,
+                                     type: ClassDeclaration): FieldRef =
         extensionClass.let {
             FieldRef(
                 localization = Alias.THIS,
                 target = Access.THIS,
                 name = "extension_${it.simpleName}",
-                type = it
+                type = this.getExtensionFieldType(extensionClass, type)
             )
         }
 
-    private fun getExtensionFieldRef(extension: ExtensionSpecification): FieldRef? =
-        extension.extensionClass?.let(this::getExtensionFieldRef)
+    private fun getExtensionFieldType(extensionClass: Type,
+                                      type: ClassDeclaration): Type {
+        val genericExtClass = extensionClass.toGeneric
+        val types = type.genericSignature.types
+
+        return if (types.size == genericExtClass.bounds.size) {
+            Generic.type(extensionClass).of(*types)
+        } else {
+            extensionClass
+        }
+    }
+
+    private fun getExtensionFieldRef(extension: ExtensionSpecification,
+                                     type: ClassDeclaration): FieldRef? =
+        extension.extensionClass?.let { this.getExtensionFieldRef(it, type) }
 
     private fun genExtensionsFields(
         extensions: List<ExtensionSpecification>,
@@ -450,9 +507,10 @@ internal object EventClassGenerator {
             .filter { it.extensionClass != null }
             .map {
                 it.extensionClass!! // Safe: null filtered above
-                val ref = this.getExtensionFieldRef(it)!!
+                val ref = this.getExtensionFieldRef(it, type)!!
                 val ctr = eventGenerator.checkHandler
                     .validateExtension(it, cache[it.extensionClass], type, eventGenerator)
+
                 fieldDec()
                     .modifiers(KoresModifier.PRIVATE, KoresModifier.FINAL)
                     .type(ref.type)
@@ -675,10 +733,11 @@ internal object EventClassGenerator {
             .build()
 
     private fun genExtensionMethods(
+        type: ClassDeclaration,
         extensionClass: TypeDeclaration,
-        cache: DeclarationCache
+        generationEnvironment: GenerationEnvironment
     ): List<MethodDeclaration> =
-        cache.getMethods(extensionClass)
+        generationEnvironment.declarationCache.getMethods(extensionClass)
             .filter { (_, it) ->
                 it.modifiers.contains(KoresModifier.PUBLIC) && !it.modifiers.contains(
                     KoresModifier.STATIC
@@ -686,19 +745,18 @@ internal object EventClassGenerator {
             }
             .map { (_, it) ->
 
-                val parameters = it.parameters.mapIndexed { index, parameter ->
-                    parameter(type = parameter.type, name = "arg$index")
-                }
+                val rtype: Type = it.returnType
+                val params: List<KoresParameter> = it.parameters
 
-                val arguments = parameters.access
+                val arguments = params.access
 
-                val ref = getExtensionFieldRef(extensionClass)
+                val ref = getExtensionFieldRef(extensionClass, type)
 
                 MethodDeclaration.Builder.builder()
                     .modifiers(KoresModifier.PUBLIC)
                     .name(it.name)
-                    .returnType(it.returnType)
-                    .parameters(parameters)
+                    .returnType(rtype)
+                    .parameters(params)
                     .body(
                         Instructions.fromPart(
                             returnValue(
@@ -735,21 +793,7 @@ internal object EventClassGenerator {
         val fieldType = propertyType.koresType
         val inferredType = property.inferredType.koresType
 
-        methods += MethodDeclaration.Builder.builder()
-            .modifiers(KoresModifier.PUBLIC)
-            .returnType(fieldType)
-            .name(getterName)
-            .body(
-                Instructions.fromPart(
-                    returnValue(
-                        fieldType,
-                        accessThisField(inferredType, name)
-                    )
-                )
-            )
-            .build()
-
-        val castType = getCastType(fieldType)
+        val castType = getCastType(inferredType)
 
         val ret: Return = if (!fieldType.isPrimitive && property.isNotNull)
             returnValue(
@@ -769,16 +813,14 @@ internal object EventClassGenerator {
             )
 
 
-        if (!castType.`is`(fieldType)) {
+        if (!castType.isConcreteIdEq(fieldType)) {
             methods += MethodDeclaration.Builder.builder()
                 .modifiers(EnumSet.of(KoresModifier.PUBLIC))
                 .returnType(castType)
                 .name(getterName)
                 .body(Instructions.fromPart(ret))
                 .build()
-        }
-
-        if (!inferredType.`is`(fieldType)) {
+        } else if (!inferredType.isConcreteIdEq(fieldType)) {
             methods += MethodDeclaration.Builder.builder()
                 .modifiers(EnumSet.of(KoresModifier.PUBLIC))
                 .returnType(inferredType)
@@ -786,6 +828,20 @@ internal object EventClassGenerator {
                 .body(
                     Instructions.fromPart(
                         returnValue(inferredType, cast(ret.type, inferredType, ret.value))
+                    )
+                )
+                .build()
+        } else {
+            methods += MethodDeclaration.Builder.builder()
+                .modifiers(KoresModifier.PUBLIC)
+                .returnType(fieldType)
+                .name(getterName)
+                .body(
+                    Instructions.fromPart(
+                        returnValue(
+                            fieldType,
+                            accessThisField(inferredType, name)
+                        )
                     )
                 )
                 .build()
@@ -958,6 +1014,7 @@ internal object EventClassGenerator {
             MethodDeclaration.Builder.builder()
                 .annotations(overrideAnnotation())
                 .modifiers(KoresModifier.PUBLIC, KoresModifier.BRIDGE)
+                .genericSignature(baseMethod.genericSignature)
                 .name(baseMethod.name)
                 .returnType(baseMethod.returnType)
                 .parameters(parameters)
@@ -975,7 +1032,7 @@ const val propertiesFieldName = "_properties"
 const val propertiesUnmodName = "_immutable_properties"
 val propertiesFieldType = Generic.type(Map::class.java)
     .of(Types.STRING)
-    .of(Property::class.java)
+    .of(Generic.type(Property::class.java).of(Generic.wildcard()))
 
 fun MethodDeclaration.isAnyMethod(): Boolean =
     (this.name == "toString" && this.parameters.isEmpty() && this.returnType.`is`(Types.STRING))

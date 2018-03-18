@@ -25,39 +25,22 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.projectsandstone.eventsys.ap
+package com.github.projectsandstone.eventsys.ap;
 
-import com.github.jonathanxd.kores.extra.UnifiedAnnotation
-import com.github.jonathanxd.kores.extra.UnifiedAnnotationData
-import com.github.jonathanxd.kores.type.KoresType
-import com.github.jonathanxd.kores.type.koresType
-import com.github.projectsandstone.eventsys.event.annotation.Extension
+import com.github.jonathanxd.iutils.annotation.Wip;
 
-interface FactoryUnification : UnifiedAnnotation {
-    fun value(): String
-    fun methodName(): String
-    fun extensions(): List<ExtensionUnification>
-    fun inheritProperties(): Boolean
-    fun omitTypeParam(): Boolean
-    fun lazy(): Boolean
-}
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-interface FactoriesUnification : UnifiedAnnotation {
-    fun value(): List<FactoryUnification>
-}
-
-interface ExtensionUnification : UnifiedAnnotation {
-    fun implement(): KoresType
-    fun extensionClass(): KoresType
-}
-
-interface FactorySettingsUnification : UnifiedAnnotation {
-    fun value(): String
-    fun compileTimeGenerator(): Boolean
-    fun extensions(): List<EventExtensionUnification>
-}
-
-interface EventExtensionUnification : UnifiedAnnotation {
-    fun events(): List<String>
-    fun extensions(): List<ExtensionUnification>
+/**
+ * Specifies listener types that should have their code generated at compile-time.
+ *
+ * WIP: Does not work yet.
+ */
+@Retention(RetentionPolicy.SOURCE)
+@Target(ElementType.TYPE)
+@Wip
+public @interface GenListener {
 }

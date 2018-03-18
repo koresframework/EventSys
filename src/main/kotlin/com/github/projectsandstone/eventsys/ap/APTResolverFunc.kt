@@ -27,37 +27,39 @@
  */
 package com.github.projectsandstone.eventsys.ap
 
-import com.github.jonathanxd.kores.extra.UnifiedAnnotation
-import com.github.jonathanxd.kores.extra.UnifiedAnnotationData
+import com.github.jonathanxd.iutils.type.TypeUtil
 import com.github.jonathanxd.kores.type.KoresType
+import com.github.jonathanxd.kores.type.PlainKoresType
+import com.github.jonathanxd.kores.type.getKoresType
 import com.github.jonathanxd.kores.type.koresType
-import com.github.projectsandstone.eventsys.event.annotation.Extension
+import com.github.jonathanxd.kores.util.KoresTypeResolverFunc
+import com.github.projectsandstone.eventsys.util.DeclarationCache
+import javax.lang.model.util.Elements
 
-interface FactoryUnification : UnifiedAnnotation {
-    fun value(): String
-    fun methodName(): String
-    fun extensions(): List<ExtensionUnification>
-    fun inheritProperties(): Boolean
-    fun omitTypeParam(): Boolean
-    fun lazy(): Boolean
-}
+class APTResolverFunc(
+    val elements: Elements,
+    val cache: DeclarationCache
+) : KoresTypeResolverFunc() {
 
-interface FactoriesUnification : UnifiedAnnotation {
-    fun value(): List<FactoryUnification>
-}
+    override fun resolve(t: String): KoresType {
+        try {
+            return TypeUtil.resolveClass<Any>(t).koresType
+        } catch (e: Exception) {
+            val seq = if (t.startsWith("L") && t.endsWith(";")) {
+                t.substring(1 until t.length-1).replace('/', '.').replace('$', '.')
+            } else t
 
-interface ExtensionUnification : UnifiedAnnotation {
-    fun implement(): KoresType
-    fun extensionClass(): KoresType
-}
+            elements.getTypeElement(seq)?.getKoresType(elements)?.let {
+                return it
+            }
 
-interface FactorySettingsUnification : UnifiedAnnotation {
-    fun value(): String
-    fun compileTimeGenerator(): Boolean
-    fun extensions(): List<EventExtensionUnification>
-}
+            val plain = PlainKoresType(seq, false)
 
-interface EventExtensionUnification : UnifiedAnnotation {
-    fun events(): List<String>
-    fun extensions(): List<ExtensionUnification>
+            return if (cache.has(plain)) {
+                cache[plain]
+            } else {
+                plain
+            }
+        }
+    }
 }
