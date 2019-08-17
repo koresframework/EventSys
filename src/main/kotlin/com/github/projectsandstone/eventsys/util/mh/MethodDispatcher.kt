@@ -132,7 +132,7 @@ open class MethodDispatcher(
     override val priority: EventPriority
         get() = this.listenerSpec.priority
 
-    override val channel: Int
+    override val channel: String
         get() = this.listenerSpec.channel
 
     override val ignoreCancelled: Boolean

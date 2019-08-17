@@ -56,8 +56,8 @@ interface EventListener<in T : Event> {
      *
      * @see ListenerSpec.channel
      */
-    val channel: Int
-        get() = 0
+    val channel: String
+        get() = "@all"
 
     /**
      * Ignore if event is cancelled.

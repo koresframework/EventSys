@@ -51,7 +51,7 @@ import com.github.projectsandstone.eventsys.event.ListenerSpec
 annotation class Listener(
     val ignoreCancelled: Boolean = false,
     val priority: EventPriority = EventPriority.NORMAL,
-    val channel: Int = -1
+    val channel: String = "@all"
 )
 
 
@@ -62,4 +62,4 @@ val KoresAnnotation?.listenerPriority
             ?: EventPriority.NORMAL
 
 val KoresAnnotation?.listenerChannel
-    get() = (this?.values?.get("channel") as? Int) ?: -1
+    get() = (this?.values?.get("channel") as? String) ?: "@all"

@@ -337,11 +337,11 @@ internal object MethodListenerGenerator {
             .annotations(overrideAnnotation())
             .body(
                 source(
-                    returnValue(Types.INT, Literals.INT(listenerSpec.channel))
+                    returnValue(Types.STRING, Literals.STRING(listenerSpec.channel))
                 )
             )
             .name("getChannel")
-            .returnType(Types.INT)
+            .returnType(Types.STRING)
             .build()
 
         methods += getPhaseMethod

@@ -53,7 +53,7 @@ class CommonEventDispatcher(
         event: T,
         eventType: Type,
         dispatcher: Any,
-        channel: Int,
+        channel: String,
         isAsync: Boolean
     ) {
         fun tryDispatch(eventListenerContainer: EventListenerContainer<*>) {
@@ -85,7 +85,7 @@ abstract class HelperEventDispatcher : EventDispatcher {
         event: T,
         eventType: Type,
         dispatcher: Any,
-        channel: Int
+        channel: String
     ) {
         try {
             eventListenerContainer.eventListener.helpOnEvent(event, dispatcher)
@@ -106,11 +106,11 @@ abstract class HelperEventDispatcher : EventDispatcher {
     protected fun check(
         container: EventListenerContainer<*>,
         eventType: Type,
-        channel: Int
+        channel: String
     ): Boolean {
         fun checkType(): Boolean {
             return (container.eventType is GenericType
-                    && container.eventType.isGenericAssignableFrom(eventType))
+                    && (container.eventType as GenericType).isGenericAssignableFrom(eventType))
                     || (container.eventType !is GenericType
                     && container.eventType.isAssignableFrom(eventType))
                     || (container.eventType.asGeneric.bounds.isEmpty()
@@ -119,7 +119,7 @@ abstract class HelperEventDispatcher : EventDispatcher {
 
         val listenerPhase = container.eventListener.channel
 
-        return checkType() && (listenerPhase < 0 || channel < 0 || listenerPhase == channel)
+        return checkType() && (listenerPhase == "@all" || channel == "@all" || listenerPhase == channel)
     }
 
     @Suppress("UNCHECKED_CAST")

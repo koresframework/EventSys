@@ -59,7 +59,7 @@ data class ListenerSpec(
     val ignoreCancelled: Boolean = false,
     val priority: EventPriority = EventPriority.NORMAL,
     val parameters: List<LParameter>,
-    val channel: Int
+    val channel: String
 ) {
 
     data class LParameter internal constructor(

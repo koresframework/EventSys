@@ -96,7 +96,7 @@ interface EventManager {
      * @param dispatcher Dispatcher of the [event].
      * @param channel Channel of listeners to receive event.
      */
-    fun <T : Event> dispatch(event: T, dispatcher: Any, channel: Int) =
+    fun <T : Event> dispatch(event: T, dispatcher: Any, channel: String) =
         this.dispatch(event, getEventType(event), dispatcher, channel)
 
     /**
@@ -108,7 +108,7 @@ interface EventManager {
      * @param dispatcher Dispatcher of the [event].
      */
     fun <T : Event> dispatch(event: T, dispatcher: Any) =
-        this.dispatch(event, dispatcher, -1)
+        this.dispatch(event, dispatcher, "@all")
 
 
     /**
@@ -123,7 +123,7 @@ interface EventManager {
      * @param dispatcher Dispatcher of the [event].
      * @param channel Channel of listeners to receive event.
      */
-    fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any, channel: Int) =
+    fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any, channel: String) =
         this.eventDispatcher.dispatch(event, type, dispatcher, channel, false)
 
     /**
@@ -140,7 +140,7 @@ interface EventManager {
      * @param dispatcher Dispatcher of the [event].
      */
     fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any) {
-        this.dispatch(event, type, dispatcher, -1)
+        this.dispatch(event, type, dispatcher, "@all")
     }
 
     //////////// Async
@@ -155,7 +155,7 @@ interface EventManager {
      * @param channel Channel to dispatch event (`-1` = all).
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, dispatcher: Any, channel: Int) {
+    fun <T : Event> dispatchAsync(event: T, dispatcher: Any, channel: String) {
         this.dispatchAsync(event, getEventType(event), dispatcher, channel)
     }
 
@@ -171,7 +171,7 @@ interface EventManager {
      */
     @Suppress("UNCHECKED_CAST")
     fun <T : Event> dispatchAsync(event: T, dispatcher: Any) =
-        this.dispatchAsync(event, dispatcher, -1)
+        this.dispatchAsync(event, dispatcher, "@all")
 
 
     /**
@@ -189,7 +189,7 @@ interface EventManager {
      * @param channel Channel to dispatch event.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, type: Type, dispatcher: Any, channel: Int) =
+    fun <T : Event> dispatchAsync(event: T, type: Type, dispatcher: Any, channel: String) =
         this.eventDispatcher.dispatch(event, type, dispatcher, channel, false)
 
     /**
@@ -209,7 +209,7 @@ interface EventManager {
      */
     @Suppress("UNCHECKED_CAST")
     fun <T : Event> dispatchAsync(event: T, type: Type, dispatcher: Any) =
-        this.dispatchAsync(event, type, dispatcher, -1)
+        this.dispatchAsync(event, type, dispatcher, "@all")
 
 
     //////////// /Async
@@ -244,5 +244,5 @@ interface EventDispatcher {
      * all listeners), if [isAsync] is true, each listener may be called on different threads,
      * the behavior depends on implementation, but the dispatch will never block current thread.
      */
-    fun <T: Event> dispatch(event: T, eventType: Type, dispatcher: Any, channel: Int, isAsync: Boolean)
+    fun <T: Event> dispatch(event: T, eventType: Type, dispatcher: Any, channel: String, isAsync: Boolean)
 }
