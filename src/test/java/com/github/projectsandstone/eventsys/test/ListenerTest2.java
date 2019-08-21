@@ -28,7 +28,7 @@
 package com.github.projectsandstone.eventsys.test;
 
 import com.github.jonathanxd.iutils.map.MapUtils;
-import com.github.jonathanxd.iutils.opt.specialized.OptObject;
+import com.github.jonathanxd.iutils.opt.OptObject;
 import com.github.projectsandstone.eventsys.event.Event;
 import com.github.projectsandstone.eventsys.event.EventManager;
 import com.github.projectsandstone.eventsys.event.annotation.Filter;

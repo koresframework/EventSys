@@ -119,8 +119,8 @@ internal object EventFactoryClassGenerator {
                 disassembled
             ) as GeneratedEventClass<T>
 
-            if (Debug.FACTORY_GEN_DEBUG) {
-                ClassSaver.save("factorygen", generatedEventClass)
+            if (Debug.isSaveEnabled()) {
+                ClassSaver.save(Debug.FACTORY_GEN_DEBUG, generatedEventClass)
             }
 
             generatedEventClass.javaClass.getConstructor(EventGenerator::class.java)

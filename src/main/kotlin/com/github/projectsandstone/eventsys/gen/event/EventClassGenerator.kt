@@ -168,8 +168,8 @@ internal object EventClassGenerator {
                     disassembled
                 ) as GeneratedEventClass<T>
 
-                if (Debug.EVENT_GEN_DEBUG) {
-                    ClassSaver.save("eventgen", generatedEventClass)
+                if (Debug.isSaveEnabled()) {
+                    ClassSaver.save(Debug.EVENT_GEN_DEBUG, generatedEventClass)
                 }
 
                 return@lazy generatedEventClass.javaClass

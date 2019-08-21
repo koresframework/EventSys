@@ -31,6 +31,7 @@ import com.github.jonathanxd.kores.Instruction
 import com.github.jonathanxd.kores.factory.invokeStatic
 import com.github.jonathanxd.kores.factory.typeSpec
 import com.github.jonathanxd.iutils.opt.Opt
+import com.github.jonathanxd.iutils.opt.OptObject
 import com.github.jonathanxd.iutils.opt.specialized.*
 import com.github.jonathanxd.kores.type.concreteType
 import com.github.jonathanxd.kores.type.koresType
@@ -38,28 +39,28 @@ import java.lang.reflect.Type
 
 fun Type.createNoneRuntime(): Any =
         when (this) { // class.simpleName.capitalize()
-            OptBoolean::class.java -> Opt.noneBoolean()
-            OptChar::class.java -> Opt.noneChar()
-            OptByte::class.java -> Opt.noneByte()
-            OptShort::class.java -> Opt.noneShort()
-            OptInt::class.java -> Opt.noneInt()
-            OptFloat::class.java -> Opt.noneFloat()
-            OptLong::class.java -> Opt.noneLong()
-            OptDouble::class.java -> Opt.noneDouble()
+            OptBoolean::class.java -> OptBoolean.none()
+            OptChar::class.java -> OptChar.none()
+            OptByte::class.java -> OptByte.none()
+            OptShort::class.java -> OptShort.none()
+            OptInt::class.java -> OptInt.none()
+            OptFloat::class.java -> OptFloat.none()
+            OptLong::class.java -> OptLong.none()
+            OptDouble::class.java -> OptDouble.none()
             OptObject::class.java -> Opt.none<Any?>()
             else -> throw IllegalArgumentException("Cannot get primitive type of opt '$this'.")
         }
 
 fun Type.createSomeRuntime(value: Any?): Any =
         when (this) { // class.simpleName.capitalize()
-            OptBoolean::class.java -> Opt.someBoolean(value as Boolean)
-            OptChar::class.java -> Opt.someChar(value as Char)
-            OptByte::class.java -> Opt.someByte(value as Byte)
-            OptShort::class.java -> Opt.someShort(value as Short)
-            OptInt::class.java -> Opt.someInt(value as Int)
-            OptFloat::class.java -> Opt.someFloat(value as Float)
-            OptLong::class.java -> Opt.someLong(value as Long)
-            OptDouble::class.java -> Opt.someDouble(value as Double)
+            OptBoolean::class.java -> OptBoolean.some(value as Boolean)
+            OptChar::class.java -> OptChar.some(value as Char)
+            OptByte::class.java -> OptByte.some(value as Byte)
+            OptShort::class.java -> OptShort.some(value as Short)
+            OptInt::class.java -> OptInt.some(value as Int)
+            OptFloat::class.java -> OptFloat.some(value as Float)
+            OptLong::class.java -> OptLong.some(value as Long)
+            OptDouble::class.java -> OptDouble.some(value as Double)
             OptObject::class.java -> Opt.someNullable(value)
             else -> throw IllegalArgumentException("Cannot get primitive type of opt '$this'.")
         }

@@ -27,21 +27,27 @@
  */
 package com.github.projectsandstone.eventsys
 
+import java.nio.file.Path
 import java.nio.file.Paths
 
 object Debug {
-    private const val SAVE_PATH = "eventsys.debug.dir"
-    private const val DEBUG_PROPERTY = "eventsys.debug"
-    private const val FACTORY_GEN_PROPERTY = "eventsys.debug.factorygen"
-    private const val EVENT_GEN_PROPERTY = "eventsys.debug.eventgen"
-    private const val LISTENER_GEN_PROPERTY = "eventsys.debug.listenergen"
+    private const val KORES_SAVE_ENABLED = "kores.generation.save"
+    private const val KORES_SAVE_PATH = "kores.generation.dir"
 
-    val SAVE_PATH_DEBUG = getSaveProperty()
-    val EVENT_GEN_DEBUG = getDebugProperty(EVENT_GEN_PROPERTY)
-    val FACTORY_GEN_DEBUG = getDebugProperty(FACTORY_GEN_PROPERTY)
-    val LISTENER_GEN_DEBUG = getDebugProperty(LISTENER_GEN_PROPERTY)
+    val EVENT_GEN_DEBUG = getSavePath("event")
+    val FACTORY_GEN_DEBUG = getSavePath("factory")
+    val LISTENER_GEN_DEBUG = getSavePath("listener")
 
-    private fun getDebugProperty(name: String) = System.getProperties()[name]?.equals("true") ?: System.getProperties()[DEBUG_PROPERTY]?.equals("true") ?: false
-    private fun getSaveProperty() = Paths.get(System.getProperties()[SAVE_PATH]?.toString() ?: ".")!!
+    fun isSaveEnabled() = System.getProperties()[KORES_SAVE_ENABLED]?.toString()?.toBoolean()
+            ?: false
+
+    private fun getSavePath(): Path =
+            System.getProperties()["$KORES_SAVE_PATH.eventsys"]?.toString()?.let { Paths.get(it) }
+                    ?: Paths.get(System.getProperties()[KORES_SAVE_PATH]?.toString()
+                            ?: "kores_generation/")
+
+    private fun getSavePath(name: String): Path =
+            System.getProperties()["$KORES_SAVE_PATH.eventsys.$name"]?.toString()?.let { Paths.get(it) }
+                    ?: this.getSavePath()
 
 }

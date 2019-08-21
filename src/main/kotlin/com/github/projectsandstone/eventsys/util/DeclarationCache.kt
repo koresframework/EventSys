@@ -63,8 +63,8 @@ class DeclarationCache {
             it.allInner
         }
 
-    fun getMethods(type: Type) = this[type].run(this::getMethods)
-    fun getInnerClasses(type: Type) = this[type].run(this::getInnerClasses)
+    fun getMethods(type: Type): List<DeclaredMethod> = this[type].run(this::getMethods)
+    fun getInnerClasses(type: Type): List<TypeDeclaration> = this[type].run(this::getInnerClasses)
 }
 
 private val TypeDeclaration.allMethods: List<DeclaredMethod>

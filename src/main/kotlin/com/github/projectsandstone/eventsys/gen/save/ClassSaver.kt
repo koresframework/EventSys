@@ -42,9 +42,7 @@ internal object ClassSaver {
     /**
      * Save a class
      */
-    fun save(moduleName: String, generatedEventClass: GeneratedEventClass<*>) {
-
-        val directory = Debug.SAVE_PATH_DEBUG
+    fun save(directory: Path, generatedEventClass: GeneratedEventClass<*>) {
 
         val className: String = generatedEventClass.javaClass.canonicalName
         val classBytes: ByteArray = generatedEventClass.bytes
@@ -52,8 +50,8 @@ internal object ClassSaver {
 
         val sourceBytes = source.toByteArray(Charset.forName("UTF-8"))
 
-        val saveClass = "$moduleName/class/${className.replace('.', '/')}.class"
-        val saveJava = "$moduleName/disassembled/${className.replace('.', '/')}.disassembled"
+        val saveClass = "${className.replace('.', '/')}.class"
+        val saveJava = "${className.replace('.', '/')}.disassembled"
 
         val resolvedClass = directory.resolve(saveClass)
         val resolvedJava = directory.resolve(saveJava)

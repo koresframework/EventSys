@@ -45,7 +45,6 @@ package com.github.projectsandstone.eventsys.event.annotation
         AnnotationTarget.ANNOTATION_CLASS,
         AnnotationTarget.CLASS,
         AnnotationTarget.CONSTRUCTOR,
-        AnnotationTarget.EXPRESSION,
         AnnotationTarget.FILE,
         AnnotationTarget.FUNCTION,
         AnnotationTarget.LOCAL_VARIABLE,

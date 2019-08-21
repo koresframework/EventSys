@@ -148,8 +148,8 @@ internal object MethodListenerGenerator {
                 ) as GeneratedEventClass<EventListener<Event>>
             }
 
-            if (Debug.LISTENER_GEN_DEBUG) {
-                ClassSaver.save("listenergen", definedClass)
+            if (Debug.isSaveEnabled()) {
+                ClassSaver.save(Debug.LISTENER_GEN_DEBUG, definedClass)
             }
 
             definedClass.javaClass
@@ -183,7 +183,7 @@ internal object MethodListenerGenerator {
     }
 
     private const val eventVariableName: String = "event"
-    private const val ownerVariableName: String = "pluginContainer"
+    private const val ownerVariableName: String = "owner"
     private const val instanceFieldName: String = "\$instance"
 
     private fun genBody(method: MethodDeclaration, targetType: Type, listenerSpec: ListenerSpec):
