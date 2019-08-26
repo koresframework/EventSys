@@ -283,7 +283,7 @@ public MyGenericEvent createMyGenericEvent(TypeInfo eventTypeInfo, Object obj) {
 Bytecode:
 
 ```
-public com.github.projectsandstone.eventsys.test.event.MyGenericEvent createMyGenericEvent(com.github.jonathanxd.iutils.type.TypeInfo, java.lang.Object);
+public com.github.koresframework.eventsys.test.event.MyGenericEvent createMyGenericEvent(com.github.jonathanxd.iutils.type.TypeInfo, java.lang.Object);
 descriptor: (Lcom/github/jonathanxd/iutils/type/TypeInfo;Ljava/lang/Object;)Lcom/github/projectsandstone/eventsys/test/event/MyGenericEvent;
 flags: ACC_PUBLIC
 Code:
@@ -362,7 +362,7 @@ public MyGenericEvent createMyGenericEvent(TypeInfo eventTypeInfo, Object obj) {
 
 Bytecode:
 ```
-public com.github.projectsandstone.eventsys.test.event.MyGenericEvent createMyGenericEvent(com.github.jonathanxd.iutils.type.TypeInfo, java.lang.Object);
+public com.github.koresframework.eventsys.test.event.MyGenericEvent createMyGenericEvent(com.github.jonathanxd.iutils.type.TypeInfo, java.lang.Object);
 descriptor: (Lcom/github/jonathanxd/iutils/type/TypeInfo;Ljava/lang/Object;)Lcom/github/projectsandstone/eventsys/test/event/MyGenericEvent;
 flags: ACC_PUBLIC
 Code:

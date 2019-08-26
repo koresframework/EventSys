@@ -14,7 +14,7 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '5.1.0'
 }
 
-group 'com.github.projectsandstone'
+group 'com.github.koresframework'
 version '1.6.0'
 
 // IDE
