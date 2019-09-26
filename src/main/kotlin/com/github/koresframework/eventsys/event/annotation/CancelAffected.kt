@@ -25,30 +25,14 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.koresframework.eventsys.test.wiki
+package com.github.koresframework.eventsys.event.annotation
 
-import com.github.koresframework.eventsys.event.Event
-import com.github.koresframework.eventsys.event.annotation.Extension
+import com.github.koresframework.eventsys.event.EventListener
 
-interface BuyEvent : Event {
-    val product: Product
-    val amount: Int
-}
-
-interface BusinessRel : Event {
-    val business: Business
-}
-
-interface UserRel {
-    val user: User
-}
-
-data class Business(val id: String)
-data class User(val name: String)
-
-@Extension(extensionClass = ApplyExt::class)
-interface TransactionEvent : Event {
-    var amount: Double
-
-    fun apply(f: (amount: Double) -> Double)
-}
+/**
+ * Marks a listener function as [EventListener.cancelAffected], meaning that, when event is cancelled,
+ * this listener should not be called.
+ */
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.FUNCTION)
+annotation class CancelAffected

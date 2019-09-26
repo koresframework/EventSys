@@ -65,4 +65,10 @@ interface EventListener<in T : Event> {
     val ignoreCancelled
         get() = false
 
+    /**
+     * Whether this event is affected by [Cancellable] annotation or not.
+     */
+    val cancelAffected
+        get() = false
+
 }

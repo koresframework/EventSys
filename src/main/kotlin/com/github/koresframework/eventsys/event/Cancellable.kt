@@ -34,6 +34,17 @@ import com.github.koresframework.eventsys.gen.event.EventClassGenerator
  *
  * If an [Event] is cancelled, all changes must be reverted or cancelled.
  *
+ * By default, `EventSys` does not cancel events when [isCancelled] is set to `true`,
+ * it only does when [EventListener.cancelAffected] is set to `true`.
+ *
+ * When event is cancelled, the first [Cancel affected listener][EventListener.cancelAffected] will switch
+ * the cancel state to `true`, meaning that subsequent [Cancel affected listeners][EventListener.cancelAffected]
+ * will be ignored, even if `isCancelled` is set to `true` again. If cancellation state could be changed
+ * between listeners, use [EventListener.priority] to set priorities.
+ *
+ * [Cancellable] events does not work with async dispatch, they could be dispatched, but will never be ignored,
+ * even if the listener is [EventListener.cancelAffected].
+ *
  * [EventClassGenerator] always generates the [isCancelled] property for [Cancellable] events with `false` as
  * default value.
  */
