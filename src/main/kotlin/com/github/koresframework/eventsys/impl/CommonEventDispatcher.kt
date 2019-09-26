@@ -30,6 +30,7 @@ package com.github.koresframework.eventsys.impl
 import com.github.jonathanxd.kores.type.GenericType
 import com.github.jonathanxd.kores.type.asGeneric
 import com.github.jonathanxd.kores.type.isAssignableFrom
+import com.github.koresframework.eventsys.event.Cancellable
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.event.EventDispatcher
 import com.github.koresframework.eventsys.event.EventListener
@@ -41,21 +42,26 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ThreadFactory
 
 class CommonEventDispatcher(
-    threadFactory: ThreadFactory,
-    override val logger: LoggerInterface,
-    private val listenersProvider: () -> Collection<EventListenerContainer<*>>
+        threadFactory: ThreadFactory,
+        override val logger: LoggerInterface,
+        private val listenersProvider: () -> Collection<EventListenerContainer<*>>
 ) : HelperEventDispatcher() {
 
     private val executor = Executors.newCachedThreadPool(threadFactory)
 
 
     override fun <T : Event> dispatch(
-        event: T,
-        eventType: Type,
-        dispatcher: Any,
-        channel: String,
-        isAsync: Boolean
+            event: T,
+            eventType: Type,
+            dispatcher: Any,
+            channel: String,
+            isAsync: Boolean
     ) {
+
+        val eventIsCancelled =
+                if (event is Cancellable) ({ (event as Cancellable).isCancelled })
+                else ({ false })
+
         fun tryDispatch(eventListenerContainer: EventListenerContainer<*>) {
 
             if (isAsync) {
@@ -63,7 +69,11 @@ class CommonEventDispatcher(
                     dispatchDirect(eventListenerContainer, event, eventType, dispatcher, channel)
                 }
             } else {
-                dispatchDirect(eventListenerContainer, event, eventType, dispatcher, channel)
+                if (eventListenerContainer.eventListener.cancelAffected && eventIsCancelled()) {
+                    return
+                } else {
+                    dispatchDirect(eventListenerContainer, event, eventType, dispatcher, channel)
+                }
             }
         }
 
@@ -81,32 +91,32 @@ abstract class HelperEventDispatcher : EventDispatcher {
 
     @Suppress("NOTHING_TO_INLINE")
     protected inline fun <T : Event> dispatchDirect(
-        eventListenerContainer: EventListenerContainer<*>,
-        event: T,
-        eventType: Type,
-        dispatcher: Any,
-        channel: String
+            eventListenerContainer: EventListenerContainer<*>,
+            event: T,
+            eventType: Type,
+            dispatcher: Any,
+            channel: String
     ) {
         try {
             eventListenerContainer.eventListener.helpOnEvent(event, dispatcher)
         } catch (throwable: Throwable) {
             logger.log(
-                "Cannot dispatch event $event (of type: ${event.eventType})" +
-                        " with provided type '$eventType' to listener " +
-                        "${eventListenerContainer.eventListener} (of event type: ${eventListenerContainer.eventType}) of owner " +
-                        "${eventListenerContainer.owner}. " +
-                        "(Dispatcher: $dispatcher, channel: $channel)",
-                MessageType.EXCEPTION_IN_LISTENER,
-                throwable
+                    "Cannot dispatch event $event (of type: ${event.eventType})" +
+                            " with provided type '$eventType' to listener " +
+                            "${eventListenerContainer.eventListener} (of event type: ${eventListenerContainer.eventType}) of owner " +
+                            "${eventListenerContainer.owner}. " +
+                            "(Dispatcher: $dispatcher, channel: $channel)",
+                    MessageType.EXCEPTION_IN_LISTENER,
+                    throwable
             )
 
         }
     }
 
     protected fun check(
-        container: EventListenerContainer<*>,
-        eventType: Type,
-        channel: String
+            container: EventListenerContainer<*>,
+            eventType: Type,
+            channel: String
     ): Boolean {
         fun checkType(): Boolean {
             return (container.eventType is GenericType
