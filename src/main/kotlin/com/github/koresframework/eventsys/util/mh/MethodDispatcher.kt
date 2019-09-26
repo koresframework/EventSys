@@ -138,6 +138,8 @@ open class MethodDispatcher(
     override val ignoreCancelled: Boolean
         get() = this.listenerSpec.ignoreCancelled
 
+    override val cancelAffected: Boolean
+        get() = this.listenerSpec.cancelAffected
 
     companion object {
         val lookup = MethodHandles.publicLookup()

@@ -346,6 +346,20 @@ internal object MethodListenerGenerator {
 
         methods += getPhaseMethod
 
+        val getCancelAffected = MethodDeclaration.Builder.builder()
+                .modifiers(KoresModifier.PUBLIC)
+                .annotations(overrideAnnotation())
+                .body(
+                        source(
+                                returnValue(Types.BOOLEAN, Literals.BOOLEAN(listenerSpec.cancelAffected))
+                        )
+                )
+                .name("getCancelAffected")
+                .returnType(Types.BOOLEAN)
+                .build()
+
+        methods += getCancelAffected
+
         val ignoreCancelledMethod = MethodDeclaration.Builder.builder()
             .annotations(overrideAnnotation())
             .modifiers(KoresModifier.PUBLIC)

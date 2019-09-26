@@ -190,7 +190,7 @@ interface EventManager {
      */
     @Suppress("UNCHECKED_CAST")
     fun <T : Event> dispatchAsync(event: T, type: Type, dispatcher: Any, channel: String) =
-        this.eventDispatcher.dispatch(event, type, dispatcher, channel, false)
+        this.eventDispatcher.dispatch(event, type, dispatcher, channel, true)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event].

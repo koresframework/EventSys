@@ -58,8 +58,9 @@ class CommonEventDispatcher(
             isAsync: Boolean
     ) {
 
+        val lazyCancelled = lazy { (event as Cancellable).isCancelled }
         val eventIsCancelled =
-                if (event is Cancellable) ({ (event as Cancellable).isCancelled })
+                if (event is Cancellable) ({ lazyCancelled.value })
                 else ({ false })
 
         fun tryDispatch(eventListenerContainer: EventListenerContainer<*>) {
