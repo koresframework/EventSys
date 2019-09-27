@@ -30,6 +30,7 @@ package com.github.koresframework.eventsys.event
 import com.github.koresframework.eventsys.event.annotation.Listener
 import com.github.koresframework.eventsys.gen.event.EventGenerator
 import com.github.koresframework.eventsys.impl.EventListenerContainer
+import com.github.koresframework.eventsys.result.DispatchResult
 import com.github.koresframework.eventsys.util.getEventType
 import java.lang.reflect.Method
 import java.lang.reflect.Type
@@ -139,9 +140,8 @@ interface EventManager {
      * @param type Information of generic event type.
      * @param dispatcher Dispatcher of the [event].
      */
-    fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any) {
+    fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any) =
         this.dispatch(event, type, dispatcher, "@all")
-    }
 
     //////////// Async
 
@@ -155,9 +155,8 @@ interface EventManager {
      * @param channel Channel to dispatch event (`-1` = all).
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, dispatcher: Any, channel: String) {
+    fun <T : Event> dispatchAsync(event: T, dispatcher: Any, channel: String) =
         this.dispatchAsync(event, getEventType(event), dispatcher, channel)
-    }
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
@@ -244,5 +243,5 @@ interface EventDispatcher {
      * all listeners), if [isAsync] is true, each listener may be called on different threads,
      * the behavior depends on implementation, but the dispatch will never block current thread.
      */
-    fun <T: Event> dispatch(event: T, eventType: Type, dispatcher: Any, channel: String, isAsync: Boolean)
+    fun <T: Event> dispatch(event: T, eventType: Type, dispatcher: Any, channel: String, isAsync: Boolean): DispatchResult<T>
 }

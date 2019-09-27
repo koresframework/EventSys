@@ -27,6 +27,8 @@
  */
 package com.github.koresframework.eventsys.event
 
+import com.github.koresframework.eventsys.result.ListenResult
+
 /**
  * Listen for an [Event].
  *
@@ -43,7 +45,7 @@ interface EventListener<in T : Event> {
      * @param event Event
      * @param dispatcher Dispatcher of the [event].
      */
-    fun onEvent(event: T, dispatcher: Any)
+    fun onEvent(event: T, dispatcher: Any): ListenResult
 
     /**
      * Priority of event, this priority will be used to sort [EventListener] in listener collection.

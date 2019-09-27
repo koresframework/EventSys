@@ -27,8 +27,6 @@
  */
 package com.github.koresframework.eventsys.util
 
-import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.iutils.kt.typeInfo
 import com.github.jonathanxd.kores.type.genericTypeOf
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.event.EventListener
@@ -36,6 +34,7 @@ import com.github.koresframework.eventsys.event.EventManager
 import com.github.koresframework.eventsys.extension.ExtensionSpecification
 import com.github.koresframework.eventsys.gen.event.EventGenerator
 import com.github.koresframework.eventsys.gen.event.PropertyInfo
+import com.github.koresframework.eventsys.result.ListenResult
 
 /**
  * Creates implementation class of event [T].
@@ -84,7 +83,7 @@ inline fun <reified T : Event> EventManager.registerListener(plugin: Any, eventL
     this.registerListener(plugin, genericTypeOf<T>(), eventListener)
 }
 
-inline fun <T : Event> EventListener(crossinline f: (event: T, dispatcher: Any) -> Unit): EventListener<T> =
+inline fun <T : Event> EventListener(crossinline f: (event: T, dispatcher: Any) -> ListenResult): EventListener<T> =
         object : EventListener<T> {
             override fun onEvent(event: T, dispatcher: Any) = f(event, dispatcher)
         }
