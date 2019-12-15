@@ -71,7 +71,7 @@ class EventsWiki {
 
         manager.dispatch(event, this)
 
-        manager.registerListener<BuyEvent>(this, BuyEvent::class.java, EventListener { theEvent, _ ->
+        manager.eventListenerRegistry.registerListener<BuyEvent>(this, BuyEvent::class.java, EventListener { theEvent, _ ->
             Assert.assertEquals("USB Adapter", theEvent.product.name)
             Assert.assertEquals(10.0, theEvent.product.price, 0.0)
             Assert.assertEquals(5, theEvent.amount)

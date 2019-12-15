@@ -57,7 +57,7 @@ class CancellableTest {
     @Test
     fun cancellable() {
         val eventManager = DefaultEventManager()
-        eventManager.registerListeners(this, this)
+        eventManager.eventListenerRegistry.registerListeners(this, this)
 
         val user = User(id = 0, name = "Test", email = "test@test.com")
         val factory = eventManager.eventGenerator.createFactory<EventFactory>().resolve()
@@ -74,7 +74,7 @@ class CancellableTest {
     @Test
     fun cancellableAsync() {
         val eventManager = DefaultEventManager()
-        eventManager.registerListeners(this, this)
+        eventManager.eventListenerRegistry.registerListeners(this, this)
 
         val user = User(id = 0, name = "Test", email = "test@test.com")
         val factory = eventManager.eventGenerator.createFactory<EventFactory>().resolve()

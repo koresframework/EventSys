@@ -27,6 +27,7 @@
  */
 package com.github.koresframework.eventsys.impl
 
+import com.github.jonathanxd.kores.type.isAssignableFrom
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.event.EventListener
 import java.lang.reflect.Type
@@ -35,4 +36,10 @@ data class EventListenerContainer<in T : Event>(
     val owner: Any,
     val eventType: Type,
     val eventListener: EventListener<T>
-)
+) {
+    fun isAssignableFrom(eventType: Type) =
+            this.eventType.isAssignableFrom(eventType)
+
+    fun isSuperTypeOf(eventType: Type) =
+            eventType.isAssignableFrom(this.eventType)
+}

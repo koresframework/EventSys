@@ -27,6 +27,7 @@
  */
 package com.github.koresframework.eventsys.event
 
+import com.github.koresframework.eventsys.channel.ChannelSet
 import com.github.koresframework.eventsys.result.ListenResult
 
 /**
@@ -59,7 +60,7 @@ interface EventListener<in T : Event> {
      * @see ListenerSpec.channel
      */
     val channel: String
-        get() = "@all"
+        get() = ChannelSet.Expression.ALL
 
     /**
      * Ignore if event is cancelled.

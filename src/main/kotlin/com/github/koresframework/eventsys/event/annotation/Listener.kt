@@ -29,6 +29,7 @@ package com.github.koresframework.eventsys.event.annotation
 
 import com.github.jonathanxd.kores.base.EnumValue
 import com.github.jonathanxd.kores.base.KoresAnnotation
+import com.github.koresframework.eventsys.channel.ChannelSet
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.event.EventPriority
 import com.github.koresframework.eventsys.event.ListenerSpec
@@ -51,7 +52,7 @@ import com.github.koresframework.eventsys.event.ListenerSpec
 annotation class Listener(
     val ignoreCancelled: Boolean = false,
     val priority: EventPriority = EventPriority.NORMAL,
-    val channel: String = "@all"
+    val channel: String = ChannelSet.Expression.ALL
 )
 
 
@@ -62,4 +63,4 @@ val KoresAnnotation?.listenerPriority
             ?: EventPriority.NORMAL
 
 val KoresAnnotation?.listenerChannel
-    get() = (this?.values?.get("channel") as? String) ?: "@all"
+    get() = (this?.values?.get("channel") as? String) ?: ChannelSet.Expression.ALL

@@ -30,12 +30,12 @@ package com.github.koresframework.eventsys.impl
 import com.github.jonathanxd.kores.type.GenericType
 import com.github.jonathanxd.kores.type.asGeneric
 import com.github.jonathanxd.kores.type.isAssignableFrom
+import com.github.koresframework.eventsys.channel.ChannelSet
 import com.github.koresframework.eventsys.error.EventCancelledError
 import com.github.koresframework.eventsys.error.ExceptionListenError
-import com.github.koresframework.eventsys.event.Cancellable
-import com.github.koresframework.eventsys.event.Event
-import com.github.koresframework.eventsys.event.EventDispatcher
+import com.github.koresframework.eventsys.event.*
 import com.github.koresframework.eventsys.event.EventListener
+import com.github.koresframework.eventsys.gen.event.EventGenerator
 import com.github.koresframework.eventsys.logging.LoggerInterface
 import com.github.koresframework.eventsys.logging.MessageType
 import com.github.koresframework.eventsys.result.DispatchResult
@@ -44,17 +44,44 @@ import com.github.koresframework.eventsys.result.ListenResult
 import com.github.koresframework.eventsys.util.isGenericAssignableFrom
 import java.lang.reflect.Type
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadFactory
 import java.util.function.Supplier
+import kotlin.Comparator
 
-class CommonEventDispatcher(
+/**
+ * Common Event dispatcher implementation
+ *
+ * @param threadFactory Thread factory for async dispatch
+ * @param logger Logger interface for error logging.
+ * @param eventGenerator Event generator instance to generate listener methods.
+ */
+open class CommonEventDispatcher(
         threadFactory: ThreadFactory,
+        override val eventGenerator: EventGenerator,
         override val logger: LoggerInterface,
-        private val listenersProvider: () -> Collection<EventListenerContainer<*>>
-) : HelperEventDispatcher() {
+        val eventListenerRegistry: EventListenerRegistry
+) : AbstractEventDispatcher() {
 
-    private val executor = Executors.newCachedThreadPool(threadFactory)
+    override val executor = Executors.newCachedThreadPool(threadFactory)
+
+    override fun <T : Event> getListeners(event: T, eventType: Type, channel: String): Iterable<EventListenerContainer<*>> {
+        return this.eventListenerRegistry.getListenersContainers<T>(event, eventType, channel);
+    }
+}
+
+abstract class AbstractEventDispatcher : EventDispatcher {
+
+    protected abstract val logger: LoggerInterface
+    protected abstract val executor: Executor
+    protected abstract val eventGenerator: EventGenerator
+
+    protected abstract fun <T : Event> getListeners(
+            event: T,
+            eventType: Type,
+            channel: String
+    ): Iterable<EventListenerContainer<*>>
 
     override fun <T : Event> dispatch(
             event: T,
@@ -93,7 +120,7 @@ class CommonEventDispatcher(
                     ))
                 }
 
-        val dispatches = listenersProvider().filter {
+        val dispatches = this.getListeners(event, eventType, channel).filter {
             this.check(container = it, eventType = eventType, channel = channel)
         }.map {
             tryDispatch(it)
@@ -101,11 +128,6 @@ class CommonEventDispatcher(
 
         return DispatchResult(dispatches)
     }
-}
-
-abstract class HelperEventDispatcher : EventDispatcher {
-
-    protected abstract val logger: LoggerInterface
 
     @Suppress("NOTHING_TO_INLINE")
     protected inline fun <T : Event> dispatchDirect(
@@ -148,7 +170,7 @@ abstract class HelperEventDispatcher : EventDispatcher {
 
         val listenerPhase = container.eventListener.channel
 
-        return checkType() && (listenerPhase == "@all" || channel == "@all" || listenerPhase == channel)
+        return checkType() && (ChannelSet.Expression.isAll(listenerPhase) || ChannelSet.Expression.isAll(channel) || listenerPhase == channel)
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -156,3 +178,12 @@ abstract class HelperEventDispatcher : EventDispatcher {
         return this.onEvent(event as T, dispatcher)
     }
 }
+
+fun eventListenerContainerComparator(sorter: Comparator<EventListener<*>>) =
+        Comparator<EventListenerContainer<*>> { o1, o2 ->
+            val sort = sorter.compare(o1.eventListener, o2.eventListener)
+
+            if (sort == 0)
+                -1
+            else sort
+        }
