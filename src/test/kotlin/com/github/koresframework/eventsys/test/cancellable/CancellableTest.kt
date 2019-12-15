@@ -29,19 +29,16 @@ package com.github.koresframework.eventsys.test.cancellable
 
 import com.github.koresframework.eventsys.event.Cancellable
 import com.github.koresframework.eventsys.event.Event
-import com.github.koresframework.eventsys.event.EventManager
 import com.github.koresframework.eventsys.event.EventPriority
 import com.github.koresframework.eventsys.event.annotation.CancelAffected
-import com.github.koresframework.eventsys.event.annotation.Filter
 import com.github.koresframework.eventsys.event.annotation.Listener
 import com.github.koresframework.eventsys.event.annotation.Name
 import com.github.koresframework.eventsys.impl.DefaultEventManager
+import com.github.koresframework.eventsys.result.ListenResult
 import com.github.koresframework.eventsys.util.createFactory
 import org.junit.Assert
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Test
-import kotlin.reflect.typeOf
 
 class CancellableTest {
     var call = 0
@@ -60,7 +57,7 @@ class CancellableTest {
     @Test
     fun cancellable() {
         val eventManager = DefaultEventManager()
-        eventManager.registerListeners(this, this)
+        eventManager.eventListenerRegistry.registerListeners(this, this)
 
         val user = User(id = 0, name = "Test", email = "test@test.com")
         val factory = eventManager.eventGenerator.createFactory<EventFactory>().resolve()
@@ -73,21 +70,28 @@ class CancellableTest {
         Assert.assertEquals(0, this.call4)
     }
 
-    @Ignore
+
     @Test
     fun cancellableAsync() {
         val eventManager = DefaultEventManager()
-        eventManager.registerListeners(this, this)
+        eventManager.eventListenerRegistry.registerListeners(this, this)
 
         val user = User(id = 0, name = "Test", email = "test@test.com")
         val factory = eventManager.eventGenerator.createFactory<EventFactory>().resolve()
 
-        eventManager.dispatchAsync(factory.createUserRegisterEvent(user), this)
+        val dispatchResult = eventManager.dispatchAsync(factory.createUserRegisterEvent(user), this)
+
+        val results = dispatchResult.toCompletable().join()
+
+        val distinctBy = results.distinctBy { it.eventListenerContainer.eventListener }
 
         Assert.assertEquals(1, this.call)
         Assert.assertEquals(1, this.call2)
         Assert.assertEquals(1, this.call3)
         Assert.assertEquals(1, this.call4)
+        Assert.assertEquals(4, distinctBy.size)
+        Assert.assertTrue(distinctBy.all { it.result is ListenResult.Value })
+        Assert.assertEquals(listOf(true, true, true, true), distinctBy.map { (it.result as ListenResult.Value).value }.toList())
     }
 
     interface EventFactory {
@@ -95,27 +99,31 @@ class CancellableTest {
     }
 
     @Listener(priority = EventPriority.FIRST)
-    fun onUserRegister(userRegisterEvent: UserRegisterEvent) {
+    fun onUserRegister(userRegisterEvent: UserRegisterEvent): Boolean {
         call++
         userRegisterEvent.isCancelled = true
+        return true
     }
 
     @Listener
     @CancelAffected
-    fun onUserRegister2(userRegisterEvent: UserRegisterEvent) {
+    fun onUserRegister2(userRegisterEvent: UserRegisterEvent): Boolean {
         call2++
+        return true
     }
 
     @Listener(priority = EventPriority.HIGH)
-    fun onUserRegister3(userRegisterEvent: UserRegisterEvent) {
+    fun onUserRegister3(userRegisterEvent: UserRegisterEvent): Boolean {
         call3++
         userRegisterEvent.isCancelled = false
+        return true
     }
 
     @Listener(priority = EventPriority.LAST)
     @CancelAffected
-    fun onUserRegister4(userRegisterEvent: UserRegisterEvent) {
+    fun onUserRegister4(userRegisterEvent: UserRegisterEvent): Boolean {
         call4++
+        return true
     }
 
     interface UserRegisterEvent : Event, Cancellable {

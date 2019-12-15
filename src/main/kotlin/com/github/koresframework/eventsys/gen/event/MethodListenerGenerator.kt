@@ -39,6 +39,8 @@ import com.github.jonathanxd.kores.factory.*
 import com.github.jonathanxd.kores.literal.Literals
 import com.github.jonathanxd.kores.type.*
 import com.github.koresframework.eventsys.Debug
+import com.github.koresframework.eventsys.error.ListenError
+import com.github.koresframework.eventsys.error.PropertyNotFoundError
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.event.EventListener
 import com.github.koresframework.eventsys.event.EventPriority
@@ -51,6 +53,7 @@ import com.github.koresframework.eventsys.gen.GeneratedEventClass
 import com.github.koresframework.eventsys.gen.ResolvableDeclaration
 import com.github.koresframework.eventsys.gen.save.ClassSaver
 import com.github.koresframework.eventsys.reflect.getName
+import com.github.koresframework.eventsys.result.ListenResult
 import com.github.koresframework.eventsys.util.*
 import java.lang.reflect.Type
 
@@ -62,9 +65,9 @@ internal object MethodListenerGenerator {
     private val nameCaching = NameCaching()
 
     fun create(
-        declaration: ResolvableDeclaration<Class<out EventListener<Event>>>,
-        method: MethodDeclaration,
-        instance: Any?
+            declaration: ResolvableDeclaration<Class<out EventListener<Event>>>,
+            method: MethodDeclaration,
+            instance: Any?
     ): ResolvableDeclaration<EventListener<Event>> {
         return ResolvableDeclaration(declaration.classDeclaration) {
             val klass = declaration.resolve()
@@ -86,10 +89,10 @@ internal object MethodListenerGenerator {
     }
 
     fun create(
-        owner: Any,
-        method: MethodDeclaration,
-        instance: Any?,
-        listenerSpec: ListenerSpec
+            owner: Any,
+            method: MethodDeclaration,
+            instance: Any?,
+            listenerSpec: ListenerSpec
     ): ResolvableDeclaration<EventListener<Event>> {
 
         val declaration = this.createClass(owner::class.java, method, listenerSpec)
@@ -116,9 +119,9 @@ internal object MethodListenerGenerator {
 
     @Suppress("UNCHECKED_CAST")
     fun createClass(
-        targetType: Type,
-        method: MethodDeclaration,
-        listenerSpec: ListenerSpec
+            targetType: Type,
+            method: MethodDeclaration,
+            listenerSpec: ListenerSpec
     ): ResolvableDeclaration<Class<out EventListener<Event>>> {
         val codeClass = createClassDeclaration(targetType, method, listenerSpec)
 
@@ -135,16 +138,16 @@ internal object MethodListenerGenerator {
 
             val definedClass = if (klass is Class<*>) {
                 EventGenClassLoader.defineClass(
-                    codeClass,
-                    bytes,
-                    lazy { bytecodeClass.disassembledCode },
-                    klass.classLoader
+                        codeClass,
+                        bytes,
+                        lazy { bytecodeClass.disassembledCode },
+                        klass.classLoader
                 ) as GeneratedEventClass<EventListener<Event>>
             } else {
                 EventGenClassLoader.defineClass(
-                    codeClass,
-                    bytes,
-                    lazy { bytecodeClass.disassembledCode }
+                        codeClass,
+                        bytes,
+                        lazy { bytecodeClass.disassembledCode }
                 ) as GeneratedEventClass<EventListener<Event>>
             }
 
@@ -158,9 +161,9 @@ internal object MethodListenerGenerator {
 
     @Suppress("UNCHECKED_CAST")
     private fun createClassDeclaration(
-        targetType: Type,
-        method: MethodDeclaration,
-        listenerSpec: ListenerSpec
+            targetType: Type,
+            method: MethodDeclaration,
+            listenerSpec: ListenerSpec
     ): ClassDeclaration {
         val baseCanonicalName = "${EventListener::class.java.`package`.name}.generated."
         val declaringName = targetType.canonicalName.replace('.', '_')
@@ -172,14 +175,14 @@ internal object MethodListenerGenerator {
         val (field, constructor, methods) = genBody(method, targetType, listenerSpec)
 
         return ClassDeclaration.Builder.builder()
-            .modifiers(KoresModifier.PUBLIC)
-            .qualifiedName(name)
-            .implementations(Generic.type(EventListener::class.java.koresType).of(eventType.toGeneric))
-            .superClass(Types.OBJECT)
-            .fields(field?.let(::listOf) ?: emptyList())
-            .constructors(constructor?.let(::listOf) ?: emptyList())
-            .methods(methods)
-            .build()
+                .modifiers(KoresModifier.PUBLIC)
+                .qualifiedName(name)
+                .implementations(Generic.type(EventListener::class.java.koresType).of(eventType.toGeneric))
+                .superClass(Types.OBJECT)
+                .fields(field?.let(::listOf) ?: emptyList())
+                .constructors(constructor?.let(::listOf) ?: emptyList())
+                .methods(methods)
+                .build()
     }
 
     private const val eventVariableName: String = "event"
@@ -194,33 +197,33 @@ internal object MethodListenerGenerator {
         val (field, constructor) = if (!isStatic) {
 
             fieldDec()
-                .modifiers(KoresModifier.PRIVATE, KoresModifier.FINAL)
-                .type(targetType)
-                .name(instanceFieldName)
-                .build() to constructorDec()
-                .modifiers(KoresModifier.PUBLIC)
-                .parameters(parameter(type = targetType, name = instanceFieldName))
-                .body(
-                    source(
-                        setFieldValue(
-                            localization = Alias.THIS,
-                            target = Access.THIS,
-                            type = targetType,
-                            name = instanceFieldName,
-                            value = accessVariable(targetType, instanceFieldName)
-                        )
+                    .modifiers(KoresModifier.PRIVATE, KoresModifier.FINAL)
+                    .type(targetType)
+                    .name(instanceFieldName)
+                    .build() to constructorDec()
+                    .modifiers(KoresModifier.PUBLIC)
+                    .parameters(parameter(type = targetType, name = instanceFieldName))
+                    .body(
+                            source(
+                                    setFieldValue(
+                                            localization = Alias.THIS,
+                                            target = Access.THIS,
+                                            type = targetType,
+                                            name = instanceFieldName,
+                                            value = accessVariable(targetType, instanceFieldName)
+                                    )
+                            )
                     )
-                )
-                .build()
+                    .build()
         } else null to null
 
         return Triple(field, constructor, genMethods(method, targetType, listenerSpec))
     }
 
     private fun genMethods(
-        method: MethodDeclaration,
-        targetType: Type,
-        listenerSpec: ListenerSpec
+            method: MethodDeclaration,
+            targetType: Type,
+            listenerSpec: ListenerSpec
     ): List<MethodDeclaration> {
         val methods = mutableListOf<MethodDeclaration>()
 
@@ -250,27 +253,27 @@ internal object MethodListenerGenerator {
                             && typeInfo.bounds.isNotEmpty()
                     ) {
                         body.addAll(
-                            this.callGetPropertyDirectOn(
-                                accessEventVar,
-                                name,
-                                typeInfo.bounds[0].type,
-                                true,
-                                param.isOptional,
-                                param.optType,
-                                param.shouldLookup
-                            )
+                                this.callGetPropertyDirectOn(
+                                        accessEventVar,
+                                        name,
+                                        typeInfo.bounds[0].type,
+                                        true,
+                                        param.isOptional,
+                                        param.optType,
+                                        param.shouldLookup
+                                )
                         )
                     } else {
                         body.addAll(
-                            this.callGetPropertyDirectOn(
-                                accessEventVar,
-                                name,
-                                typeInfo,
-                                false,
-                                param.isOptional,
-                                param.optType,
-                                param.shouldLookup
-                            )
+                                this.callGetPropertyDirectOn(
+                                        accessEventVar,
+                                        name,
+                                        typeInfo,
+                                        false,
+                                        param.isOptional,
+                                        param.optType,
+                                        param.shouldLookup
+                                )
                         )
                     }
 
@@ -279,70 +282,98 @@ internal object MethodListenerGenerator {
                 }
             }
 
+            val isVoid = method.typeSpec.returnType.`is`(Types.VOID)
+            val isListenResult = method.typeSpec.returnType.`is`(typeOf<ListenResult>())
+                    || method.typeSpec.returnType.`is`(typeOf<ListenResult.Value>())
+                    || method.typeSpec.returnType.`is`(typeOf<ListenResult.Failed>())
 
-            body += invoke(
-                invokeType = if (isStatic) InvokeType.INVOKE_STATIC else InvokeType.get(
-                    targetType
-                ),
-                localization = targetType,
-                target = if (isStatic) Access.STATIC else accessThisField(
-                    targetType,
-                    instanceFieldName
-                ),
-                name = method.name,
-                spec = method.typeSpec,
-                arguments = arguments
+            val invoke = invoke(
+                    invokeType = if (isStatic) InvokeType.INVOKE_STATIC else InvokeType.get(
+                            targetType
+                    ),
+                    localization = targetType,
+                    target = if (isStatic) Access.STATIC else accessThisField(
+                            targetType,
+                            instanceFieldName
+                    ),
+                    name = method.name,
+                    spec = method.typeSpec,
+                    arguments = arguments
             )
+
+            val returnValue = if (!isListenResult) {
+                val valueArgument: Instruction =
+                        if (isVoid) accessStaticField(typeOf<Unit>(), typeOf<Unit>(), "INSTANCE")
+                        else invoke
+
+                typeOf<ListenResult.Value>().invokeConstructor(
+                        constructorTypeSpec(Types.OBJECT),
+                        listOf(valueArgument)
+                )
+            } else {
+                invoke
+            }
+
+            val returnExpr = returnValue(typeOf<ListenResult>(),
+                    returnValue
+            )
+
+            if (isVoid) {
+                body += invoke
+                body += returnExpr
+            } else {
+                body += returnExpr
+            }
 
             return body
         }
 
         val onEvent = MethodDeclaration.Builder.builder()
-            .annotations(overrideAnnotation())
-            .modifiers(KoresModifier.PUBLIC)
-            .body(genOnEventBody())
-            .returnType(Types.VOID)
-            .name("onEvent")
-            .parameters(
-                parameter(type = eventType, name = eventVariableName),
-                parameter(type = Any::class.java, name = ownerVariableName)
-            )
-            .build()
+                .annotations(overrideAnnotation())
+                .modifiers(KoresModifier.PUBLIC)
+                .body(genOnEventBody())
+                .returnType(ListenResult::class.java)
+                .name("onEvent")
+                .parameters(
+                        parameter(type = eventType, name = eventVariableName),
+                        parameter(type = Any::class.java, name = ownerVariableName)
+                )
+                .build()
 
         methods += onEvent
 
         val getPriorityMethod = MethodDeclaration.Builder.builder()
-            .annotations(overrideAnnotation())
-            .modifiers(KoresModifier.PUBLIC)
-            .body(
-                source(
-                    returnValue(
-                        EventPriority::class.java,
-                        accessStaticField(
-                            EventPriority::class.java,
-                            EventPriority::class.java,
-                            listenerSpec.priority.name
+                .annotations(overrideAnnotation())
+                .modifiers(KoresModifier.PUBLIC)
+                .body(
+                        source(
+                                returnValue(
+                                        EventPriority::class.java,
+                                        accessStaticField(
+                                                EventPriority::class.java,
+                                                EventPriority::class.java,
+                                                listenerSpec.priority.name
+                                        )
+                                )
                         )
-                    )
                 )
-            )
-            .name("getPriority")
-            .returnType(EventPriority::class.java.koresType)
-            .build()
+                .name("getPriority")
+                .returnType(EventPriority::class.java.koresType)
+                .build()
 
         methods += getPriorityMethod
 
         val getPhaseMethod = MethodDeclaration.Builder.builder()
-            .modifiers(KoresModifier.PUBLIC)
-            .annotations(overrideAnnotation())
-            .body(
-                source(
-                    returnValue(Types.STRING, Literals.STRING(listenerSpec.channel))
+                .modifiers(KoresModifier.PUBLIC)
+                .annotations(overrideAnnotation())
+                .body(
+                        source(
+                                returnValue(Types.STRING, Literals.STRING(listenerSpec.channel))
+                        )
                 )
-            )
-            .name("getChannel")
-            .returnType(Types.STRING)
-            .build()
+                .name("getChannel")
+                .returnType(Types.STRING)
+                .build()
 
         methods += getPhaseMethod
 
@@ -361,33 +392,33 @@ internal object MethodListenerGenerator {
         methods += getCancelAffected
 
         val ignoreCancelledMethod = MethodDeclaration.Builder.builder()
-            .annotations(overrideAnnotation())
-            .modifiers(KoresModifier.PUBLIC)
-            .body(
-                source(
-                    returnValue(Types.BOOLEAN, Literals.BOOLEAN(listenerSpec.ignoreCancelled))
+                .annotations(overrideAnnotation())
+                .modifiers(KoresModifier.PUBLIC)
+                .body(
+                        source(
+                                returnValue(Types.BOOLEAN, Literals.BOOLEAN(listenerSpec.ignoreCancelled))
+                        )
                 )
-            )
-            .name("getIgnoreCancelled")
-            .returnType(Types.BOOLEAN)
-            .build()
+                .name("getIgnoreCancelled")
+                .returnType(Types.BOOLEAN)
+                .build()
 
         methods += ignoreCancelledMethod
 
         val toStringMethod = MethodDeclaration.Builder.builder()
-            .annotations(overrideAnnotation())
-            .modifiers(KoresModifier.PUBLIC)
-            .body(
-                source(
-                    returnValue(
-                        Types.STRING,
-                        Literals.STRING("GeneratedMethodListener[\"${method.toSimpleString()}\"]")
-                    )
+                .annotations(overrideAnnotation())
+                .modifiers(KoresModifier.PUBLIC)
+                .body(
+                        source(
+                                returnValue(
+                                        Types.STRING,
+                                        Literals.STRING("GeneratedMethodListener[\"${method.toSimpleString()}\"]")
+                                )
+                        )
                 )
-            )
-            .name("toString")
-            .returnType(Types.STRING)
-            .build()
+                .name("toString")
+                .returnType(Types.STRING)
+                .build()
 
         methods += toStringMethod
 
@@ -397,50 +428,58 @@ internal object MethodListenerGenerator {
     private fun getPropertyAccessName(name: String) = "prop\$$name"
 
     private fun callGetPropertyDirectOn(
-        target: Instruction,
-        name: String,
-        type: Type,
-        propertyOnly: Boolean,
-        isOptional: Boolean,
-        optType: Type?,
-        shouldLookup: Boolean
+            target: Instruction,
+            name: String,
+            type: Type,
+            propertyOnly: Boolean,
+            isOptional: Boolean,
+            optType: Type?,
+            shouldLookup: Boolean
     ): Instructions {
 
         val source = MutableInstructions.create()
 
         val getPropertyMethod = invokeInterface(
-            PropertyHolder::class.java, target,
-            when {
-                shouldLookup -> "lookup"
-                propertyOnly -> "getProperty"
-                else -> "getGetterProperty"
-            },
-            typeSpec(
-                if (propertyOnly || shouldLookup) Property::class.java else GetterProperty::class.java,
-                Class::class.java,
-                String::class.java
-            ),
-            listOf(Literals.CLASS(type), Literals.STRING(name))
+                PropertyHolder::class.java, target,
+                when {
+                    shouldLookup -> "lookup"
+                    propertyOnly -> "getProperty"
+                    else -> "getGetterProperty"
+                },
+                typeSpec(
+                        if (propertyOnly || shouldLookup) Property::class.java else GetterProperty::class.java,
+                        Class::class.java,
+                        String::class.java
+                ),
+                listOf(Literals.CLASS(type), Literals.STRING(name))
         )
 
         val getPropertyVariable = variable(
-            Property::class.java,
-            "access\$$name",
-            getPropertyMethod
+                Property::class.java,
+                "access\$$name",
+                getPropertyMethod
         )
 
         val propertyValue =
-            variable(if (propertyOnly) Property::class.java else type, getPropertyAccessName(name))
+                variable(if (propertyOnly) Property::class.java else type, getPropertyAccessName(name))
 
         source += getPropertyVariable
         source += propertyValue
 
         val elsePart: Instruction =
-            if (isOptional) {
-                setVariableValue(propertyValue, optType?.createNone() ?: Literals.NULL)
-            } else {
-                returnVoid()
-            }
+                if (isOptional) {
+                    setVariableValue(propertyValue, optType?.createNone() ?: Literals.NULL)
+                } else {
+                    returnValue(typeOf<ListenResult>(),
+                            typeOf<ListenResult.Failed>().invokeConstructor(
+                                    constructorTypeSpec(typeOf<ListenError>()),
+                                    listOf(typeOf<PropertyNotFoundError>().invokeConstructor(
+                                            constructorTypeSpec(Types.STRING, typeOf<Type>()),
+                                            listOf(Literals.STRING(name), Literals.TYPE(type))
+                                    ))
+                            )
+                    )
+                }
 
         // if (null) prop$name = null/Opt.none() or if (null) return
 
@@ -456,27 +495,27 @@ internal object MethodListenerGenerator {
         val reifType = type.getReifiedType()
 
         val ret = cast(
-            reifType, type, invokeInterface(
+                reifType, type, invokeInterface(
                 getterType, cast(GetterProperty::class.java, getterType, getPropMethod),
                 type.getInvokeName(),
                 typeSpec(reifType),
                 emptyList()
-            )
+        )
         )
 
         source += ifStatement(
-            checkNotNull(getPropMethod/*Dup(getPropMethod, GetterProperty::class.koresType)*/),
-            // Body
-            source(setVariableValue(propertyValue, optType?.createSome(ret) ?: ret)),
-            // Else
-            source(
-                //Pop,
-                elsePart
-            )
+                checkNotNull(getPropMethod/*Dup(getPropMethod, GetterProperty::class.koresType)*/),
+                // Body
+                source(setVariableValue(propertyValue, optType?.createSome(ret) ?: ret)),
+                // Else
+                source(
+                        //Pop,
+                        elsePart
+                )
         )
         return source
     }
 
     private fun checkNull(part: Typed, else_: Instruction) =
-        ifStatement(checkNull(part as Instruction), source(else_))
+            ifStatement(checkNull(part as Instruction), source(else_))
 }

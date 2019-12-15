@@ -27,11 +27,10 @@
  */
 package com.github.koresframework.eventsys.event
 
-import com.github.koresframework.eventsys.event.annotation.Listener
+import com.github.koresframework.eventsys.channel.ChannelSet
 import com.github.koresframework.eventsys.gen.event.EventGenerator
-import com.github.koresframework.eventsys.impl.EventListenerContainer
+import com.github.koresframework.eventsys.result.DispatchResult
 import com.github.koresframework.eventsys.util.getEventType
-import java.lang.reflect.Method
 import java.lang.reflect.Type
 
 /**
@@ -45,49 +44,9 @@ import java.lang.reflect.Type
 interface EventManager {
 
     /**
-     * Event generator.
-     */
-    val eventGenerator: EventGenerator
-
-    /**
      * Event dispatcher
      */
     val eventDispatcher: EventDispatcher
-
-    /**
-     * Register a [EventListener] for a [Event].
-     *
-     * To register class instance listeners use [registerListeners], to register a specific method use
-     * [registerMethodListener].
-     *
-     * @param owner Owner of the [eventListener]
-     * @param eventType Type of event
-     * @param eventListener Listener of the event.
-     * @see [registerListeners]
-     */
-    fun <T : Event> registerListener(owner: Any, eventType: Type, eventListener: EventListener<T>)
-
-    /**
-     * Register all method event listeners inside the [listener] instance.
-     *
-     * Listener methods must be annotated with [Listener] annotation.
-     *
-     * @param owner Owner of the [listener].
-     * @param listener Listener instance to be used to create a [MethodEventListener].
-     */
-    fun registerListeners(owner: Any, listener: Any)
-
-    /**
-     * Register [method] as [EventListener]. This method must be annotated with [Listener] annotation.
-     *
-     * @param owner Owner of the [method]
-     * @param instance Instance used to invoke method.
-     * @param method Method to register
-     */
-    fun registerMethodListener(owner: Any,
-                               eventClass: Type,
-                               instance: Any?,
-                               method: Method)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
@@ -97,7 +56,7 @@ interface EventManager {
      * @param channel Channel of listeners to receive event.
      */
     fun <T : Event> dispatch(event: T, dispatcher: Any, channel: String) =
-        this.dispatch(event, getEventType(event), dispatcher, channel)
+            this.dispatch(event, getEventType(event), dispatcher, channel)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
@@ -108,7 +67,7 @@ interface EventManager {
      * @param dispatcher Dispatcher of the [event].
      */
     fun <T : Event> dispatch(event: T, dispatcher: Any) =
-        this.dispatch(event, dispatcher, "@all")
+            this.dispatch(event, dispatcher, ChannelSet.Expression.ALL)
 
 
     /**
@@ -124,7 +83,7 @@ interface EventManager {
      * @param channel Channel of listeners to receive event.
      */
     fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any, channel: String) =
-        this.eventDispatcher.dispatch(event, type, dispatcher, channel, false)
+            this.eventDispatcher.dispatch(event, type, dispatcher, channel, false)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
@@ -139,9 +98,8 @@ interface EventManager {
      * @param type Information of generic event type.
      * @param dispatcher Dispatcher of the [event].
      */
-    fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any) {
-        this.dispatch(event, type, dispatcher, "@all")
-    }
+    fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any) =
+            this.dispatch(event, type, dispatcher, ChannelSet.Expression.ALL)
 
     //////////// Async
 
@@ -155,9 +113,8 @@ interface EventManager {
      * @param channel Channel to dispatch event (`-1` = all).
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, dispatcher: Any, channel: String) {
-        this.dispatchAsync(event, getEventType(event), dispatcher, channel)
-    }
+    fun <T : Event> dispatchAsync(event: T, dispatcher: Any, channel: String) =
+            this.dispatchAsync(event, getEventType(event), dispatcher, channel)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
@@ -171,7 +128,7 @@ interface EventManager {
      */
     @Suppress("UNCHECKED_CAST")
     fun <T : Event> dispatchAsync(event: T, dispatcher: Any) =
-        this.dispatchAsync(event, dispatcher, "@all")
+            this.dispatchAsync(event, dispatcher, ChannelSet.Expression.ALL)
 
 
     /**
@@ -190,7 +147,7 @@ interface EventManager {
      */
     @Suppress("UNCHECKED_CAST")
     fun <T : Event> dispatchAsync(event: T, type: Type, dispatcher: Any, channel: String) =
-        this.eventDispatcher.dispatch(event, type, dispatcher, channel, true)
+            this.eventDispatcher.dispatch(event, type, dispatcher, channel, true)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event].
@@ -209,28 +166,11 @@ interface EventManager {
      */
     @Suppress("UNCHECKED_CAST")
     fun <T : Event> dispatchAsync(event: T, type: Type, dispatcher: Any) =
-        this.dispatchAsync(event, type, dispatcher, "@all")
+            this.dispatchAsync(event, type, dispatcher, ChannelSet.Expression.ALL)
 
 
     //////////// /Async
 
-    /**
-     * Gets listeners of a specific event.
-     *
-     * @param eventType Type of event.
-     * @return Listeners of event ([eventType])
-     */
-    fun <T : Event> getListeners(eventType: Type): Set<Pair<Type, EventListener<T>>>
-
-    /**
-     * Gets all listeners of events
-     */
-    fun getListeners(): Set<Pair<Type, EventListener<*>>>
-
-    /**
-     * Gets all containers of listeners (immutable).
-     */
-    fun getListenersContainers(): Set<EventListenerContainer<*>>
 }
 
 /**
@@ -244,5 +184,5 @@ interface EventDispatcher {
      * all listeners), if [isAsync] is true, each listener may be called on different threads,
      * the behavior depends on implementation, but the dispatch will never block current thread.
      */
-    fun <T: Event> dispatch(event: T, eventType: Type, dispatcher: Any, channel: String, isAsync: Boolean)
+    fun <T : Event> dispatch(event: T, eventType: Type, dispatcher: Any, channel: String, isAsync: Boolean): DispatchResult<T>
 }

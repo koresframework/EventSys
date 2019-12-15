@@ -36,6 +36,7 @@ import com.github.koresframework.eventsys.event.annotation.Listener;
 import com.github.koresframework.eventsys.event.annotation.Name;
 import com.github.koresframework.eventsys.event.annotation.NotNullValue;
 import com.github.koresframework.eventsys.gen.event.EventGenerator;
+import com.github.koresframework.eventsys.impl.CommonEventManager;
 import com.github.koresframework.eventsys.impl.DefaultEventManager;
 import com.github.koresframework.eventsys.util.EventFactoryHelperKt;
 
@@ -51,7 +52,7 @@ public class ListenerTest2 {
 
     @Test
     public void common() throws Throwable {
-        EventManager manager = new DefaultEventManager();
+        CommonEventManager manager = new DefaultEventManager();
         EventGenerator generator = manager.getEventGenerator();
 
         ConnectEvent event =
@@ -59,7 +60,7 @@ public class ListenerTest2 {
                         generator.createEventClass(ConnectEvent.class).invoke(),
                         MapUtils.mapOf("ip", "127.0.0.1"));
 
-        manager.registerListeners(this, this);
+        manager.getEventListenerRegistry().registerListeners(this, this);
         manager.dispatch(event, this);
         Assert.assertEquals("127.0.0.1", this.ip);
 

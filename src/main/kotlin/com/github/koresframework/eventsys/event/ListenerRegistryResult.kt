@@ -25,24 +25,25 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.koresframework.eventsys.test;
+package com.github.koresframework.eventsys.event
 
-import com.github.koresframework.eventsys.event.EventManager;
-import com.github.koresframework.eventsys.impl.CommonEventManager;
-import com.github.koresframework.eventsys.test.factory.MyFactory;
+data class ListenerRegistryResults(val results: List<ListenerRegistryResult>) {
+    constructor(listenerRegistryResult: ListenerRegistryResult): this(listOf(listenerRegistryResult))
 
-import java.util.Objects;
-
-public class Constant {
-
-    private static MyFactory MY_FACTORY_INSTANCE;
-
-    public static MyFactory getMyFactoryInstance() {
-        return Objects.requireNonNull(Constant.MY_FACTORY_INSTANCE);
-    }
-
-    public static void initialize(CommonEventManager manager) {
-        Constant.MY_FACTORY_INSTANCE = manager.getEventGenerator().<MyFactory>createFactory(MyFactory.class).invoke();
-    }
-
+    fun allRegistered() = this.results.all { it.registered }
+    fun anyRegistered() = this.results.any { it.registered }
+    fun noneRegistered() = this.results.none { it.registered }
 }
+
+data class ListenerRegistryResult(val registry: EventListenerRegistry,
+                                  val eventListener: EventListener<*>,
+                                  val registered: Boolean)
+
+fun EventListenerRegistry.registered(eventListener: EventListener<*>) =
+        ListenerRegistryResult(this, eventListener, true)
+
+fun EventListenerRegistry.notRegistered(eventListener: EventListener<*>) =
+        ListenerRegistryResult(this, eventListener, false)
+
+fun ListenerRegistryResult.coerce(): ListenerRegistryResults =
+        ListenerRegistryResults(this)

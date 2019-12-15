@@ -48,7 +48,7 @@ public class ListenerTest {
 
     @Test
     public void common() throws Throwable {
-        EventManager manager = new DefaultEventManager();
+        DefaultEventManager manager = new DefaultEventManager();
         EventGenerator generator = manager.getEventGenerator();
 
         LoginEvent event =
@@ -56,7 +56,7 @@ public class ListenerTest {
                         Generic.type(LoginEvent.class)).invoke(),
                         MapUtils.mapOf("name", "Test"));
 
-        manager.registerListeners(this, this);
+        manager.getEventListenerRegistry().registerListeners(this, this);
         manager.dispatch(event, this);
         Assert.assertEquals("Test", this.name);
         Assert.assertTrue(this.dispatched);

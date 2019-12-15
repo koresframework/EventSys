@@ -50,7 +50,7 @@ class ChannelTest {
     @Test
     fun channel() {
         val eventManager = DefaultEventManager()
-        eventManager.registerListeners(this, this)
+        eventManager.eventListenerRegistry.registerListeners(this, this)
 
         val user = User(id = 0, name = "Test", email = "test@test.com")
         val factory = eventManager.eventGenerator.createFactory<EventFactory>().resolve()

@@ -36,6 +36,8 @@ import com.github.koresframework.eventsys.extension.ExtensionSpecification
 import com.github.koresframework.eventsys.gen.event.EventClassSpecification
 import com.github.koresframework.eventsys.gen.event.EventGeneratorOptions
 import com.github.koresframework.eventsys.impl.DefaultEventManager
+import com.github.koresframework.eventsys.result.ListenResult
+import com.github.koresframework.eventsys.result.success
 import com.github.koresframework.eventsys.util.EventListener
 import com.github.koresframework.eventsys.util.create
 import com.github.koresframework.eventsys.util.createEventClass
@@ -69,10 +71,11 @@ class EventsWiki {
 
         manager.dispatch(event, this)
 
-        manager.registerListener<BuyEvent>(this, BuyEvent::class.java, EventListener { theEvent, _ ->
+        manager.eventListenerRegistry.registerListener<BuyEvent>(this, BuyEvent::class.java, EventListener { theEvent, _ ->
             Assert.assertEquals("USB Adapter", theEvent.product.name)
             Assert.assertEquals(10.0, theEvent.product.price, 0.0)
             Assert.assertEquals(5, theEvent.amount)
+            return@EventListener success()
         })
 
         val bus = Business("x")

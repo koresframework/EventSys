@@ -27,17 +27,19 @@
  */
 package com.github.koresframework.eventsys.util.mh
 
+import com.github.jonathanxd.iutils.`object`.result.Result
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.kores.type.GenericType
 import com.github.jonathanxd.kores.type.`is`
-import com.github.jonathanxd.kores.type.bindedDefaultResolver
 import com.github.jonathanxd.kores.type.concreteType
-import com.github.koresframework.eventsys.event.Event
-import com.github.koresframework.eventsys.event.EventListener
-import com.github.koresframework.eventsys.event.EventPriority
-import com.github.koresframework.eventsys.event.ListenerSpec
+import com.github.koresframework.eventsys.error.CouldNotDispatchError
+import com.github.koresframework.eventsys.event.*
 import com.github.koresframework.eventsys.event.property.GetterProperty
 import com.github.koresframework.eventsys.event.property.Property
+import com.github.koresframework.eventsys.error.ListenError
+import com.github.koresframework.eventsys.error.MissingEventTypeError
+import com.github.koresframework.eventsys.error.PropertyNotFoundError
+import com.github.koresframework.eventsys.result.ListenResult
 import com.github.koresframework.eventsys.util.createNoneRuntime
 import com.github.koresframework.eventsys.util.createSomeRuntime
 import java.lang.invoke.MethodHandle
@@ -83,11 +85,11 @@ open class MethodDispatcher(
         }
     }
 
-    override fun onEvent(event: Event, dispatcher: Any) {
+    override fun onEvent(event: Event, dispatcher: Any): ListenResult {
 
         // Process [parameters]
         if (listenerSpec.firstIsEvent && listenerSpec.parameters.size == 1) {
-            method.invokeWithArguments(event)
+            return ListenResult.Value(method.invokeWithArguments(event))
         } else if (this.listenerSpec.parameters.isNotEmpty()) {
             val args: MutableList<Any?> = mutableListOf()
 
@@ -117,7 +119,7 @@ open class MethodDispatcher(
                         if (spec.optType == null) args.add(null)
                         else args.add(spec.optType.createNoneRuntime())
                     } else if (found == null) {
-                        return
+                        return ListenResult.Failed(PropertyNotFoundError(name, type))
                     } else {
                         if (spec.optType == null) args.add(found.getValue())
                         else args.add(spec.optType.createSomeRuntime(found.getValue()))
@@ -125,7 +127,11 @@ open class MethodDispatcher(
                 }
             }
 
-            method.invokeWithArguments(args)
+            return ListenResult.Value(method.invokeWithArguments(args))
+        } else if (!listenerSpec.firstIsEvent) {
+            return ListenResult.Failed(MissingEventTypeError)
+        } else {
+            return ListenResult.Failed(CouldNotDispatchError)
         }
     }
 

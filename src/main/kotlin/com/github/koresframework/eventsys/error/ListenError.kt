@@ -25,24 +25,36 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.koresframework.eventsys.test;
+package com.github.koresframework.eventsys.error
 
-import com.github.koresframework.eventsys.event.EventManager;
-import com.github.koresframework.eventsys.impl.CommonEventManager;
-import com.github.koresframework.eventsys.test.factory.MyFactory;
+import java.lang.reflect.Type
 
-import java.util.Objects;
+/**
+ * Listening error
+ */
+interface ListenError
 
-public class Constant {
+/**
+ * Exception occurred during listening process.
+ */
+class ExceptionListenError(val exception: Throwable) : ListenError
 
-    private static MyFactory MY_FACTORY_INSTANCE;
+/**
+ * A required property was not found for the listener be invoke.
+ */
+class PropertyNotFoundError(val name: String, val type: Type) : ListenError
 
-    public static MyFactory getMyFactoryInstance() {
-        return Objects.requireNonNull(Constant.MY_FACTORY_INSTANCE);
-    }
+/**
+ * Event type could not be found.
+ */
+object MissingEventTypeError : ListenError
 
-    public static void initialize(CommonEventManager manager) {
-        Constant.MY_FACTORY_INSTANCE = manager.getEventGenerator().<MyFactory>createFactory(MyFactory.class).invoke();
-    }
+/**
+ * Generic dispatch failure.
+ */
+object CouldNotDispatchError : ListenError
 
-}
+/**
+ * Event was cancelled, thus, listener wasn't called.
+ */
+class EventCancelledError : ListenError

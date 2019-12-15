@@ -32,7 +32,9 @@ import com.github.jonathanxd.iutils.description.DescriptionUtil;
 import com.github.jonathanxd.iutils.type.TypeInfo;
 import com.github.jonathanxd.iutils.type.TypeParameterProvider;
 import com.github.jonathanxd.kores.type.Generic;
+import com.github.koresframework.eventsys.event.EventDispatcher;
 import com.github.koresframework.eventsys.event.EventListener;
+import com.github.koresframework.eventsys.event.EventListenerRegistry;
 import com.github.koresframework.eventsys.event.EventManager;
 import com.github.koresframework.eventsys.gen.check.CheckHandler;
 import com.github.koresframework.eventsys.gen.check.SuppressCapableCheckHandler;
@@ -41,8 +43,10 @@ import com.github.koresframework.eventsys.gen.event.EventGenerator;
 import com.github.koresframework.eventsys.gen.event.EventGeneratorOptions;
 import com.github.koresframework.eventsys.extension.ExtensionSpecification;
 import com.github.koresframework.eventsys.gen.event.LazyGenerationMode;
+import com.github.koresframework.eventsys.impl.CommonEventDispatcher;
 import com.github.koresframework.eventsys.impl.CommonEventManager;
 import com.github.koresframework.eventsys.impl.CommonLogger;
+import com.github.koresframework.eventsys.impl.PerChannelEventListenerRegistry;
 import com.github.koresframework.eventsys.logging.LoggerInterface;
 import com.github.koresframework.eventsys.test.event.MessageEvent;
 import com.github.koresframework.eventsys.test.event.MyGenericEvent;
@@ -63,7 +67,7 @@ public class TestManager {
 
     @Test
     public void test() throws NoSuchMethodException, InterruptedException {
-        EventManager manager = new MyManager();
+        MyManager manager = new MyManager();
 
         CheckHandler checkHandler = manager.getEventGenerator().getCheckHandler();
 
@@ -86,7 +90,7 @@ public class TestManager {
 
         Constant.initialize(manager);
 
-        manager.registerListeners(this, new MyListener());
+        manager.getEventListenerRegistry().registerListeners(this, new MyListener());
 
         MessageEvent messageEvent = Constant.getMyFactoryInstance().createMessageEvent("HELLO WORLD", "[TAG] ");
         KtEvent ktEvent = Constant.getMyFactoryInstance().createKtEvent("ProjectSandstone");
@@ -145,9 +149,17 @@ public class TestManager {
         static final LoggerInterface COMMON_LOGGER = new CommonLogger();
         private static final Comparator<EventListener<?>> COMMON_SORTER = Comparator.comparing(EventListener::getPriority);
         private static final EventGenerator COMMON_EVENT_GENERATOR = new CommonEventGenerator(COMMON_LOGGER);
+        private static final EventListenerRegistry COMMON_EVENT_LISTENER_REGISTRY =
+                new PerChannelEventListenerRegistry(COMMON_SORTER, COMMON_LOGGER, COMMON_EVENT_GENERATOR);
+        private static final EventDispatcher COMMON_DISPATCHER = new CommonEventDispatcher(
+                COMMON_THREAD_FACTORY,
+                COMMON_EVENT_GENERATOR,
+                COMMON_LOGGER,
+                COMMON_EVENT_LISTENER_REGISTRY
+        );
 
         MyManager() {
-            super(COMMON_SORTER, COMMON_THREAD_FACTORY, COMMON_LOGGER, COMMON_EVENT_GENERATOR);
+            super(COMMON_EVENT_GENERATOR, COMMON_DISPATCHER, COMMON_EVENT_LISTENER_REGISTRY);
         }
     }
 

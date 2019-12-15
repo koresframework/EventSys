@@ -25,24 +25,17 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.koresframework.eventsys.test;
+package com.github.koresframework.eventsys.event
 
-import com.github.koresframework.eventsys.event.EventManager;
-import com.github.koresframework.eventsys.impl.CommonEventManager;
-import com.github.koresframework.eventsys.test.factory.MyFactory;
+import com.github.koresframework.eventsys.channel.ChannelSet
 
-import java.util.Objects;
-
-public class Constant {
-
-    private static MyFactory MY_FACTORY_INSTANCE;
-
-    public static MyFactory getMyFactoryInstance() {
-        return Objects.requireNonNull(Constant.MY_FACTORY_INSTANCE);
-    }
-
-    public static void initialize(CommonEventManager manager) {
-        Constant.MY_FACTORY_INSTANCE = manager.getEventGenerator().<MyFactory>createFactory(MyFactory.class).invoke();
-    }
-
+/**
+ * An [EventDispatcher] that dispatches to specific [channels]. Commonly, this dispatcher only
+ * dispatches to a single channel.
+ */
+interface ChannelEventDispatcher : EventDispatcher {
+    /**
+     * Channels that this event dispatch to (commonly a single channel).
+     */
+    val channels: ChannelSet
 }
