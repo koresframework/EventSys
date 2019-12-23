@@ -29,6 +29,7 @@ package com.github.koresframework.eventsys.gen.check
 
 import com.github.jonathanxd.kores.base.*
 import com.github.jonathanxd.kores.type.KoresType
+import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.gen.event.EventGenerator
 import com.github.koresframework.eventsys.extension.ExtensionSpecification
 import com.github.koresframework.eventsys.util.DeclaredMethod
@@ -48,12 +49,14 @@ interface CheckHandler {
     fun checkImplementation(implementedMethods: List<MethodDeclaration>,
                             type: TypeDeclaration,
                             extensions: List<ExtensionSpecification>,
-                            eventGenerator: EventGenerator)
+                            eventGenerator: EventGenerator,
+                            ctx: EnvironmentContext)
 
     /**
      * Checks if [methods] has duplicated methods.
      */
-    fun checkDuplicatedMethods(methods: List<MethodDeclaration>)
+    fun checkDuplicatedMethods(methods: List<MethodDeclaration>,
+                               ctx: EnvironmentContext)
 
     /**
      * Validates [extension] specification. Valid extensions are those which has
@@ -64,7 +67,8 @@ interface CheckHandler {
     fun validateExtension(extension: ExtensionSpecification,
                           extensionClass: TypeDeclaration,
                           type: ClassDeclaration,
-                          eventGenerator: EventGenerator): ConstructorDeclaration
+                          eventGenerator: EventGenerator,
+                          ctx: EnvironmentContext): ConstructorDeclaration
 
     // Factory
 
@@ -73,20 +77,23 @@ interface CheckHandler {
      * which does not extends any other class.
      */
     fun validateFactoryClass(type: TypeDeclaration,
-                             eventGenerator: EventGenerator)
+                             eventGenerator: EventGenerator,
+                             ctx: EnvironmentContext)
 
     /**
      * Validates event class.
      */
     fun validateEventClass(type: TypeDeclaration,
                            factoryMethod: MethodDeclaration,
-                           eventGenerator: EventGenerator)
+                           eventGenerator: EventGenerator,
+                           ctx: EnvironmentContext)
 
     /**
      * Validate type provider parameters.
      */
     fun validateTypeProvider(providerParams: List<KoresParameter>,
                              factoryMethod: DeclaredMethod,
-                             eventGenerator: EventGenerator)
+                             eventGenerator: EventGenerator,
+                             ctx: EnvironmentContext)
 
 }

@@ -28,10 +28,11 @@
 package com.github.koresframework.eventsys.test.distributed.channel;
 
 import com.github.koresframework.eventsys.channel.ChannelSet;
+import com.github.koresframework.eventsys.context.EnvironmentContext;
 import com.github.koresframework.eventsys.event.ChannelEventListenerRegistry;
 import com.github.koresframework.eventsys.event.Event;
 import com.github.koresframework.eventsys.event.EventListener;
-import com.github.koresframework.eventsys.event.ListenerRegistryResult;
+import com.github.koresframework.eventsys.event.EventListenerRegistry;
 import com.github.koresframework.eventsys.event.ListenerRegistryResults;
 import com.github.koresframework.eventsys.impl.CommonEventManager;
 import com.github.koresframework.eventsys.impl.EventListenerContainer;
@@ -59,8 +60,8 @@ public class DistributedRegistry implements ChannelEventListenerRegistry {
 
     @Override
     public <T extends Event> ListenerRegistryResults registerListener(@NotNull Object owner,
-                                                                     @NotNull Type eventType,
-                                                                     @NotNull EventListener<? super T> eventListener) {
+                                                                      @NotNull Type eventType,
+                                                                      @NotNull EventListener<? super T> eventListener) {
         return new ListenerRegistryResults(
                 this.channelEventListenerRegistries.stream()
                         .flatMap(it -> it.registerListener(owner, eventType, eventListener)
@@ -70,10 +71,12 @@ public class DistributedRegistry implements ChannelEventListenerRegistry {
     }
 
     @Override
-    public ListenerRegistryResults registerListeners(@NotNull Object owner, @NotNull Object listener) {
+    public ListenerRegistryResults registerListeners(@NotNull Object owner,
+                                                     @NotNull Object listener,
+                                                     @NotNull EnvironmentContext ctx) {
         return new ListenerRegistryResults(
                 this.channelEventListenerRegistries.stream()
-                        .flatMap(it -> it.registerListeners(owner, listener)
+                        .flatMap(it -> it.registerListeners(owner, listener, ctx)
                                 .getResults().stream())
                         .collect(Collectors.toList())
         );
@@ -81,12 +84,13 @@ public class DistributedRegistry implements ChannelEventListenerRegistry {
 
     @Override
     public ListenerRegistryResults registerMethodListener(@NotNull Object owner,
-                                       @NotNull Type eventClass,
-                                       @Nullable Object instance,
-                                       @NotNull Method method) {
+                                                          @NotNull Type eventClass,
+                                                          @Nullable Object instance,
+                                                          @NotNull Method method,
+                                                          @NotNull EnvironmentContext ctx) {
         return new ListenerRegistryResults(
                 this.channelEventListenerRegistries.stream()
-                        .flatMap(it -> it.registerMethodListener(owner, eventClass, instance, method)
+                        .flatMap(it -> it.registerMethodListener(owner, eventClass, instance, method, ctx)
                                 .getResults().stream())
                         .collect(Collectors.toList())
         );
@@ -146,5 +150,17 @@ public class DistributedRegistry implements ChannelEventListenerRegistry {
                 : ChannelSet.include(this.channelEventListenerRegistries.stream()
                 .flatMap(it -> it.getChannels().toSet().stream())
                 .collect(Collectors.joining()));
+    }
+
+    @NotNull
+    @Override
+    public ListenerRegistryResults registerListeners(@NotNull Object owner, @NotNull Object listener) {
+        return EventListenerRegistry.DefaultImpls.registerListeners(this, owner, listener);
+    }
+
+    @NotNull
+    @Override
+    public ListenerRegistryResults registerMethodListener(@NotNull Object owner, @NotNull Type eventClass, @Nullable Object instance, @NotNull Method method) {
+        return EventListenerRegistry.DefaultImpls.registerMethodListener(this, owner, eventClass, instance, method);
     }
 }

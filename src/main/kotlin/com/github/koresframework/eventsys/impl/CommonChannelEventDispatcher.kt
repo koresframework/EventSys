@@ -28,6 +28,7 @@
 package com.github.koresframework.eventsys.impl
 
 import com.github.koresframework.eventsys.channel.ChannelSet
+import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.event.ChannelEventDispatcher
 import com.github.koresframework.eventsys.event.ChannelEventListenerRegistry
 import com.github.koresframework.eventsys.event.Event
@@ -72,14 +73,19 @@ class ChannelDispatcherDistributor(dispatchers: List<ChannelEventDispatcher>,
         get() = ChannelSet.Include(this.registeredChannelDispatchers.map { it.channels.toSet() }.flatten().toSet())
 
 
-    override fun <T : Event> dispatch(event: T, eventType: Type, dispatcher: Any, channel: String, isAsync: Boolean): DispatchResult<T> =
+    override fun <T : Event> dispatch(event: T,
+                                      eventType: Type,
+                                      dispatcher: Any,
+                                      channel: String,
+                                      isAsync: Boolean,
+                                      ctx: EnvironmentContext): DispatchResult<T> =
             if (ChannelSet.Expression.isAll(channel)) {
                 this.registeredChannelDispatchers.map {
-                    it.dispatch(event, eventType, dispatcher, channel, isAsync)
+                    it.dispatch(event, eventType, dispatcher, channel, isAsync, ctx)
                 }
             } else {
                 this.registeredChannelDispatcherMap[channel]?.map {
-                    it.dispatch(event, eventType, dispatcher, channel, isAsync)
+                    it.dispatch(event, eventType, dispatcher, channel, isAsync, ctx)
                 }
             }?.reduce { acc, dispatchResult ->
                 DispatchResult(acc.listenExecutionResults + dispatchResult.listenExecutionResults)

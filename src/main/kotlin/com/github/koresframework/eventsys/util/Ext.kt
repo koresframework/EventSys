@@ -28,6 +28,7 @@
 package com.github.koresframework.eventsys.util
 
 import com.github.jonathanxd.kores.type.genericTypeOf
+import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.event.EventListener
 import com.github.koresframework.eventsys.event.EventListenerRegistry
@@ -44,8 +45,9 @@ import com.github.koresframework.eventsys.result.ListenResult
  * @param extensions Additional extensions of implementation.
  */
 inline fun <reified T : Event> EventGenerator.createEventClass(additionalProperties: List<PropertyInfo> = emptyList(),
-                                                               extensions: List<ExtensionSpecification> = emptyList()) =
-        this.createEventClass<T>(genericTypeOf<T>(), additionalProperties, extensions)
+                                                               extensions: List<ExtensionSpecification> = emptyList(),
+                                                               ctx: EnvironmentContext = EnvironmentContext()) =
+        this.createEventClass<T>(genericTypeOf<T>(), additionalProperties, extensions, ctx)
 
 /**
  * Creates implementation class of event [T].
@@ -56,22 +58,23 @@ inline fun <reified T : Event> EventGenerator.createEventClass(additionalPropert
  * @param extensions Additional extensions of implementation.
  */
 inline fun <reified T : Event> EventGenerator.createEventClassAsync(additionalProperties: List<PropertyInfo> = emptyList(),
-                                                                    extensions: List<ExtensionSpecification> = emptyList()) =
-        this.createEventClassAsync<T>(genericTypeOf<T>(), additionalProperties, extensions)
+                                                                    extensions: List<ExtensionSpecification> = emptyList(),
+                                                                    ctx: EnvironmentContext = EnvironmentContext()) =
+        this.createEventClassAsync<T>(genericTypeOf<T>(), additionalProperties, extensions, ctx)
 
 /**
  * Creates implementation of factory [T].
  */
-inline fun <reified T : Any> EventGenerator.createFactory() =
-        this.createFactory<T>(genericTypeOf<T>())
+inline fun <reified T : Any> EventGenerator.createFactory(ctx: EnvironmentContext = EnvironmentContext()) =
+        this.createFactory<T>(genericTypeOf<T>(), ctx)
 
 /**
  * Creates implementation of factory [T].
  *
  * Non blocking asynchronous creation.
  */
-inline fun <reified T : Any> EventGenerator.createFactoryAsync() =
-        this.createFactoryAsync<T>(genericTypeOf<T>())
+inline fun <reified T : Any> EventGenerator.createFactoryAsync(ctx: EnvironmentContext = EnvironmentContext()) =
+        this.createFactoryAsync<T>(genericTypeOf<T>(), ctx)
 
 /**
  * Register the listener to [Event] [T].

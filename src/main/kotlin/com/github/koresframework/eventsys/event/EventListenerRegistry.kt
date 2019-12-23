@@ -27,6 +27,7 @@
  */
 package com.github.koresframework.eventsys.event
 
+import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.event.annotation.Listener
 import com.github.koresframework.eventsys.impl.EventListenerContainer
 import java.lang.reflect.Method
@@ -54,9 +55,25 @@ interface EventListenerRegistry {
      *
      * @param owner Owner of the [listener].
      * @param listener Listener instance to be used to create a [MethodEventListener].
+     * @param ctx Context.
      * @return [ListenerRegistryResults] containing data about registration of all listeners.
      */
-    fun registerListeners(owner: Any, listener: Any): ListenerRegistryResults
+    fun registerListeners(owner: Any,
+                          listener: Any): ListenerRegistryResults =
+            this.registerListeners(owner, listener, EnvironmentContext())
+    /**
+     * Register all method event listeners inside the [listener] instance.
+     *
+     * Listener methods must be annotated with [Listener] annotation.
+     *
+     * @param owner Owner of the [listener].
+     * @param listener Listener instance to be used to create a [MethodEventListener].
+     * @param ctx Context.
+     * @return [ListenerRegistryResults] containing data about registration of all listeners.
+     */
+    fun registerListeners(owner: Any,
+                          listener: Any,
+                          ctx: EnvironmentContext = EnvironmentContext()): ListenerRegistryResults
 
     /**
      * Register [method] as [EventListener]. This method must be annotated with [Listener] annotation.
@@ -69,7 +86,22 @@ interface EventListenerRegistry {
     fun registerMethodListener(owner: Any,
                                eventClass: Type,
                                instance: Any?,
-                               method: Method): ListenerRegistryResults
+                               method: Method): ListenerRegistryResults =
+            this.registerMethodListener(owner, eventClass, instance, method, EnvironmentContext())
+
+    /**
+     * Register [method] as [EventListener]. This method must be annotated with [Listener] annotation.
+     *
+     * @param owner Owner of the [method]
+     * @param instance Instance used to invoke method.
+     * @param method Method to register
+     * @return [ListenerRegistryResults] containing data about method listener registration.
+     */
+    fun registerMethodListener(owner: Any,
+                               eventClass: Type,
+                               instance: Any?,
+                               method: Method,
+                               ctx: EnvironmentContext = EnvironmentContext()): ListenerRegistryResults
 
     /**
      * Gets listeners of a specific event.

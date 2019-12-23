@@ -29,6 +29,7 @@ package com.github.koresframework.eventsys.impl
 
 import com.github.jonathanxd.iutils.collection.wrapper.WrapperCollections
 import com.github.koresframework.eventsys.channel.ChannelSet
+import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.event.*
 import com.github.koresframework.eventsys.event.EventListener
 import com.github.koresframework.eventsys.event.annotation.Filter
@@ -185,9 +186,10 @@ abstract class AbstractEventListenerRegistry : EventListenerRegistry {
     ): ListenerRegistryResults =
             this.registerListener(owner, eventType, eventListener as EventListener<T>)
 
-    override fun registerListeners(owner: Any, listener: Any): ListenerRegistryResults =
+    override fun registerListeners(owner: Any, listener: Any,
+                                   ctx: EnvironmentContext): ListenerRegistryResults =
             ListenerRegistryResults(
-                    this.createMethodListeners(owner, listener).map {
+                    this.createMethodListeners(owner, listener, ctx).map {
                         this.registerGenericListener<Event>(owner, it.eventType, it.eventListener)
                     }.flatMap { it.results }
             )
@@ -196,13 +198,15 @@ abstract class AbstractEventListenerRegistry : EventListenerRegistry {
             owner: Any,
             eventClass: Type,
             instance: Any?,
-            method: Method
+            method: Method,
+            ctx: EnvironmentContext
     ): ListenerRegistryResults =
             this.createMethodListener(
                     listenerClass = eventClass,
                     owner = owner,
                     instance = instance,
-                    method = method
+                    method = method,
+                    ctx = ctx
             ).let {
                 this.registerGenericListener<Event>(owner, it.eventType, it.eventListener)
             }
@@ -212,7 +216,8 @@ abstract class AbstractEventListenerRegistry : EventListenerRegistry {
             owner: Any,
             listenerClass: Type,
             instance: Any?,
-            method: Method
+            method: Method,
+            ctx: EnvironmentContext
     ): EventListenerContainer<*> {
         return this.eventGenerator.createListenerSpecFromMethod(method).let { spec ->
             EventListenerContainer(
@@ -222,7 +227,8 @@ abstract class AbstractEventListenerRegistry : EventListenerRegistry {
                             listenerClass,
                             method,
                             instance,
-                            spec
+                            spec,
+                            ctx
                     ).resolve()
             )
         }
@@ -231,7 +237,8 @@ abstract class AbstractEventListenerRegistry : EventListenerRegistry {
 
     private fun createMethodListeners(
             owner: Any,
-            instance: Any
+            instance: Any,
+            ctx: EnvironmentContext
     ): List<EventListenerContainer<*>> {
 
         return instance::class.java.declaredMethods.filter {
@@ -258,7 +265,8 @@ abstract class AbstractEventListenerRegistry : EventListenerRegistry {
                         listenerClass = instance::class.java,
                         owner = owner,
                         method = it,
-                        instance = instance
+                        instance = instance,
+                        ctx = ctx
                 )
             }
         }

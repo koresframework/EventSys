@@ -31,6 +31,7 @@ import com.github.jonathanxd.kores.common.MethodTypeSpec;
 import com.github.jonathanxd.kores.factory.Factories;
 import com.github.jonathanxd.kores.type.ImplicitKoresType;
 import com.github.jonathanxd.kores.type.KoresTypes;
+import com.github.koresframework.eventsys.context.EnvironmentContext;
 import com.github.koresframework.eventsys.event.Cancellable;
 import com.github.koresframework.eventsys.event.Event;
 import com.github.koresframework.eventsys.event.annotation.Name;
@@ -122,7 +123,8 @@ public class FactoryBootstrap {
             Class<? extends Event> aClass = eventGenerator.createEventClass(
                     ImplicitKoresType.getConcreteType(eventType),
                     additionalProperties,
-                    extensions
+                    extensions,
+                    new EnvironmentContext()
             ).invoke();
 
             if (!propertyOrderCache.containsKey(aClass)) {

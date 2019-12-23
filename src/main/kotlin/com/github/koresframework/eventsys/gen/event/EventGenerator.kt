@@ -28,24 +28,17 @@
 package com.github.koresframework.eventsys.gen.event
 
 import com.github.jonathanxd.iutils.option.Options
-import com.github.jonathanxd.kores.base.ClassDeclaration
 import com.github.jonathanxd.kores.base.MethodDeclaration
 import com.github.jonathanxd.kores.type.Generic
-import com.github.jonathanxd.kores.type.asGeneric
-import com.github.jonathanxd.kores.type.koresType
-import com.github.jonathanxd.kores.type.toGeneric
-import com.github.jonathanxd.kores.util.createKoresTypeDescriptor
-import com.github.jonathanxd.kores.util.genericTypeToDescriptor
+import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.event.EventListener
 import com.github.koresframework.eventsys.event.ListenerSpec
 import com.github.koresframework.eventsys.extension.ExtensionSpecification
 import com.github.koresframework.eventsys.gen.GenerationEnvironment
 import com.github.koresframework.eventsys.gen.ResolvableDeclaration
-import com.github.koresframework.eventsys.gen.Runtime
 import com.github.koresframework.eventsys.gen.check.CheckHandler
 import com.github.koresframework.eventsys.logging.LoggerInterface
-import com.github.koresframework.eventsys.util.DeclarationCache
 import java.lang.reflect.Method
 import java.lang.reflect.Type
 import java.util.concurrent.CompletableFuture
@@ -100,8 +93,8 @@ interface EventGenerator {
      * generated (unless you specify your own implementation with the extension).
      */
     fun <T : Event> registerEventImplementation(
-        eventClassSpecification: EventClassSpecification,
-        implementation: Class<out T>
+            eventClassSpecification: EventClassSpecification,
+            implementation: Class<out T>
     )
 
     /**
@@ -109,7 +102,16 @@ interface EventGenerator {
      *
      * @see EventFactoryClassGenerator
      */
-    fun <T : Any> createFactory(factoryType: Type): ResolvableDeclaration<T>
+    fun <T : Any> createFactory(factoryType: Type): ResolvableDeclaration<T> =
+            this.createFactory(factoryType, EnvironmentContext())
+
+    /**
+     * Creates event factory class.
+     *
+     * @see EventFactoryClassGenerator
+     */
+    fun <T : Any> createFactory(factoryType: Type,
+                                ctx: EnvironmentContext = EnvironmentContext()): ResolvableDeclaration<T>
 
     /**
      * Asynchronously create [factoryType] instance, only use this method if you do not need
@@ -119,34 +121,77 @@ interface EventGenerator {
      *
      * @see EventFactoryClassGenerator
      */
-    fun <T : Any> createFactoryAsync(factoryType: Type): CompletableFuture<out ResolvableDeclaration<T>>
+    fun <T : Any> createFactoryAsync(factoryType: Type): CompletableFuture<out ResolvableDeclaration<T>> =
+            this.createFactoryAsync(factoryType, EnvironmentContext())
+
 
     /**
-     * Creates event class
+     * Asynchronously create [factoryType] instance, only use this method if you do not need
+     * the factory immediately.
+     *
+     * This also generated required event classes.
+     *
+     * @see EventFactoryClassGenerator
+     */
+    fun <T : Any> createFactoryAsync(factoryType: Type,
+                                     ctx: EnvironmentContext = EnvironmentContext()): CompletableFuture<out ResolvableDeclaration<T>>
+
+    /**
+     * Creates an event class
      *
      * @see EventClassGenerator
      */
     fun <T : Event> createEventClass(type: Class<T>): ResolvableDeclaration<Class<out T>> =
-            this.createEventClass(Generic.type(type))
+            this.createEventClass(type, EnvironmentContext())
 
     /**
-     * Creates event class
+     * Creates an event class
+     *
+     * @see EventClassGenerator
+     */
+    fun <T : Event> createEventClass(type: Class<T>,
+                                     ctx: EnvironmentContext = EnvironmentContext()): ResolvableDeclaration<Class<out T>> =
+            this.createEventClass(Generic.type(type), ctx)
+
+    /**
+     * Creates an event class
      *
      * @see EventClassGenerator
      */
     fun <T : Event> createEventClass(type: Type): ResolvableDeclaration<Class<out T>> =
-        this.createEventClass(type, emptyList(), emptyList())
+            this.createEventClass(type, EnvironmentContext())
 
     /**
-     * Creates event class
+     * Creates an event class
+     *
+     * @see EventClassGenerator
+     */
+    fun <T : Event> createEventClass(type: Type,
+                                     ctx: EnvironmentContext = EnvironmentContext()): ResolvableDeclaration<Class<out T>> =
+            this.createEventClass(type, emptyList(), emptyList(), ctx)
+
+    /**
+     * Creates an event class
      *
      * @see EventClassGenerator
      */
     fun <T : Event> createEventClass(
-        type: Type,
-        additionalProperties: List<PropertyInfo>
+            type: Type,
+            additionalProperties: List<PropertyInfo>
     ): ResolvableDeclaration<Class<out T>> =
-        this.createEventClass(type, additionalProperties, emptyList())
+            this.createEventClass(type, additionalProperties, EnvironmentContext())
+
+    /**
+     * Creates an event class
+     *
+     * @see EventClassGenerator
+     */
+    fun <T : Event> createEventClass(
+            type: Type,
+            additionalProperties: List<PropertyInfo>,
+            ctx: EnvironmentContext = EnvironmentContext()
+    ): ResolvableDeclaration<Class<out T>> =
+            this.createEventClass(type, additionalProperties, emptyList(), ctx)
 
     /**
      * Asynchronously create event class, only use this method if you do not need
@@ -155,10 +200,23 @@ interface EventGenerator {
      * @see EventClassGenerator
      */
     fun <T : Event> createEventClassAsync(
-        type: Type,
-        additionalProperties: List<PropertyInfo>
+            type: Type,
+            additionalProperties: List<PropertyInfo>
     ): CompletableFuture<ResolvableDeclaration<Class<out T>>> =
-        this.createEventClassAsync(type, additionalProperties, emptyList())
+            this.createEventClassAsync(type, additionalProperties, EnvironmentContext())
+
+    /**
+     * Asynchronously create event class, only use this method if you do not need
+     * the event class immediately.
+     *
+     * @see EventClassGenerator
+     */
+    fun <T : Event> createEventClassAsync(
+            type: Type,
+            additionalProperties: List<PropertyInfo>,
+            ctx: EnvironmentContext = EnvironmentContext()
+    ): CompletableFuture<ResolvableDeclaration<Class<out T>>> =
+            this.createEventClassAsync(type, additionalProperties, emptyList(), ctx)
 
     /**
      * Creates event class
@@ -166,9 +224,22 @@ interface EventGenerator {
      * @see EventClassGenerator
      */
     fun <T : Event> createEventClass(
-        type: Type,
-        additionalProperties: List<PropertyInfo>,
-        extensions: List<ExtensionSpecification>
+            type: Type,
+            additionalProperties: List<PropertyInfo>,
+            extensions: List<ExtensionSpecification>
+    ): ResolvableDeclaration<Class<out T>> =
+            this.createEventClass(type, additionalProperties, extensions, EnvironmentContext())
+
+    /**
+     * Creates event class
+     *
+     * @see EventClassGenerator
+     */
+    fun <T : Event> createEventClass(
+            type: Type,
+            additionalProperties: List<PropertyInfo>,
+            extensions: List<ExtensionSpecification>,
+            ctx: EnvironmentContext = EnvironmentContext()
     ): ResolvableDeclaration<Class<out T>>
 
     /**
@@ -178,10 +249,25 @@ interface EventGenerator {
      * @see EventClassGenerator
      */
     fun <T : Event> createEventClassAsync(
-        type: Type,
-        additionalProperties: List<PropertyInfo>,
-        extensions: List<ExtensionSpecification>
+            type: Type,
+            additionalProperties: List<PropertyInfo>,
+            extensions: List<ExtensionSpecification>
+    ): CompletableFuture<ResolvableDeclaration<Class<out T>>> =
+            this.createEventClassAsync(type, additionalProperties, extensions, EnvironmentContext())
+
+    /**
+     * Asynchronously create event class, only use this method if you do not need
+     * the event class immediately.
+     *
+     * @see EventClassGenerator
+     */
+    fun <T : Event> createEventClassAsync(
+            type: Type,
+            additionalProperties: List<PropertyInfo>,
+            extensions: List<ExtensionSpecification>,
+            ctx: EnvironmentContext = EnvironmentContext()
     ): CompletableFuture<ResolvableDeclaration<Class<out T>>>
+
 
     /**
      * Creates method listener class
@@ -189,9 +275,22 @@ interface EventGenerator {
      * @see MethodListenerGenerator
      */
     fun createMethodListener(
-        listenerClass: Type,
-        method: MethodDeclaration,
-        listenerSpec: ListenerSpec
+            listenerClass: Type,
+            method: MethodDeclaration,
+            listenerSpec: ListenerSpec
+    ): ResolvableDeclaration<Class<out EventListener<Event>>> =
+            this.createMethodListener(listenerClass, method, listenerSpec, EnvironmentContext())
+
+    /**
+     * Creates method listener class
+     *
+     * @see MethodListenerGenerator
+     */
+    fun createMethodListener(
+            listenerClass: Type,
+            method: MethodDeclaration,
+            listenerSpec: ListenerSpec,
+            ctx: EnvironmentContext = EnvironmentContext()
     ): ResolvableDeclaration<Class<out EventListener<Event>>>
 
     /**
@@ -201,11 +300,24 @@ interface EventGenerator {
      * @see MethodListenerGenerator
      */
     fun createMethodListenerAsync(
-        listenerClass: Type,
-        method: MethodDeclaration,
-        listenerSpec: ListenerSpec
-    ): CompletableFuture<ResolvableDeclaration<Class<out EventListener<Event>>>>
+            listenerClass: Type,
+            method: MethodDeclaration,
+            listenerSpec: ListenerSpec
+    ): CompletableFuture<ResolvableDeclaration<Class<out EventListener<Event>>>> =
+            this.createMethodListenerAsync(listenerClass, method, listenerSpec, EnvironmentContext())
 
+    /**
+     * Asynchronously create method listener class instance, only use this method if you do not need
+     * the event listener method class immediately.
+     *
+     * @see MethodListenerGenerator
+     */
+    fun createMethodListenerAsync(
+            listenerClass: Type,
+            method: MethodDeclaration,
+            listenerSpec: ListenerSpec,
+            ctx: EnvironmentContext = EnvironmentContext()
+    ): CompletableFuture<ResolvableDeclaration<Class<out EventListener<Event>>>>
 
     /**
      * Creates method listener class
@@ -213,10 +325,24 @@ interface EventGenerator {
      * @see MethodListenerGenerator
      */
     fun createMethodListener(
-        listenerClass: Type,
-        method: MethodDeclaration,
-        instance: Any?,
-        listenerSpec: ListenerSpec
+            listenerClass: Type,
+            method: MethodDeclaration,
+            instance: Any?,
+            listenerSpec: ListenerSpec
+    ): ResolvableDeclaration<EventListener<Event>> =
+            this.createMethodListener(listenerClass, method, instance, listenerSpec, EnvironmentContext())
+
+    /**
+     * Creates method listener class
+     *
+     * @see MethodListenerGenerator
+     */
+    fun createMethodListener(
+            listenerClass: Type,
+            method: MethodDeclaration,
+            instance: Any?,
+            listenerSpec: ListenerSpec,
+            ctx: EnvironmentContext = EnvironmentContext()
     ): ResolvableDeclaration<EventListener<Event>>
 
     /**
@@ -226,10 +352,25 @@ interface EventGenerator {
      * @see MethodListenerGenerator
      */
     fun createMethodListenerAsync(
-        listenerClass: Type,
-        method: MethodDeclaration,
-        instance: Any?,
-        listenerSpec: ListenerSpec
+            listenerClass: Type,
+            method: MethodDeclaration,
+            instance: Any?,
+            listenerSpec: ListenerSpec
+    ): CompletableFuture<ResolvableDeclaration<EventListener<Event>>> =
+            this.createMethodListenerAsync(listenerClass, method, instance, listenerSpec, EnvironmentContext())
+
+    /**
+     * Asynchronously create method listener class instance, only use this method if you do not need
+     * the event listener method class immediately.
+     *
+     * @see MethodListenerGenerator
+     */
+    fun createMethodListenerAsync(
+            listenerClass: Type,
+            method: MethodDeclaration,
+            instance: Any?,
+            listenerSpec: ListenerSpec,
+            ctx: EnvironmentContext = EnvironmentContext()
     ): CompletableFuture<ResolvableDeclaration<EventListener<Event>>>
 
     /**
@@ -238,10 +379,24 @@ interface EventGenerator {
      * @see MethodListenerGenerator
      */
     fun createMethodListener(
-        listenerClass: Type,
-        method: Method,
-        instance: Any?,
-        listenerSpec: ListenerSpec
+            listenerClass: Type,
+            method: Method,
+            instance: Any?,
+            listenerSpec: ListenerSpec
+    ): ResolvableDeclaration<EventListener<Event>> =
+            this.createMethodListener(listenerClass, method, instance, listenerSpec, EnvironmentContext())
+
+    /**
+     * Creates method listener class
+     *
+     * @see MethodListenerGenerator
+     */
+    fun createMethodListener(
+            listenerClass: Type,
+            method: Method,
+            instance: Any?,
+            listenerSpec: ListenerSpec,
+            ctx: EnvironmentContext = EnvironmentContext()
     ): ResolvableDeclaration<EventListener<Event>>
 
     /**
@@ -251,10 +406,25 @@ interface EventGenerator {
      * @see MethodListenerGenerator
      */
     fun createMethodListenerAsync(
-        listenerClass: Type,
-        method: Method,
-        instance: Any?,
-        listenerSpec: ListenerSpec
+            listenerClass: Type,
+            method: Method,
+            instance: Any?,
+            listenerSpec: ListenerSpec
+    ): CompletableFuture<ResolvableDeclaration<EventListener<Event>>> =
+            this.createMethodListenerAsync(listenerClass, method, instance, listenerSpec, EnvironmentContext())
+
+    /**
+     * Asynchronously create method listener class instance, only use this method if you do not need
+     * the event listener method class immediately.
+     *
+     * @see MethodListenerGenerator
+     */
+    fun createMethodListenerAsync(
+            listenerClass: Type,
+            method: Method,
+            instance: Any?,
+            listenerSpec: ListenerSpec,
+            ctx: EnvironmentContext = EnvironmentContext()
     ): CompletableFuture<ResolvableDeclaration<EventListener<Event>>>
 
     /**

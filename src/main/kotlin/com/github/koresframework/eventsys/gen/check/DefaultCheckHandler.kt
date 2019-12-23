@@ -32,6 +32,7 @@ import com.github.jonathanxd.iutils.description.DescriptionUtil
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.kores.base.*
 import com.github.jonathanxd.kores.type.*
+import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.event.annotation.Check
 import com.github.koresframework.eventsys.event.annotation.SuppressCheck
@@ -54,10 +55,11 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
     }
 
     override fun checkImplementation(
-        implementedMethods: List<MethodDeclaration>,
-        type: TypeDeclaration,
-        extensions: List<ExtensionSpecification>,
-        eventGenerator: EventGenerator
+            implementedMethods: List<MethodDeclaration>,
+            type: TypeDeclaration,
+            extensions: List<ExtensionSpecification>,
+            eventGenerator: EventGenerator,
+            ctx: EnvironmentContext
     ) {
 
         val logger = eventGenerator.logger
@@ -78,10 +80,10 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
                         && ((method.annotations.any { it.type.`is`(typeOf<SuppressCheck>()) }
                                 && method.containsCheckSuppress("IMPLEMENTATION"))
                                 || this.shouldSuppressImplementationCheck(
-                            method,
-                            type,
-                            extensions,
-                            eventGenerator
+                                method,
+                                type,
+                                extensions,
+                                eventGenerator
                         ))
                 ) {
                     // Suppress
@@ -93,7 +95,7 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
 
         if (unimplMethods.isNotEmpty()) {
             val classes =
-                extensions.filter { it.extensionClass != null }.map { it.extensionClass!! }
+                    extensions.filter { it.extensionClass != null }.map { it.extensionClass!! }
 
             val messages = mutableListOf<String>()
 
@@ -113,29 +115,29 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
             }
 
 
-            logger.log(messages, MessageType.IMPLEMENTATION_NOT_FOUND)
+            logger.log(messages, MessageType.IMPLEMENTATION_NOT_FOUND, ctx)
         }
     }
 
     @Suppress("UNCHECKED_CAST")
     private fun Annotable.containsCheckSuppress(name: String) =
-        this.annotations.any {
-            it.type.`is`(typeOf<SuppressCheck>()) && it.containsCheckSuppress(
-                name
-            )
-        }
+            this.annotations.any {
+                it.type.`is`(typeOf<SuppressCheck>()) && it.containsCheckSuppress(
+                        name
+                )
+            }
 
     @Suppress("UNCHECKED_CAST")
     private fun KoresAnnotation.containsCheckSuppress(name: String) =
-        this.values["value"].let {
-            it != null && (it as? List<EnumValue>)?.any { it.type.`is`(typeOf<Check>()) && it.name == name } == true
-        }
+            this.values["value"].let {
+                it != null && (it as? List<EnumValue>)?.any { it.type.`is`(typeOf<Check>()) && it.name == name } == true
+            }
 
     override fun shouldSuppressImplementationCheck(
-        method: MethodDeclaration,
-        type: TypeDeclaration,
-        extensions: List<ExtensionSpecification>,
-        eventGenerator: EventGenerator
+            method: MethodDeclaration,
+            type: TypeDeclaration,
+            extensions: List<ExtensionSpecification>,
+            eventGenerator: EventGenerator
     ): Boolean {
         return suppress.contains(desc(type, method).plainDescription)
     }
@@ -147,9 +149,9 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
                 + ":"
                 + method.name
                 + method.parameters.joinToString(
-            separator = "",
-            prefix = "(",
-            postfix = ")"
+                separator = "",
+                prefix = "(",
+                postfix = ")"
         ) { it.type.javaSpecName.fixed() }
                 + method.returnType.javaSpecName.fixed())
 
@@ -158,7 +160,8 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
 
     private fun String.fixed() = this.replace('/', '.')
 
-    override fun checkDuplicatedMethods(methods: List<MethodDeclaration>) {
+    override fun checkDuplicatedMethods(methods: List<MethodDeclaration>,
+                                        ctx: EnvironmentContext) {
         val methodList = mutableListOf<MethodDeclaration>()
 
         methods.forEach { outer ->
@@ -176,10 +179,11 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
 
 
     override fun validateExtension(
-        extension: ExtensionSpecification,
-        extensionClass: TypeDeclaration,
-        type: ClassDeclaration,
-        eventGenerator: EventGenerator
+            extension: ExtensionSpecification,
+            extensionClass: TypeDeclaration,
+            type: ClassDeclaration,
+            eventGenerator: EventGenerator,
+            ctx: EnvironmentContext
     ): ConstructorDeclaration {
         val logger = eventGenerator.logger
         val resolver = type.defaultResolver
@@ -188,8 +192,8 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
         (extensionClass as? ConstructorsHolder)?.constructors?.forEach {
             if (it.parameters.size == 1) {
                 if (resolver.isAssignableFrom(
-                            it.parameters.single().type,
-                            type
+                                it.parameters.single().type,
+                                type
                         ).run { isRight && right }
                 )
                     return it
@@ -200,75 +204,83 @@ class DefaultCheckHandler : SuppressCapableCheckHandler {
 
         logger.log("Provided extension class '${extensionClass.canonicalName}' (spec: '$extension') does not have a single-arg constructor with an argument which receives a '${type.canonicalName}' (or a super type). Found single-arg constructors: ${foundsCtr.joinToString {
             it.parameters.joinToString(
-                prefix = "(",
-                postfix = ")"
+                    prefix = "(",
+                    postfix = ")"
             ) { it.type.simpleName }
-        }}.", MessageType.INVALID_EXTENSION)
+        }}.", MessageType.INVALID_EXTENSION, ctx)
         fail()
     }
 
 
     // Factory
 
-    override fun validateFactoryClass(type: TypeDeclaration, eventGenerator: EventGenerator) {
+    override fun validateFactoryClass(type: TypeDeclaration,
+                                      eventGenerator: EventGenerator,
+                                      ctx: EnvironmentContext) {
         val logger = eventGenerator.logger
         val superClass = (type as? SuperClassHolder)?.superClass
 
         if (!type.isInterface) {
-            logger.log("Factory class must be an interface.", MessageType.INVALID_FACTORY)
+            logger.log("Factory class must be an interface.", MessageType.INVALID_FACTORY, ctx)
             fail()
         }
 
         if (superClass != null && type != Any::class.java || type.interfaces.isNotEmpty()) {
-            logger.log("Factory class must not extend any class.", MessageType.INVALID_FACTORY)
+            logger.log("Factory class must not extend any class.", MessageType.INVALID_FACTORY, ctx)
             fail()
         }
     }
 
     override fun validateEventClass(
-        type: TypeDeclaration,
-        factoryMethod: MethodDeclaration,
-        eventGenerator: EventGenerator
+            type: TypeDeclaration,
+            factoryMethod: MethodDeclaration,
+            eventGenerator: EventGenerator,
+            ctx: EnvironmentContext
     ) {
         val logger = eventGenerator.logger
 
         if (!Event::class.java.isAssignableFrom(type)) {
             logger.log(
-                "Failed to generate implementation of method '$factoryMethod': event factory methods must return a type assignable to 'Event'.",
-                MessageType.INVALID_FACTORY_METHOD
+                    "Failed to generate implementation of method '$factoryMethod': event factory methods must return a type assignable to 'Event'.",
+                    MessageType.INVALID_FACTORY_METHOD,
+                    ctx
             )
             fail()
         }
     }
 
     override fun validateTypeProvider(
-        providerParams: List<KoresParameter>,
-        factoryMethod: DeclaredMethod,
-        eventGenerator: EventGenerator
+            providerParams: List<KoresParameter>,
+            factoryMethod: DeclaredMethod,
+            eventGenerator: EventGenerator,
+            ctx: EnvironmentContext
     ) {
         val logger = eventGenerator.logger
         val factoryClass = factoryMethod.type
 
         if (providerParams.isEmpty()) {
             logger.log(
-                "Factory method '$factoryMethod' present in factory class '${factoryClass.canonicalName}' must have a parameter of type 'TypeInfo' annotated with @TypeParam.",
-                MessageType.INVALID_FACTORY_METHOD
+                    "Factory method '$factoryMethod' present in factory class '${factoryClass.canonicalName}' must have a parameter of type 'TypeInfo' annotated with @TypeParam.",
+                    MessageType.INVALID_FACTORY_METHOD,
+                    ctx
             )
             fail()
         }
 
         if (providerParams.size != 1) {
             logger.log(
-                "Factory method '$factoryMethod' present in factory class '${factoryClass.canonicalName}' must have only one parameter of type 'TypeInfo' annotated with @TypeParam.",
-                MessageType.INVALID_FACTORY_METHOD
+                    "Factory method '$factoryMethod' present in factory class '${factoryClass.canonicalName}' must have only one parameter of type 'TypeInfo' annotated with @TypeParam.",
+                    MessageType.INVALID_FACTORY_METHOD,
+                    ctx
             )
             fail()
         }
 
         if (providerParams.single().type != TypeInfo::class.java) {
             logger.log(
-                "@TypeParam should be only annotated in parameter of 'TypeInfo' type. Factory method: '$factoryMethod'. Factory class '${factoryClass.canonicalName}'.",
-                MessageType.INVALID_FACTORY_METHOD
+                    "@TypeParam should be only annotated in parameter of 'TypeInfo' type. Factory method: '$factoryMethod'. Factory class '${factoryClass.canonicalName}'.",
+                    MessageType.INVALID_FACTORY_METHOD,
+                    ctx
             )
             fail()
         }
