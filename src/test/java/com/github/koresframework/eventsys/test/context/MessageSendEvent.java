@@ -25,14 +25,11 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.koresframework.eventsys.context
+package com.github.koresframework.eventsys.test.context;
 
-import com.github.jonathanxd.iutils.data.DataBase
-import com.github.jonathanxd.iutils.data.TypedData
+import com.github.koresframework.eventsys.event.Event;
 
-/**
- * Provides information to other components of EventSys.
- */
-class EnvironmentContext(val data: TypedData = TypedData()) : DataBase<TypedData> by data {
-    constructor(): this(TypedData())
+public interface MessageSendEvent extends Event {
+    String getClientAddress();
+    String getMessage();
 }

@@ -25,14 +25,25 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.koresframework.eventsys.context
+package com.github.koresframework.eventsys.sorter
 
-import com.github.jonathanxd.iutils.data.DataBase
-import com.github.jonathanxd.iutils.data.TypedData
+import com.github.koresframework.eventsys.event.Event
+import com.github.koresframework.eventsys.event.EventListener
 
-/**
- * Provides information to other components of EventSys.
- */
-class EnvironmentContext(val data: TypedData = TypedData()) : DataBase<TypedData> by data {
-    constructor(): this(TypedData())
+class EventPrioritySorter<T : Event> : Comparator<EventListener<T>>,
+        (EventListener<T>, EventListener<T>) -> Int {
+
+    override fun compare(o1: EventListener<T>?, o2: EventListener<T>?): Int =
+            compareValues(o1?.priority, o2?.priority)
+
+    override fun invoke(p1: EventListener<T>, p2: EventListener<T>): Int = this.compare(p1, p2)
+
+    companion object {
+        private val sorter = EventPrioritySorter<Event>()
+
+        @Suppress("UNCHECKED_CAST")
+        @JvmStatic
+        fun <T: Event> anySorter(): Comparator<EventListener<*>> =
+                this.sorter as Comparator<EventListener<*>>
+    }
 }

@@ -30,7 +30,11 @@ package com.github.koresframework.eventsys.result
 import com.github.koresframework.eventsys.error.ListenError
 import com.github.koresframework.eventsys.impl.EventListenerContainer
 import java.lang.reflect.Type
+import java.time.Duration
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 /**
  * A data class containing all listen execution results.
@@ -60,6 +64,28 @@ data class DispatchResult<T>(val listenExecutionResults: List<CompletableFuture<
      */
     fun combine(other: DispatchResult<T>): DispatchResult<T> =
             DispatchResult(this.listenExecutionResults + other.listenExecutionResults)
+
+    /**
+     * Await termination of dispatch
+     *
+     * @throws InterruptedException
+     * @throws ExecutionException
+     */
+    fun await() =
+            this.toCompletable().get()
+
+    /**
+     * Await termination of dispatch for [timeout] duration.
+     *
+     * @throws InterruptedException
+     * @throws ExecutionException
+     * @throws TimeoutException
+     */
+    fun await(timeout: Duration) =
+            if (timeout.seconds <= 0)
+                this.toCompletable().get(timeout.toMillis(), TimeUnit.MILLISECONDS)
+            else
+                this.toCompletable().get(timeout.seconds, TimeUnit.SECONDS)
 }
 
 /**

@@ -160,7 +160,7 @@ public class DistributedRegistry implements ChannelEventListenerRegistry {
 
     @NotNull
     @Override
-    public ListenerRegistryResults registerMethodListener(@NotNull Object owner, @NotNull Type eventClass, @Nullable Object instance, @NotNull Method method) {
+    public ListenerRegistryResults registerMethodListener(@NotNull Object owner, @NotNull Type eventClass, @NotNull Object instance, @NotNull Method method) {
         return EventListenerRegistry.DefaultImpls.registerMethodListener(this, owner, eventClass, instance, method);
     }
 }
