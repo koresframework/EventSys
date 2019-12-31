@@ -25,32 +25,11 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.koresframework.eventsys.logging
+package com.github.koresframework.eventsys.test.context;
 
-import com.github.koresframework.eventsys.context.EnvironmentContext
+import com.github.koresframework.eventsys.event.Event;
 
-/**
- * Logging interface
- */
-interface LoggerInterface {
-
-    /**
-     * Logs [message] of [messageType].
-     */
-    fun log(message: String, messageType: MessageType, ctx: EnvironmentContext)
-
-    /**
-     * Logs [message] of [messageType] with exception [throwable].
-     */
-    fun log(message: String, messageType: MessageType, throwable: Throwable, ctx: EnvironmentContext)
-
-    /**
-     * Logs [messages] of [messageType].
-     */
-    fun log(messages: List<String>, messageType: MessageType, ctx: EnvironmentContext)
-
-    /**
-     * Logs [messages] of [messageType] with exception [throwable].
-     */
-    fun log(messages: List<String>, messageType: MessageType, throwable: Throwable, ctx: EnvironmentContext)
+public interface MessageSendEvent extends Event {
+    String getClientAddress();
+    String getMessage();
 }

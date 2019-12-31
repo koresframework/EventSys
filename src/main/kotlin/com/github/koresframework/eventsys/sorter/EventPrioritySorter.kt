@@ -25,32 +25,25 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.koresframework.eventsys.logging
+package com.github.koresframework.eventsys.sorter
 
-import com.github.koresframework.eventsys.context.EnvironmentContext
+import com.github.koresframework.eventsys.event.Event
+import com.github.koresframework.eventsys.event.EventListener
 
-/**
- * Logging interface
- */
-interface LoggerInterface {
+class EventPrioritySorter<T : Event> : Comparator<EventListener<T>>,
+        (EventListener<T>, EventListener<T>) -> Int {
 
-    /**
-     * Logs [message] of [messageType].
-     */
-    fun log(message: String, messageType: MessageType, ctx: EnvironmentContext)
+    override fun compare(o1: EventListener<T>?, o2: EventListener<T>?): Int =
+            compareValues(o1?.priority, o2?.priority)
 
-    /**
-     * Logs [message] of [messageType] with exception [throwable].
-     */
-    fun log(message: String, messageType: MessageType, throwable: Throwable, ctx: EnvironmentContext)
+    override fun invoke(p1: EventListener<T>, p2: EventListener<T>): Int = this.compare(p1, p2)
 
-    /**
-     * Logs [messages] of [messageType].
-     */
-    fun log(messages: List<String>, messageType: MessageType, ctx: EnvironmentContext)
+    companion object {
+        private val sorter = EventPrioritySorter<Event>()
 
-    /**
-     * Logs [messages] of [messageType] with exception [throwable].
-     */
-    fun log(messages: List<String>, messageType: MessageType, throwable: Throwable, ctx: EnvironmentContext)
+        @Suppress("UNCHECKED_CAST")
+        @JvmStatic
+        fun <T: Event> anySorter(): Comparator<EventListener<*>> =
+                this.sorter as Comparator<EventListener<*>>
+    }
 }

@@ -28,6 +28,7 @@
 package com.github.koresframework.eventsys.ap
 
 import com.github.jonathanxd.iutils.io.DelegatePrintStream
+import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.logging.Level
 import com.github.koresframework.eventsys.logging.LoggerInterface
 import com.github.koresframework.eventsys.logging.MessageType
@@ -36,11 +37,11 @@ import javax.tools.Diagnostic
 
 class CTLogger(val messager: Messager) : LoggerInterface {
 
-    override fun log(message: String, messageType: MessageType) {
+    override fun log(message: String, messageType: MessageType, ctx: EnvironmentContext) {
         messager.printMessage(messageType.level.toKind(), message)
     }
 
-    override fun log(message: String, messageType: MessageType, throwable: Throwable) {
+    override fun log(message: String, messageType: MessageType, throwable: Throwable, ctx: EnvironmentContext) {
         messager.printMessage(messageType.level.toKind(), message)
 
         throwable.printStackTrace(DelegatePrintStream("UTF-8") {
@@ -48,13 +49,13 @@ class CTLogger(val messager: Messager) : LoggerInterface {
         })
     }
 
-    override fun log(messages: List<String>, messageType: MessageType) {
+    override fun log(messages: List<String>, messageType: MessageType, ctx: EnvironmentContext) {
         messages.forEach {
             messager.printMessage(messageType.level.toKind(), it)
         }
     }
 
-    override fun log(messages: List<String>, messageType: MessageType, throwable: Throwable) {
+    override fun log(messages: List<String>, messageType: MessageType, throwable: Throwable, ctx: EnvironmentContext) {
         messages.forEach {
             messager.printMessage(messageType.level.toKind(), it)
         }

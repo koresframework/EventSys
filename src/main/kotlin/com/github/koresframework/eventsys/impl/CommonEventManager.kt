@@ -27,6 +27,7 @@
  */
 package com.github.koresframework.eventsys.impl
 
+import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.event.EventDispatcher
 import com.github.koresframework.eventsys.event.EventListener
 import com.github.koresframework.eventsys.event.EventListenerRegistry
@@ -82,15 +83,15 @@ class DefaultEventManager @JvmOverloads constructor(
 }
 
 class CommonLogger : LoggerInterface {
-    override fun log(messages: List<String>, messageType: MessageType) {
-        log(messages.joinToString("\n"), messageType)
+    override fun log(messages: List<String>, messageType: MessageType, ctx: EnvironmentContext) {
+        log(messages.joinToString("\n"), messageType, ctx)
     }
 
-    override fun log(messages: List<String>, messageType: MessageType, throwable: Throwable) {
-        log(messages.joinToString("\n"), messageType, throwable)
+    override fun log(messages: List<String>, messageType: MessageType, throwable: Throwable, ctx: EnvironmentContext) {
+        log(messages.joinToString("\n"), messageType, throwable, ctx)
     }
 
-    override fun log(message: String, messageType: MessageType) {
+    override fun log(message: String, messageType: MessageType, ctx: EnvironmentContext) {
         if (messageType.level == Level.FATAL) {
             throw IllegalStateException("Fatal error occurred: $message")
         } else {
@@ -98,7 +99,7 @@ class CommonLogger : LoggerInterface {
         }
     }
 
-    override fun log(message: String, messageType: MessageType, throwable: Throwable) {
+    override fun log(message: String, messageType: MessageType, throwable: Throwable, ctx: EnvironmentContext) {
         System.err.println(message)
 
         if (messageType.level == Level.FATAL) {

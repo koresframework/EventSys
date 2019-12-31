@@ -31,6 +31,7 @@ import com.github.jonathanxd.kores.type.GenericType
 import com.github.jonathanxd.kores.type.asGeneric
 import com.github.jonathanxd.kores.type.isAssignableFrom
 import com.github.koresframework.eventsys.channel.ChannelSet
+import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.error.EventCancelledError
 import com.github.koresframework.eventsys.error.ExceptionListenError
 import com.github.koresframework.eventsys.event.*
@@ -88,7 +89,8 @@ abstract class AbstractEventDispatcher : EventDispatcher {
             eventType: Type,
             dispatcher: Any,
             channel: String,
-            isAsync: Boolean
+            isAsync: Boolean,
+            ctx: EnvironmentContext
     ): DispatchResult<T> {
 
         val lazyCancelled = lazy { (event as Cancellable).isCancelled }
@@ -99,7 +101,7 @@ abstract class AbstractEventDispatcher : EventDispatcher {
         fun tryDispatch(eventListenerContainer: EventListenerContainer<*>): CompletableFuture<ListenExecutionResult<T>> =
                 if (isAsync) {
                     CompletableFuture.supplyAsync(Supplier {
-                        dispatchDirect(eventListenerContainer, event, eventType, dispatcher, channel)
+                        dispatchDirect(eventListenerContainer, event, eventType, dispatcher, channel, ctx)
                     }, this.executor)
                 } else if (eventListenerContainer.eventListener.cancelAffected && eventIsCancelled()) {
                     CompletableFuture.completedFuture(ListenExecutionResult(
@@ -116,7 +118,8 @@ abstract class AbstractEventDispatcher : EventDispatcher {
                             event,
                             eventType,
                             dispatcher,
-                            channel
+                            channel,
+                            ctx
                     ))
                 }
 
@@ -135,7 +138,8 @@ abstract class AbstractEventDispatcher : EventDispatcher {
             event: T,
             eventType: Type,
             dispatcher: Any,
-            channel: String
+            channel: String,
+            ctx: EnvironmentContext
     ): ListenExecutionResult<T> {
         return try {
             val result = eventListenerContainer.eventListener.helpOnEvent(event, dispatcher)
@@ -148,7 +152,8 @@ abstract class AbstractEventDispatcher : EventDispatcher {
                             "${eventListenerContainer.owner}. " +
                             "(Dispatcher: $dispatcher, channel: $channel)",
                     MessageType.EXCEPTION_IN_LISTENER,
-                    throwable
+                    throwable,
+                    ctx
             )
             ListenExecutionResult(eventListenerContainer, event, eventType, dispatcher, channel, ListenResult.Failed(ExceptionListenError(throwable)))
         }

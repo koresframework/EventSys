@@ -29,6 +29,7 @@ package com.github.koresframework.eventsys.test.distributed.channel;
 
 import com.github.jonathanxd.iutils.collection.Collections3;
 import com.github.koresframework.eventsys.channel.ChannelSet;
+import com.github.koresframework.eventsys.context.EnvironmentContext;
 import com.github.koresframework.eventsys.event.ChannelEventListenerRegistry;
 import com.github.koresframework.eventsys.event.Event;
 import com.github.koresframework.eventsys.event.EventDispatcher;
@@ -168,11 +169,12 @@ public class DistributedChannelTest {
                                                             @NotNull Type eventType,
                                                             @NotNull Object dispatcher,
                                                             @NotNull String channel,
-                                                            boolean isAsync) {
+                                                            boolean isAsync,
+                                                            @NotNull EnvironmentContext ctx) {
             DispatchResult<T> result = new DispatchResult<>(Collections.emptyList());
             for (EventManager eventManager : this.eventManagers) {
                 DispatchResult<T> currentResult =
-                        eventManager.getEventDispatcher().dispatch(event, eventType, dispatcher, channel, isAsync);
+                        eventManager.getEventDispatcher().dispatch(event, eventType, dispatcher, channel, isAsync, ctx);
 
                 result = result.combine(currentResult); // TODO: Mutable list
             }

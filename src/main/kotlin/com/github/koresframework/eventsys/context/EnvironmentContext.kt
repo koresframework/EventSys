@@ -25,32 +25,14 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.koresframework.eventsys.logging
+package com.github.koresframework.eventsys.context
 
-import com.github.koresframework.eventsys.context.EnvironmentContext
+import com.github.jonathanxd.iutils.data.DataBase
+import com.github.jonathanxd.iutils.data.TypedData
 
 /**
- * Logging interface
+ * Provides information to other components of EventSys.
  */
-interface LoggerInterface {
-
-    /**
-     * Logs [message] of [messageType].
-     */
-    fun log(message: String, messageType: MessageType, ctx: EnvironmentContext)
-
-    /**
-     * Logs [message] of [messageType] with exception [throwable].
-     */
-    fun log(message: String, messageType: MessageType, throwable: Throwable, ctx: EnvironmentContext)
-
-    /**
-     * Logs [messages] of [messageType].
-     */
-    fun log(messages: List<String>, messageType: MessageType, ctx: EnvironmentContext)
-
-    /**
-     * Logs [messages] of [messageType] with exception [throwable].
-     */
-    fun log(messages: List<String>, messageType: MessageType, throwable: Throwable, ctx: EnvironmentContext)
+class EnvironmentContext(val data: TypedData = TypedData()) : DataBase<TypedData> by data {
+    constructor(): this(TypedData())
 }

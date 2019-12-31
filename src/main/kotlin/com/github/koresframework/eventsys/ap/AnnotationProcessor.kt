@@ -29,6 +29,7 @@ package com.github.koresframework.eventsys.ap
 
 import com.github.jonathanxd.iutils.`object`.Default
 import com.github.jonathanxd.iutils.kt.rightOrFail
+import com.github.jonathanxd.iutils.kt.typedKeyOf
 import com.github.jonathanxd.kores.Types
 import com.github.jonathanxd.kores.base.TypeDeclaration
 import com.github.jonathanxd.kores.extra.UnifiedAnnotation
@@ -39,6 +40,7 @@ import com.github.jonathanxd.kores.type.*
 import com.github.jonathanxd.kores.util.KoresTypeResolverFunc
 import com.github.jonathanxd.kores.util.fromSourceString
 import com.github.jonathanxd.kores.util.inferType
+import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.event.Cancellable
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.event.annotation.Extension
@@ -61,11 +63,12 @@ import javax.tools.Diagnostic
 import javax.tools.FileObject
 import javax.tools.StandardLocation
 
+val ROUND_ENV_KEY = typedKeyOf<RoundEnvironment>("ROUND_ENVIRONMENT")
+
 /**
  * Annotation processor of compile-time factory interface generation.
  */
 class AnnotationProcessor : AbstractProcessor() {
-
     private val sourceGen = PlainSourceGenerator()
 
     private val logger by lazy { CTLogger(this.processingEnv.messager) }
@@ -87,6 +90,9 @@ class AnnotationProcessor : AbstractProcessor() {
         roundEnv: RoundEnvironment
     ): Boolean {
         val messager = this.processingEnv.messager
+        val ctx = EnvironmentContext().also {
+            ROUND_ENV_KEY.set(it.data, roundEnv)
+        }
 
         try {
             val elements =
@@ -195,7 +201,7 @@ class AnnotationProcessor : AbstractProcessor() {
                         val extensions = settings.flatMap { it.settings.extensions() }
 
                         val generator = this.createGenerator(extensions)
-                        this.generateFactory(declaration, generator)
+                        this.generateFactory(declaration, generator, ctx)
                     }
 
                 }
@@ -205,7 +211,7 @@ class AnnotationProcessor : AbstractProcessor() {
 
             return true
         } catch (e: Throwable) {
-            logger.log("Failed to process annotation.", MessageType.STANDARD_FATAL, e)
+            logger.log("Failed to process annotation.", MessageType.STANDARD_FATAL, e, ctx)
             throw e
         }
     }
@@ -276,12 +282,14 @@ class AnnotationProcessor : AbstractProcessor() {
             it.options[EventGeneratorOptions.LAZY_EVENT_GENERATION_MODE] = LazyGenerationMode.REFLECTION
         }
 
-    private fun generateFactory(declaration: TypeDeclaration, eventGenerator: EventGenerator) {
+    private fun generateFactory(declaration: TypeDeclaration, eventGenerator: EventGenerator,
+                                ctx: EnvironmentContext) {
         val (factory, events) = EventFactoryClassGenerator.createDeclaration(
             eventGenerator,
             declaration,
             eventGenerator.logger,
-            eventGenerator.generationEnvironment
+            eventGenerator.generationEnvironment,
+                ctx
         )
 
         events.forEach {
