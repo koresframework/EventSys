@@ -110,7 +110,8 @@ abstract class AbstractEventDispatcher : EventDispatcher {
                             eventType,
                             dispatcher,
                             channel,
-                            ListenResult.Failed(EventCancelledError())
+                            ListenResult.Failed(EventCancelledError()),
+                            ctx
                     ))
                 } else {
                     CompletableFuture.completedFuture(dispatchDirect(
@@ -143,7 +144,7 @@ abstract class AbstractEventDispatcher : EventDispatcher {
     ): ListenExecutionResult<T> {
         return try {
             val result = eventListenerContainer.eventListener.helpOnEvent(event, dispatcher)
-            ListenExecutionResult(eventListenerContainer, event, eventType, dispatcher, channel, result)
+            ListenExecutionResult(eventListenerContainer, event, eventType, dispatcher, channel, result, ctx)
         } catch (throwable: Throwable) {
             logger.log(
                     "Cannot dispatch event $event (of type: ${event.eventType})" +
@@ -155,7 +156,7 @@ abstract class AbstractEventDispatcher : EventDispatcher {
                     throwable,
                     ctx
             )
-            ListenExecutionResult(eventListenerContainer, event, eventType, dispatcher, channel, ListenResult.Failed(ExceptionListenError(throwable)))
+            ListenExecutionResult(eventListenerContainer, event, eventType, dispatcher, channel, ListenResult.Failed(ExceptionListenError(throwable)), ctx)
         }
     }
 

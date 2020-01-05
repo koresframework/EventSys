@@ -27,6 +27,7 @@
  */
 package com.github.koresframework.eventsys.result
 
+import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.error.ListenError
 import com.github.koresframework.eventsys.impl.EventListenerContainer
 import java.lang.reflect.Type
@@ -105,7 +106,8 @@ data class ListenExecutionResult<out T>(
         val eventType: Type,
         val dispatcher: Any,
         val channel: String,
-        val result: ListenResult
+        val result: ListenResult,
+        val context: EnvironmentContext
 )
 
 /**
