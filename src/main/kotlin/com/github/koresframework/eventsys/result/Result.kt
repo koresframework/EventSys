@@ -39,7 +39,7 @@ import java.util.concurrent.TimeoutException
 /**
  * A data class containing all listen execution results.
  */
-data class DispatchResult<T>(val listenExecutionResults: List<CompletableFuture<ListenExecutionResult<T>>>) {
+data class DispatchResult<out T>(val listenExecutionResults: List<CompletableFuture<out ListenExecutionResult<T>>>) {
 
     /**
      * Subscribe all listener execution result completable future.
@@ -54,7 +54,8 @@ data class DispatchResult<T>(val listenExecutionResults: List<CompletableFuture<
     /**
      * Transform into a [CompletableFuture] that completes when all [listenExecutionResults] completes.
      */
-    fun toCompletable() = CompletableFuture.allOf(*this.listenExecutionResults.toTypedArray())
+    fun toCompletable(): CompletableFuture<out List<ListenExecutionResult<T>>> =
+            CompletableFuture.allOf(*this.listenExecutionResults.toTypedArray())
             .thenApply {
                 listenExecutionResults.map { it.join() }
             }
@@ -62,7 +63,7 @@ data class DispatchResult<T>(val listenExecutionResults: List<CompletableFuture<
     /**
      * Returns a new [DispatchResult] which combines results of this data object and results of [other].
      */
-    fun combine(other: DispatchResult<T>): DispatchResult<T> =
+    fun combine(other: DispatchResult<@UnsafeVariance T>): DispatchResult<T> =
             DispatchResult(this.listenExecutionResults + other.listenExecutionResults)
 
     /**
@@ -71,7 +72,7 @@ data class DispatchResult<T>(val listenExecutionResults: List<CompletableFuture<
      * @throws InterruptedException
      * @throws ExecutionException
      */
-    fun await() =
+    fun await(): List<ListenExecutionResult<T>> =
             this.toCompletable().get()
 
     /**
@@ -81,7 +82,7 @@ data class DispatchResult<T>(val listenExecutionResults: List<CompletableFuture<
      * @throws ExecutionException
      * @throws TimeoutException
      */
-    fun await(timeout: Duration) =
+    fun await(timeout: Duration): List<ListenExecutionResult<T>> =
             if (timeout.seconds <= 0)
                 this.toCompletable().get(timeout.toMillis(), TimeUnit.MILLISECONDS)
             else
@@ -98,7 +99,7 @@ data class DispatchResult<T>(val listenExecutionResults: List<CompletableFuture<
  * @property channel Channel that event was dispatched to.
  * @property result Result of event dispatch.
  */
-data class ListenExecutionResult<T>(
+data class ListenExecutionResult<out T>(
         val eventListenerContainer: EventListenerContainer<*>,
         val event: T,
         val eventType: Type,

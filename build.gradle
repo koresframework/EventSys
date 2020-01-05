@@ -15,7 +15,7 @@ plugins {
 }
 
 group 'com.github.koresframework'
-version '1.8.1'
+version '1.8.2'
 
 // Programming Language
 apply plugin: 'kotlin'
