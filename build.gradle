@@ -15,7 +15,7 @@ plugins {
 }
 
 group 'com.github.koresframework'
-version '1.8.3'
+version '1.8.4'
 
 // Programming Language
 apply plugin: 'kotlin'
@@ -45,7 +45,7 @@ dependencies {
     implementation 'com.github.koresframework.Kores-SourceWriter:Kores-SourceWriter:4.0.0.25-beta-source'
     implementation 'com.github.koresframework.Kores-BytecodeWriter:Kores-BytecodeWriter:4.0.0.39-beta-bytecode'
     implementation 'com.github.koresframework:Kores-Extra:1.3.8'
-    implementation 'com.github.JonathanxD:JwIUtils:4.16.5-1'
+    implementation 'com.github.JonathanxD.JwIUtils:JwIUtils:4.16.5-1'
     implementation "io.github.lukehutch:fast-classpath-scanner:3.1.15"
 
     testImplementation group: 'junit', name: 'junit', version: '4.12'
