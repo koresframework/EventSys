@@ -28,6 +28,7 @@
 package com.github.koresframework.eventsys.gen.event
 
 import com.github.jonathanxd.iutils.`object`.Default
+import com.github.jonathanxd.iutils.`object`.Tristate
 import com.github.jonathanxd.iutils.collection.Collections3
 import com.github.jonathanxd.iutils.exception.RethrowException
 import com.github.jonathanxd.kores.Instruction
@@ -92,6 +93,11 @@ internal object EventFactoryClassGenerator {
             generationEnvironment: GenerationEnvironment,
             ctx: EnvironmentContext
     ): ResolvableDeclaration<T> {
+
+        if (factoryType.isPublic() == Tristate.FALSE) {
+            throw FactoryImplementationGenerationFailure("Failed to generate factory implementation, provided type '${factoryType.canonicalName}' must be public")
+        }
+
         val (declaration, resolves) =
                 createDeclaration(eventGenerator, factoryType, logger, generationEnvironment, ctx)
 
@@ -115,11 +121,19 @@ internal object EventFactoryClassGenerator {
             val disassembled = lazy(LazyThreadSafetyMode.NONE) { bytecodeClass.disassembledCode }
 
             @Suppress("UNCHECKED_CAST")
-            val generatedEventClass = EventGenClassLoader.defineClass(
-                    declaration,
-                    bytes,
-                    disassembled
-            ) as GeneratedEventClass<T>
+            val generatedEventClass = try {
+                EventGenClassLoader.defineClass(
+                        declaration,
+                        bytes,
+                        disassembled
+                ) as GeneratedEventClass<T>
+            } catch (t: Throwable) {
+                if (t is IllegalAccessError) {
+                    throw FactoryImplementationGenerationFailure("Failed to generate factory implementation, provided type '${factoryType.canonicalName}' must be public.", t)
+                } else {
+                    throw t
+                }
+            }
 
             if (Debug.isSaveEnabled()) {
                 ClassSaver.save(Debug.FACTORY_GEN_DEBUG, generatedEventClass)
@@ -296,7 +310,10 @@ internal object EventFactoryClassGenerator {
                                             extensions,
                                             ctx
                                     ).apply {
-                                        thenAccept {
+                                        exceptionally {
+                                            it.addSuppressed(EventImplementationGenerationFailure("Failed to generate implementation for event '${eventType.concreteType.canonicalName}' specified in method '$declaredMethod'."))
+                                            throw it
+                                        }.thenAccept {
                                             methodBody.add(
                                                     invokeEventConstructor(
                                                             it.classDeclaration,
@@ -323,7 +340,12 @@ internal object EventFactoryClassGenerator {
 
         val c = CompletableFuture.allOf(*futures.toTypedArray())
 
-        c.join()
+        try {
+            c.join()
+        } catch (t: Throwable) {
+            throw EventImplementationGenerationFailure("Failed to generate an event implementation.", t)
+        }
+
 
         return declaration to futures.map { it.get() as ResolvableDeclaration<*> }
     }

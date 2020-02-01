@@ -174,6 +174,12 @@ internal object EventClassGenerator {
 
                 return@lazy generatedEventClass.javaClass
             } catch (t: Throwable) {
+                if (t is IllegalAccessError) {
+                    throw IllegalAccessError("Provided types for event implementation generation are not accessible, only accessible types could be used. Provided types: '${eventDeclaration.interfaces.joinToString(separator = ",") { it.canonicalName }}'.").also {
+                        it.addSuppressed(t)
+                    }
+                }
+
                 throw RuntimeException("Disassembled: \n${disassembled.value}", t)
             }
         }

@@ -27,11 +27,14 @@
  */
 package com.github.koresframework.eventsys.gen.event
 
+import com.github.jonathanxd.iutils.`object`.Tristate
 import com.github.jonathanxd.iutils.map.ConcurrentListMap
 import com.github.jonathanxd.iutils.option.Options
 import com.github.jonathanxd.kores.base.ClassDeclaration
 import com.github.jonathanxd.kores.base.MethodDeclaration
 import com.github.jonathanxd.kores.type.`is`
+import com.github.jonathanxd.kores.type.bindedDefaultResolver
+import com.github.jonathanxd.kores.type.canonicalName
 import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.event.EventListener
@@ -45,6 +48,9 @@ import com.github.koresframework.eventsys.gen.check.DefaultCheckHandler
 import com.github.koresframework.eventsys.logging.LoggerInterface
 import com.github.koresframework.eventsys.reflect.isEqual
 import com.github.koresframework.eventsys.util.ESysExecutor
+import com.github.koresframework.eventsys.util.EventImplementationGenerationFailure
+import com.github.koresframework.eventsys.util.isPublic
+import java.lang.IllegalArgumentException
 import java.lang.reflect.Method
 import java.lang.reflect.Type
 import java.util.concurrent.CompletableFuture
@@ -169,6 +175,10 @@ class CommonEventGenerator @JvmOverloads constructor(
             extensions: List<ExtensionSpecification>,
             ctx: EnvironmentContext
     ): ResolvableDeclaration<Class<out T>> {
+
+        if (type.isPublic() == Tristate.FALSE) {
+            throw EventImplementationGenerationFailure("The provided '${type.canonicalName}' for event implementation generation must be public.")
+        }
 
         val currExts =
                 (this.extensionMap[type]

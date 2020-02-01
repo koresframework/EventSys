@@ -25,29 +25,34 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.koresframework.eventsys.util
+package com.github.koresframework.eventsys.test;
 
-import com.github.jonathanxd.iutils.`object`.Tristate
-import com.github.jonathanxd.kores.base.Annotable
-import com.github.jonathanxd.kores.type.`is`
-import com.github.jonathanxd.kores.type.bindedDefaultResolver
-import java.lang.reflect.Modifier
-import java.lang.reflect.Type
-import javax.lang.model.element.TypeElement
+import com.github.koresframework.eventsys.event.Event;
+import com.github.koresframework.eventsys.event.annotation.Listener;
+import com.github.koresframework.eventsys.impl.DefaultEventManager;
+import com.github.koresframework.eventsys.result.DispatchResult;
+import com.github.koresframework.eventsys.util.EventImplementationGenerationFailure;
 
-fun Annotable.isAnnotationPresent(type: Type) =
-        this.annotations.any { it.type.`is`(type) }
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
-fun Annotable.getDeclaredAnnotation(type: Type) =
-        this.annotations.firstOrNull { it.type.`is`(type) }
+public class HiddenEventClassTest {
 
-fun Type.isPublic(): Tristate =
-        ((this.bindedDefaultResolver.resolve().rightOr(null) as? Class<*>)?.modifiers?.let { Modifier.isPublic(it) }
-                ?: (this.bindedDefaultResolver.resolve().rightOr(null) as? TypeElement)?.modifiers?.any { it == javax.lang.model.element.Modifier.PUBLIC }
-                ?: (this.bindedDefaultResolver.resolveTypeDeclaration().rightOr(null)?.isPublic)).let {
-            when (it) {
-                true -> Tristate.TRUE
-                false -> Tristate.FALSE
-                else -> Tristate.UNKNOWN
-            }
-        }
+    interface AlertEvent extends Event {
+    }
+
+    public interface Factory {
+        AlertEvent createAlertEvent();
+    }
+
+    @Test(expected = EventImplementationGenerationFailure.class)
+    public void testHiddenEventClass() {
+        DefaultEventManager eventManager = new DefaultEventManager();
+
+        Factory factory = eventManager.getEventGenerator().<Factory>createFactory(Factory.class).resolve();
+
+        AlertEvent alertEvent = factory.createAlertEvent();
+    }
+
+}

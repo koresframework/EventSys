@@ -76,9 +76,9 @@ internal object MethodListenerGenerator {
 
             if (!isStatic) {
                 try {
-                    klass.classLoader.loadClass(instance!!::class.java.canonicalName)
+                    klass.classLoader.loadClass(instance!!::class.java.binaryName)
                 } catch (e: ClassNotFoundException) {
-                    throw IllegalStateException("Cannot lookup for Plugin class: '${instance!!::class.java}' from class loader: '${klass.classLoader}'")
+                    throw IllegalStateException("Cannot lookup for Listener class: '${instance!!::class.java}' from class loader: '${klass.classLoader}'")
                 }
 
                 klass.getConstructor(instance::class.java).newInstance(instance)
