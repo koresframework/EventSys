@@ -717,16 +717,16 @@ internal object EventFactoryClassGenerator {
         return PropertyInfo::class.java.invokeConstructor(
 
                 constructorTypeSpec(
-                        Types.CLASS, // declaringClass
+                        typeOf<Type>(), // declaringClass
                         // propertyName, getterName, setterName
                         Types.STRING, Types.STRING, Types.STRING,
                         // type, itsNotNull, validator
-                        Types.CLASS, Types.BOOLEAN, Types.CLASS,
+                        typeOf<Type>(), Types.BOOLEAN, typeOf<Type>(),
                         //propertyTypeInfo, inferredType
-                        PropertyType::class.java, Type::class.java
+                        PropertyType::class.java, typeOf<Type>()
                 ),
                 listOf(
-                        Literals.CLASS(Nothing::class.java),
+                        Literals.TYPE(Nothing::class.java),
                         Literals.STRING(this.propertyName),
                         this.getterName?.let { Literals.STRING(it) } ?: Literals.NULL,
                         this.setterName?.let { Literals.STRING(it) } ?: Literals.NULL,
