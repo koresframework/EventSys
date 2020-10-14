@@ -503,7 +503,7 @@ internal object EventFactoryClassGenerator {
             )
                 return@map Literals.FALSE
 
-            return@map accessVariable(it.type.koresType, name)
+            return@map accessVariable(it.type, name)
         }
 
         return returnValue(

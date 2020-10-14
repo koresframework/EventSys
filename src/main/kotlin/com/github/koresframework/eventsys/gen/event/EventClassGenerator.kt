@@ -411,7 +411,7 @@ internal object EventClassGenerator {
                 modifiers.add(KoresModifier.FINAL)
             }
 
-            fieldDec().modifiers(modifiers).type(it.inferredType).name(name).build()
+            fieldDec().modifiers(modifiers).type(it.inferredType.simplifyGenericType()).name(name).build()
         }.toMutableList()
 
         fields += getPropertyFields()
@@ -448,7 +448,7 @@ internal object EventClassGenerator {
             }
 
             return if (infer.`is`(property.propertyType.type))
-                property.type
+                if (property.type is GenericType) property.type.resolvedType else property.type
             else infer
         } else {
             return property.type.let {
@@ -558,13 +558,14 @@ internal object EventClassGenerator {
 
         properties.forEach {
             val name = it.propertyName
+            val type = if (isSpecialized) it.inferredType else it.type
 
             if (cancellable && name == "cancelled")
                 return@forEach
 
             parameters += parameter(
                     name = name,
-                    type = it.inferredType,
+                    type = type,
                     annotations = listOf(
                             runtimeAnnotation(
                                     Name::class.java,
@@ -583,10 +584,11 @@ internal object EventClassGenerator {
         val constructorBody = constructor.body as MutableInstructions
 
         properties.filter { it.isNotNull }.forEach {
+            val type = if (isSpecialized) it.inferredType else it.type
             constructorBody += Objects::class.java.invokeStatic(
                     "requireNonNull",
                     TypeSpec(Types.OBJECT, listOf(Types.OBJECT)),
-                    listOf(accessVariable(it.inferredType.koresType, it.propertyName))
+                    listOf(accessVariable(type, it.propertyName))
             )
         }
 
@@ -613,7 +615,7 @@ internal object EventClassGenerator {
         }
 
         properties.forEach {
-            val valueType: KoresType = it.inferredType.koresType
+            val valueType = if (isSpecialized) it.inferredType else it.type
 
             constructorBody += if (cancellable && it.propertyName == "cancelled") {
                 setFieldValue(Alias.THIS, Access.THIS, valueType, it.propertyName, Literals.FALSE)
@@ -802,14 +804,14 @@ internal object EventClassGenerator {
 
         val methods = mutableListOf<MethodDeclaration>()
 
-        val fieldType = propertyType.koresType
-        val inferredType = property.inferredType.koresType
+        val fieldType = propertyType
+        val inferredType = property.inferredType.simplifyGenericType()
 
         val castType = getCastType(inferredType)
 
         val ret: Return = if (!fieldType.isPrimitive && property.isNotNull)
             returnValue(
-                    fieldType, cast(
+                    fieldType.simplifyGenericType(), cast(
                     Types.OBJECT, castType,
                     Objects::class.java.invokeStatic(
                             "requireNonNull",
@@ -846,7 +848,7 @@ internal object EventClassGenerator {
         } else {
             methods += MethodDeclaration.Builder.builder()
                     .modifiers(KoresModifier.PUBLIC)
-                    .returnType(fieldType)
+                    .returnType(if (fieldType is GenericType && !fieldType.isType && fieldType.bounds.isNotEmpty()) fieldType.simplifyGenericType() else fieldType)
                     .name(getterName)
                     .body(
                             Instructions.fromPart(
@@ -872,7 +874,7 @@ internal object EventClassGenerator {
         val methods = mutableListOf<MethodDeclaration>()
         val fieldType = propertyType.koresType
 
-        val inferredType = property.inferredType.koresType
+        val inferredType = property.inferredType
 
 
         val base = if (validator == null)
@@ -1441,3 +1443,15 @@ private fun getCastType(koresType: Type): Type = when (koresType.identification)
     Types.LONG.identification -> Types.LONG
     else -> koresType
 }
+
+fun Type.simplifyGenericType() =
+        if (this is GenericType && !this.isType)
+            if (this.isWildcard) Types.OBJECT
+            else this.resolvedType
+        else this
+
+fun Type.genericTypeOnlyName() =
+        if (this is GenericType && !this.isType)
+            if (this.isWildcard) Types.OBJECT
+            else Generic.type(this.name)
+        else this

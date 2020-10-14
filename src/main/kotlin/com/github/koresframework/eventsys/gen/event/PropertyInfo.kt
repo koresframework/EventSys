@@ -43,7 +43,7 @@ data class PropertyInfo @JvmOverloads constructor(
     val isNotNull: Boolean,
     val validator: Type? = null,
     val propertyType: PropertyType,
-    val inferredType: Type = type
+    val inferredType: Type = type.simplifyGenericType()
 ) {
     fun hasGetter() = this.getterName != null
     fun hasSetter() = this.setterName != null
