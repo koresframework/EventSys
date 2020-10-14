@@ -43,6 +43,7 @@ import com.github.jonathanxd.kores.bytecode.util.BridgeUtil
 import com.github.jonathanxd.kores.common.FieldRef
 import com.github.jonathanxd.kores.common.MethodInvokeSpec
 import com.github.jonathanxd.kores.common.MethodTypeSpec
+import com.github.jonathanxd.kores.common.Nothing
 import com.github.jonathanxd.kores.factory.*
 import com.github.jonathanxd.kores.generic.GenericSignature
 import com.github.jonathanxd.kores.helper.ConcatHelper
@@ -433,8 +434,10 @@ internal object EventClassGenerator {
                             isSpecialized: Boolean,
                             type: Type,
                             generationEnvironment: GenerationEnvironment): Type {
-        if ((!property.propertyType.type.isType && !property.propertyType.type.isWildcard)
-                || property.propertyType.type.bounds.isNotEmpty()
+        if (((!property.propertyType.type.isType && !property.propertyType.type.isWildcard)
+                || property.propertyType.type.bounds.isNotEmpty())
+                && property.propertyType.definedParams.isNotEmpty
+                && !property.declaringType.`is`(typeOf<Nothing>())
         ) {
             val infer = inferType(
                     property.propertyType.type,

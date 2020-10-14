@@ -15,7 +15,7 @@ class HyperTest {
 
         val element = "Heyo"
         val manager = HyperMng()
-        val event = factory.resolver().createHyperEvent(element, manager)
+        val event = factory.resolver().createHyperEvent(element, manager, manager)
         em.dispatch(event, this)
 
     }
