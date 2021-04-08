@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2019 ProjectSandstone <https://github.com/ProjectSandstone/EventSys>
+ *      Copyright (c) 2021 ProjectSandstone <https://github.com/ProjectSandstone/EventSys>
  *      Copyright (c) contributors
  *
  *
