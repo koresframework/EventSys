@@ -31,6 +31,7 @@ import com.github.jonathanxd.iutils.description.Description;
 import com.github.jonathanxd.iutils.description.DescriptionUtil;
 import com.github.jonathanxd.iutils.type.TypeInfo;
 import com.github.jonathanxd.iutils.type.TypeParameterProvider;
+import com.github.koresframework.eventsys.dispatcher.EventDispatcherKt;
 import com.koresframework.kores.type.Generic;
 import com.github.koresframework.eventsys.event.EventDispatcher;
 import com.github.koresframework.eventsys.event.EventListener;
@@ -99,8 +100,8 @@ public class TestManager {
         Assert.assertEquals("x", x.getValue());
         Assert.assertEquals("x", ((KtBridgeTest) x).getValue());
 
-        manager.dispatch(messageEvent, this);
-        manager.dispatch(ktEvent, this);
+        manager.dispatchBlocking(messageEvent, this);
+        manager.dispatchBlocking(ktEvent, this);
 
         ktEvent.reset();
 
@@ -119,15 +120,15 @@ public class TestManager {
                 .createMyGenericEvent(new TypeParameterProvider<MyGenericEvent<Object>>() {
                 }.getType(), 7);
 
-        manager.dispatch(a, this);
-        manager.dispatch(b, this);
-        manager.dispatch(c, this);
-        manager.dispatch(d, this);
+        manager.dispatchBlocking(a, this);
+        manager.dispatchBlocking(b, this);
+        manager.dispatchBlocking(c, this);
+        manager.dispatchBlocking(d, this);
 
-        manager.dispatch(c, new TypeParameterProvider<MyGenericEvent<String>>() {
+        manager.dispatchBlocking(c, new TypeParameterProvider<MyGenericEvent<String>>() {
         }.getType(), this);
 
-        manager.dispatch(d, new TypeParameterProvider<MyGenericEvent<String>>() {
+        manager.dispatchBlocking(d, new TypeParameterProvider<MyGenericEvent<String>>() {
         }.getType(), this); // WRONG
 
         Constant.getMyFactoryInstance().createMyTestEvent("Cup", 100);
@@ -155,6 +156,7 @@ public class TestManager {
                 COMMON_THREAD_FACTORY,
                 COMMON_EVENT_GENERATOR,
                 COMMON_LOGGER,
+                EventDispatcherKt.EVENT_CONTEXT,
                 COMMON_EVENT_LISTENER_REGISTRY
         );
 

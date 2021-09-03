@@ -36,6 +36,7 @@ import com.github.koresframework.eventsys.event.annotation.Name
 import com.github.koresframework.eventsys.impl.DefaultEventManager
 import com.github.koresframework.eventsys.result.ListenResult
 import com.github.koresframework.eventsys.util.createFactory
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -62,7 +63,9 @@ class CancellableTest {
         val user = User(id = 0, name = "Test", email = "test@test.com")
         val factory = eventManager.eventGenerator.createFactory<EventFactory>().resolve()
 
-        eventManager.dispatch(factory.createUserRegisterEvent(user), this)
+        runBlocking {
+            eventManager.dispatch(factory.createUserRegisterEvent(user), this)
+        }
 
         Assert.assertEquals(1, this.call)
         Assert.assertEquals(0, this.call2)
@@ -79,9 +82,13 @@ class CancellableTest {
         val user = User(id = 0, name = "Test", email = "test@test.com")
         val factory = eventManager.eventGenerator.createFactory<EventFactory>().resolve()
 
-        val dispatchResult = eventManager.dispatchAsync(factory.createUserRegisterEvent(user), this)
+        val dispatchResult = runBlocking {
+            eventManager.dispatchAsync(factory.createUserRegisterEvent(user), this)
+        }
 
-        val results = dispatchResult.toCompletable().join()
+        val results = runBlocking {
+            dispatchResult.toCompletable().await()
+        }
 
         val distinctBy = results.distinctBy { it.eventListenerContainer.eventListener }
 

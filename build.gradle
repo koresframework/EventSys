@@ -111,12 +111,12 @@ artifacts {
 
 compileKotlin {
     kotlinOptions.jvmTarget = "16"
-    kotlinOptions.freeCompilerArgs = ["-Xuse-experimental=kotlin.Experimental"]
+    kotlinOptions.freeCompilerArgs = ["-Xuse-experimental=kotlin.Experimental", "-Xjvm-default=all"]
 }
 
 compileTestKotlin {
     kotlinOptions.jvmTarget = "16"
-    kotlinOptions.freeCompilerArgs = ["-Xuse-experimental=kotlin.Experimental"]
+    kotlinOptions.freeCompilerArgs = ["-Xuse-experimental=kotlin.Experimental", "-Xjvm-default=all"]
 }
 
 test {

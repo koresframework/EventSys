@@ -38,6 +38,7 @@ import com.github.koresframework.eventsys.logging.LoggerInterface
 import com.github.koresframework.eventsys.result.DispatchResult
 import java.lang.reflect.Type
 import java.util.concurrent.Executor
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Common implementation of [ChannelEventDispatcher] backed to a [normal dispatcher][backendDispatcher].
@@ -45,6 +46,7 @@ import java.util.concurrent.Executor
 class CommonChannelEventDispatcher(override val eventGenerator: EventGenerator,
                                    override val executor: Executor,
                                    override val logger: LoggerInterface,
+                                   override val context: CoroutineContext,
                                    private val channelEventListenerRegistry: ChannelEventListenerRegistry) : AbstractEventDispatcher(), ChannelEventDispatcher {
 
     override val channels: ChannelSet
@@ -61,6 +63,7 @@ class CommonChannelEventDispatcher(override val eventGenerator: EventGenerator,
 }
 
 class ChannelDispatcherDistributor(dispatchers: List<ChannelEventDispatcher>,
+                                   val context: CoroutineContext,
                                    private val globalDispatcher: EventDispatcher) : EventDispatcher, ChannelEventDispatcher {
 
     private val registeredChannelDispatchers = dispatchers.toMutableList()
@@ -73,7 +76,7 @@ class ChannelDispatcherDistributor(dispatchers: List<ChannelEventDispatcher>,
         get() = ChannelSet.Include(this.registeredChannelDispatchers.map { it.channels.toSet() }.flatten().toSet())
 
 
-    override fun <T : Event> dispatch(event: T,
+    override suspend fun <T : Event> dispatch(event: T,
                                       eventType: Type,
                                       dispatcher: Any,
                                       channel: String,
@@ -88,7 +91,7 @@ class ChannelDispatcherDistributor(dispatchers: List<ChannelEventDispatcher>,
                     it.dispatch(event, eventType, dispatcher, channel, isAsync, ctx)
                 }
             }?.reduce { acc, dispatchResult ->
-                DispatchResult(acc.listenExecutionResults + dispatchResult.listenExecutionResults)
-            } ?: DispatchResult(emptyList())
+                acc.combine(dispatchResult)
+            } ?: DispatchResult(this.context, emptyList())
 
 }

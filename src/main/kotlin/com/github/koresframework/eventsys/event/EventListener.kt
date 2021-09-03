@@ -46,7 +46,7 @@ interface EventListener<in T : Event> {
      * @param event Event
      * @param dispatcher Dispatcher of the [event].
      */
-    fun onEvent(event: T, dispatcher: Any): ListenResult
+    suspend fun onEvent(event: T, dispatcher: Any): ListenResult
 
     /**
      * Priority of event, this priority will be used to sort [EventListener] in listener collection.

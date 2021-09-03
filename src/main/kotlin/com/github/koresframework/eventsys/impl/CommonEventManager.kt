@@ -28,6 +28,7 @@
 package com.github.koresframework.eventsys.impl
 
 import com.github.koresframework.eventsys.context.EnvironmentContext
+import com.github.koresframework.eventsys.dispatcher.EVENT_DISPATCHER
 import com.github.koresframework.eventsys.event.EventDispatcher
 import com.github.koresframework.eventsys.event.EventListener
 import com.github.koresframework.eventsys.event.EventListenerRegistry
@@ -39,6 +40,7 @@ import com.github.koresframework.eventsys.logging.LoggerInterface
 import com.github.koresframework.eventsys.logging.MessageType
 import java.util.*
 import java.util.concurrent.Executors
+import kotlin.coroutines.CoroutineContext
 
 abstract class AbstractEventManager : EventManager {
 }
@@ -52,20 +54,24 @@ abstract class AbstractEventManager : EventManager {
  * @param eventGenerator Event generator instance to generate listener methods.
  */
 open class CommonEventManager(
-        open val eventGenerator: EventGenerator,
-        override val eventDispatcher: EventDispatcher,
-        open val eventListenerRegistry: EventListenerRegistry
+    open val eventGenerator: EventGenerator,
+    override val eventDispatcher: EventDispatcher,
+    open val eventListenerRegistry: EventListenerRegistry
 ) : AbstractEventManager()
 
 class DefaultEventManager @JvmOverloads constructor(
-        override val eventListenerRegistry: EventListenerRegistry = COMMON_EVENT_LISTENER_REGISTRY_FACTORY()
-) : CommonEventManager(COMMON_EVENT_GENERATOR,
-        CommonEventDispatcher(
-                COMMON_THREAD_FACTORY,
-                COMMON_EVENT_GENERATOR,
-                COMMON_LOGGER,
-                eventListenerRegistry
-        ), eventListenerRegistry) {
+    override val eventListenerRegistry: EventListenerRegistry = COMMON_EVENT_LISTENER_REGISTRY_FACTORY(),
+    val context: CoroutineContext = EVENT_DISPATCHER
+) : CommonEventManager(
+    COMMON_EVENT_GENERATOR,
+    CommonEventDispatcher(
+        COMMON_THREAD_FACTORY,
+        COMMON_EVENT_GENERATOR,
+        COMMON_LOGGER,
+        context,
+        eventListenerRegistry
+    ), eventListenerRegistry
+) {
 
     companion object {
         private val COMMON_SORTER = Comparator.comparing(EventListener<*>::priority)
@@ -74,9 +80,9 @@ class DefaultEventManager @JvmOverloads constructor(
         private val COMMON_EVENT_GENERATOR = CommonEventGenerator(COMMON_LOGGER)
         private val COMMON_EVENT_LISTENER_REGISTRY_FACTORY = {
             PerChannelEventListenerRegistry(
-                    COMMON_SORTER,
-                    COMMON_LOGGER,
-                    COMMON_EVENT_GENERATOR
+                COMMON_SORTER,
+                COMMON_LOGGER,
+                COMMON_EVENT_GENERATOR
             )
         }
     }

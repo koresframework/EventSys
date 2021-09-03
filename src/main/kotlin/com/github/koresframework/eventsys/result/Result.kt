@@ -30,42 +30,55 @@ package com.github.koresframework.eventsys.result
 import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.error.ListenError
 import com.github.koresframework.eventsys.impl.EventListenerContainer
+import kotlinx.coroutines.*
 import java.lang.reflect.Type
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import kotlin.coroutines.CoroutineContext
 
 /**
  * A data class containing all listen execution results.
  */
-data class DispatchResult<out T>(val listenExecutionResults: List<CompletableFuture<out ListenExecutionResult<T>>>) {
+data class DispatchResult<out T>(
+    private val context: CoroutineContext,
+    val listenExecutionResults: List<Deferred<out ListenExecutionResult<T>>>
+) {
 
     /**
      * Subscribe all listener execution result completable future.
      */
-    fun subscribeAll(onComplete: (ListenExecutionResult<T>, Throwable) -> Unit) =
-            this.listenExecutionResults.forEach {
-                it.whenComplete { result, throwable ->
-                    onComplete(result, throwable)
+    fun subscribeAll(onComplete: (ListenExecutionResult<T>?, Throwable?) -> Unit): Unit =
+        this.listenExecutionResults.forEach { deferred ->
+            deferred.invokeOnCompletion { throwable ->
+                if (throwable != null) {
+                    onComplete(null, throwable)
+                } else {
+                    onComplete(deferred.getCompleted(), null)
                 }
             }
+        }
 
     /**
      * Transform into a [CompletableFuture] that completes when all [listenExecutionResults] completes.
      */
-    fun toCompletable(): CompletableFuture<out List<ListenExecutionResult<T>>> =
-            CompletableFuture.allOf(*this.listenExecutionResults.toTypedArray())
-            .thenApply {
-                listenExecutionResults.map { it.join() }
+    fun toCompletable(): CompletableDeferred<out List<ListenExecutionResult<T>>> =
+        CompletableDeferred<List<ListenExecutionResult<T>>>().also { def ->
+            CoroutineScope(this.context).launch {
+                def.complete(await())
             }
+        }
 
     /**
      * Returns a new [DispatchResult] which combines results of this data object and results of [other].
      */
     fun combine(other: DispatchResult<@UnsafeVariance T>): DispatchResult<T> =
-            DispatchResult(this.listenExecutionResults + other.listenExecutionResults)
+            DispatchResult(
+                this.context + other.context,
+                this.listenExecutionResults + other.listenExecutionResults
+            )
 
     /**
      * Await termination of dispatch
@@ -73,8 +86,19 @@ data class DispatchResult<out T>(val listenExecutionResults: List<CompletableFut
      * @throws InterruptedException
      * @throws ExecutionException
      */
-    fun await(): List<ListenExecutionResult<T>> =
-            this.toCompletable().get()
+    fun awaitBlocking(): List<ListenExecutionResult<T>> =
+        runBlocking { await() }
+
+    /**
+     * Await termination of dispatch
+     *
+     * @throws InterruptedException
+     * @throws ExecutionException
+     */
+    suspend fun await(): List<ListenExecutionResult<T>> =
+        this.listenExecutionResults.fold(mutableListOf()) { l, r ->
+            l.add(r.await()); l
+        }
 
     /**
      * Await termination of dispatch for [timeout] duration.
@@ -83,11 +107,20 @@ data class DispatchResult<out T>(val listenExecutionResults: List<CompletableFut
      * @throws ExecutionException
      * @throws TimeoutException
      */
-    fun await(timeout: Duration): List<ListenExecutionResult<T>> =
-            if (timeout.seconds <= 0)
-                this.toCompletable().get(timeout.toMillis(), TimeUnit.MILLISECONDS)
-            else
-                this.toCompletable().get(timeout.seconds, TimeUnit.SECONDS)
+    fun awaitBlocking(timeout: Duration): List<ListenExecutionResult<T>> =
+        runBlocking { await(timeout) }
+
+    /**
+     * Await termination of dispatch for [timeout] duration.
+     *
+     * @throws InterruptedException
+     * @throws ExecutionException
+     * @throws TimeoutException
+     */
+    suspend fun await(timeout: Duration): List<ListenExecutionResult<T>> =
+        withTimeout(timeMillis = timeout.toMillis()) {
+            await()
+        }
 }
 
 /**

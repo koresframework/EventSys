@@ -124,7 +124,7 @@ class CommonEventGenerator @JvmOverloads constructor(
             listenerSpec: ListenerSpec,
             ctx: EnvironmentContext
     ): CompletableFuture<ResolvableDeclaration<Class<out EventListener<Event>>>> =
-            CompletableFuture.supplyAsync(Supplier<ResolvableDeclaration<Class<out EventListener<Event>>>> {
+            CompletableFuture.supplyAsync(Supplier {
                 this.createMethodListener(listenerClass, method, listenerSpec, ctx)
             }, this.executor)
 

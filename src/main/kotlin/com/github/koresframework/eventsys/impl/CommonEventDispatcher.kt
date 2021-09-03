@@ -43,6 +43,7 @@ import com.github.koresframework.eventsys.result.DispatchResult
 import com.github.koresframework.eventsys.result.ListenExecutionResult
 import com.github.koresframework.eventsys.result.ListenResult
 import com.github.koresframework.eventsys.util.isGenericAssignableFrom
+import kotlinx.coroutines.*
 import java.lang.reflect.Type
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executor
@@ -50,6 +51,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ThreadFactory
 import java.util.function.Supplier
 import kotlin.Comparator
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Common Event dispatcher implementation
@@ -57,11 +59,13 @@ import kotlin.Comparator
  * @param threadFactory Thread factory for async dispatch
  * @param logger Logger interface for error logging.
  * @param eventGenerator Event generator instance to generate listener methods.
+ * @param context The coroutine context to use to concurrently run event handlers.
  */
 open class CommonEventDispatcher(
         threadFactory: ThreadFactory,
         override val eventGenerator: EventGenerator,
         override val logger: LoggerInterface,
+        override val context: CoroutineContext,
         val eventListenerRegistry: EventListenerRegistry
 ) : AbstractEventDispatcher() {
 
@@ -77,6 +81,7 @@ abstract class AbstractEventDispatcher : EventDispatcher {
     protected abstract val logger: LoggerInterface
     protected abstract val executor: Executor
     protected abstract val eventGenerator: EventGenerator
+    protected abstract val context: CoroutineContext
 
     protected abstract fun <T : Event> getListeners(
             event: T,
@@ -84,7 +89,7 @@ abstract class AbstractEventDispatcher : EventDispatcher {
             channel: String
     ): Iterable<EventListenerContainer<*>>
 
-    override fun <T : Event> dispatch(
+    override suspend fun <T : Event> dispatch(
             event: T,
             eventType: Type,
             dispatcher: Any,
@@ -98,13 +103,13 @@ abstract class AbstractEventDispatcher : EventDispatcher {
                 if (event is Cancellable) ({ lazyCancelled.value })
                 else ({ false })
 
-        fun tryDispatch(eventListenerContainer: EventListenerContainer<*>): CompletableFuture<ListenExecutionResult<T>> =
+        suspend fun tryDispatch(eventListenerContainer: EventListenerContainer<*>): Deferred<ListenExecutionResult<T>> =
                 if (isAsync) {
-                    CompletableFuture.supplyAsync(Supplier {
+                    CoroutineScope(this.context).async {
                         dispatchDirect(eventListenerContainer, event, eventType, dispatcher, channel, ctx)
-                    }, this.executor)
+                    }
                 } else if (eventListenerContainer.eventListener.cancelAffected && eventIsCancelled()) {
-                    CompletableFuture.completedFuture(ListenExecutionResult(
+                    CompletableDeferred(ListenExecutionResult(
                             eventListenerContainer,
                             event,
                             eventType,
@@ -114,7 +119,7 @@ abstract class AbstractEventDispatcher : EventDispatcher {
                             ctx
                     ))
                 } else {
-                    CompletableFuture.completedFuture(dispatchDirect(
+                    CompletableDeferred(dispatchDirect(
                             eventListenerContainer,
                             event,
                             eventType,
@@ -130,11 +135,11 @@ abstract class AbstractEventDispatcher : EventDispatcher {
             tryDispatch(it)
         }
 
-        return DispatchResult(dispatches)
+        return DispatchResult(this.context, dispatches)
     }
 
     @Suppress("NOTHING_TO_INLINE")
-    protected inline fun <T : Event> dispatchDirect(
+    protected suspend inline fun <T : Event> dispatchDirect(
             eventListenerContainer: EventListenerContainer<*>,
             event: T,
             eventType: Type,
@@ -180,7 +185,7 @@ abstract class AbstractEventDispatcher : EventDispatcher {
     }
 
     @Suppress("UNCHECKED_CAST")
-    protected fun <T : Event> EventListener<T>.helpOnEvent(event: Any, dispatcher: Any): ListenResult {
+    protected suspend fun <T : Event> EventListener<T>.helpOnEvent(event: Any, dispatcher: Any): ListenResult {
         return this.onEvent(event as T, dispatcher)
     }
 }

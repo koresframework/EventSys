@@ -39,6 +39,7 @@ object Debug {
     val LISTENER_GEN_DEBUG = getSavePath("listener")
 
     fun isSaveEnabled() = System.getProperties()[KORES_SAVE_ENABLED]?.toString()?.toBoolean()
+            ?: System.getenv("KORES_GENERATION_SAVE")?.toBoolean()
             ?: false
 
     private fun getSavePath(): Path =

@@ -30,11 +30,8 @@ package com.github.koresframework.eventsys.test.distributed.channel;
 import com.github.jonathanxd.iutils.collection.Collections3;
 import com.github.koresframework.eventsys.channel.ChannelSet;
 import com.github.koresframework.eventsys.context.EnvironmentContext;
-import com.github.koresframework.eventsys.event.ChannelEventListenerRegistry;
-import com.github.koresframework.eventsys.event.Event;
-import com.github.koresframework.eventsys.event.EventDispatcher;
-import com.github.koresframework.eventsys.event.EventListener;
-import com.github.koresframework.eventsys.event.EventManager;
+import com.github.koresframework.eventsys.dispatcher.EventDispatcherKt;
+import com.github.koresframework.eventsys.event.*;
 import com.github.koresframework.eventsys.event.annotation.Listener;
 import com.github.koresframework.eventsys.gen.event.CommonEventGenerator;
 import com.github.koresframework.eventsys.gen.event.EventGenerator;
@@ -46,6 +43,9 @@ import com.github.koresframework.eventsys.impl.CommonLogger;
 import com.github.koresframework.eventsys.logging.LoggerInterface;
 import com.github.koresframework.eventsys.result.DispatchResult;
 
+import kotlin.coroutines.Continuation;
+import kotlin.coroutines.CoroutineContext;
+import kotlin.coroutines.EmptyCoroutineContext;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
 import org.junit.Before;
@@ -96,16 +96,16 @@ public class DistributedChannelTest {
 
         distributedRegistry.registerListeners(this, this);
 
-        manager.dispatch(factory.bankAccountMoneyChangeEvent(-5), this, "withdraw");
+        manager.dispatchBlocking(factory.bankAccountMoneyChangeEvent(-5), this, "withdraw");
 
         Assert.assertEquals(1, this.withdrawCalled);
         Assert.assertEquals(0, this.depositCalled);
 
-        manager.dispatch(factory.bankAccountMoneyChangeEvent(500), this, "deposit");
+        manager.dispatchBlocking(factory.bankAccountMoneyChangeEvent(500), this, "deposit");
         Assert.assertEquals(1, this.withdrawCalled);
         Assert.assertEquals(1, this.depositCalled);
 
-        manager.dispatch(factory.bankAccountMoneyChangeEvent(500), this, ChannelSet.Expression.ALL);
+        manager.dispatchBlocking(factory.bankAccountMoneyChangeEvent(500), this, ChannelSet.Expression.ALL);
 
         Assert.assertEquals(2, this.withdrawCalled);
         Assert.assertEquals(2, this.depositCalled);
@@ -132,6 +132,7 @@ public class DistributedChannelTest {
         EventDispatcher ed = new CommonChannelEventDispatcher(eg,
                 Executors.newSingleThreadExecutor(),
                 loggerInterface,
+                EventDispatcherKt.EVENT_CONTEXT,
                 registry
         );
 
@@ -156,7 +157,7 @@ public class DistributedChannelTest {
 
     }
 
-    static class DistributedEventDispatcher implements EventDispatcher {
+    static class DistributedEventDispatcher implements BlockingEventDispatcher {
         private final List<EventManager> eventManagers;
 
         DistributedEventDispatcher(List<EventManager> eventManagers) {
@@ -165,16 +166,16 @@ public class DistributedChannelTest {
 
         @NotNull
         @Override
-        public <T extends Event> DispatchResult<T> dispatch(@NotNull T event,
+        public <T extends Event> DispatchResult<T> dispatchBlocking(@NotNull T event,
                                                             @NotNull Type eventType,
                                                             @NotNull Object dispatcher,
                                                             @NotNull String channel,
                                                             boolean isAsync,
                                                             @NotNull EnvironmentContext ctx) {
-            DispatchResult<T> result = new DispatchResult<>(Collections.emptyList());
+            DispatchResult<T> result = new DispatchResult<>(EventDispatcherKt.EVENT_CONTEXT, Collections.emptyList());
             for (EventManager eventManager : this.eventManagers) {
                 DispatchResult<T> currentResult =
-                        eventManager.getEventDispatcher().dispatch(event, eventType, dispatcher, channel, isAsync, ctx);
+                        EventManagerKt.dispatchBlocking(eventManager.getEventDispatcher(), event, eventType, dispatcher, channel, isAsync, ctx);
 
                 result = result.combine(currentResult); // TODO: Mutable list
             }

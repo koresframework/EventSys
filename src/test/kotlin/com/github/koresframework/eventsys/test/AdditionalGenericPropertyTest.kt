@@ -30,6 +30,7 @@ package com.github.koresframework.eventsys.test
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.impl.DefaultEventManager
 import com.github.koresframework.eventsys.util.createFactory
+import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
 class AdditionalGenericPropertyTest {
@@ -40,8 +41,9 @@ class AdditionalGenericPropertyTest {
 
         val element = "Heyo"
         val event = factory.resolver().createTee(element, TManager())
-        em.dispatch(event, this)
-
+        runBlocking {
+            em.dispatch(event, this)
+        }
     }
 
     class TManager : TeeManager<String, TManager>

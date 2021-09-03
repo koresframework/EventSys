@@ -63,8 +63,8 @@ public class InnerClassListenerTest {
         eventManager.getEventListenerRegistry().registerListeners(this, new MyListener());
 
         AlertEvent alertEvent = factory.createAlertEvent();
-        DispatchResult<AlertEvent> result = eventManager.dispatch(alertEvent, this);
-        result.await();
+        DispatchResult<AlertEvent> result = eventManager.dispatchBlocking(alertEvent, this);
+        result.awaitBlocking();
 
         Assert.assertEquals(1, this.dispatch);
     }

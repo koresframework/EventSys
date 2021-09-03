@@ -61,7 +61,7 @@ public class ListenerTest2 {
                         MapUtils.mapOf("ip", "127.0.0.1"));
 
         manager.getEventListenerRegistry().registerListeners(this, this);
-        manager.dispatch(event, this);
+        manager.dispatchBlocking(event, this);
         Assert.assertEquals("127.0.0.1", this.ip);
 
         DisconnectEvent event2 =
@@ -71,7 +71,7 @@ public class ListenerTest2 {
 
         this.ip = null;
 
-        manager.dispatch(event2, this);
+        manager.dispatchBlocking(event2, this);
 
         Assert.assertEquals("0.0.0.0", this.ip);
 
@@ -82,7 +82,7 @@ public class ListenerTest2 {
 
         this.ip = null;
 
-        manager.dispatch(event3, this);
+        manager.dispatchBlocking(event3, this);
 
         Assert.assertTrue(this.dispatched);
     }

@@ -57,7 +57,7 @@ public class ListenerTest {
                         MapUtils.mapOf("name", "Test"));
 
         manager.getEventListenerRegistry().registerListeners(this, this);
-        manager.dispatch(event, this);
+        manager.dispatchBlocking(event, this);
         Assert.assertEquals("Test", this.name);
         Assert.assertTrue(this.dispatched);
     }

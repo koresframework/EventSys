@@ -85,7 +85,7 @@ open class MethodDispatcher(
         }
     }
 
-    override fun onEvent(event: Event, dispatcher: Any): ListenResult {
+    override suspend fun onEvent(event: Event, dispatcher: Any): ListenResult {
 
         // Process [parameters]
         if (listenerSpec.firstIsEvent && listenerSpec.parameters.size == 1) {

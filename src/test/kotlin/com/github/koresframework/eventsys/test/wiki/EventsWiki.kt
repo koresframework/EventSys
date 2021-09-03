@@ -42,6 +42,7 @@ import com.github.koresframework.eventsys.util.EventListener
 import com.github.koresframework.eventsys.util.create
 import com.github.koresframework.eventsys.util.createEventClass
 import com.github.koresframework.eventsys.util.createFactory
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Test
 import java.util.*
@@ -69,7 +70,9 @@ class EventsWiki {
                 "amount" to 5
         ))
 
-        manager.dispatch(event, this)
+        runBlocking {
+            manager.dispatch(event, this)
+        }
 
         manager.eventListenerRegistry.registerListener<BuyEvent>(this, BuyEvent::class.java, EventListener { theEvent, _ ->
             Assert.assertEquals("USB Adapter", theEvent.product.name)

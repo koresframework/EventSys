@@ -56,6 +56,7 @@ import com.github.koresframework.eventsys.reflect.getName
 import com.github.koresframework.eventsys.result.ListenResult
 import com.github.koresframework.eventsys.util.*
 import java.lang.reflect.Type
+import kotlin.coroutines.Continuation
 
 /**
  * Creates [EventListener] class that invokes a method (that are annotated with [Listener]) directly (without reflection).
@@ -187,6 +188,7 @@ internal object MethodListenerGenerator {
 
     private const val eventVariableName: String = "event"
     private const val ownerVariableName: String = "owner"
+    private const val continuationVariableName: String = "\$continuation"
     private const val instanceFieldName: String = "\$instance"
 
     private fun genBody(method: MethodDeclaration, targetType: Type, listenerSpec: ListenerSpec):
@@ -245,47 +247,54 @@ internal object MethodListenerGenerator {
 
             parameters.forEachIndexed { i, param ->
                 if (!listenerSpec.firstIsEvent || i > 0) {
-                    val name = param.name
-                    val typeInfo = param.type
+                    if (i == parameters.lastIndex && param.type.isContinuation) {
+                        val accessContVar = accessVariable(typeOf<Continuation<*>>(), continuationVariableName)
+                        arguments.add(cast(param.type, typeOf<Continuation<*>>(), accessContVar))
+                    } else {
+                        val name = param.name
+                        val typeInfo = param.type
 
-                    if (typeInfo is GenericType
+                        if (typeInfo is GenericType
                             && typeInfo.resolvedType.`is`(Property::class.java)
                             && typeInfo.bounds.isNotEmpty()
-                    ) {
-                        body.addAll(
+                        ) {
+                            body.addAll(
                                 this.callGetPropertyDirectOn(
-                                        accessEventVar,
-                                        name,
-                                        typeInfo.bounds[0].type,
-                                        true,
-                                        param.isOptional,
-                                        param.optType,
-                                        param.shouldLookup
+                                    accessEventVar,
+                                    name,
+                                    typeInfo.bounds[0].type,
+                                    true,
+                                    param.isOptional,
+                                    param.optType,
+                                    param.shouldLookup
                                 )
-                        )
-                    } else {
-                        body.addAll(
+                            )
+                        } else {
+                            body.addAll(
                                 this.callGetPropertyDirectOn(
-                                        accessEventVar,
-                                        name,
-                                        typeInfo,
-                                        false,
-                                        param.isOptional,
-                                        param.optType,
-                                        param.shouldLookup
+                                    accessEventVar,
+                                    name,
+                                    typeInfo,
+                                    false,
+                                    param.isOptional,
+                                    param.optType,
+                                    param.shouldLookup
                                 )
-                        )
-                    }
+                            )
+                        }
 
-                    // toAdd/*cast(Types.OBJECT, param.type.typeClass, toAdd)*/
-                    arguments.add(accessVariable(param.type, "prop$$name"))
+                        // toAdd/*cast(Types.OBJECT, param.type.typeClass, toAdd)*/
+                        arguments.add(accessVariable(param.type, "prop$$name"))
+                    }
                 }
             }
 
+            val isSuspend = method.typeSpec.parameterTypes.lastOrNull()?.isContinuation == true
             val isVoid = method.typeSpec.returnType.`is`(Types.VOID)
             val isListenResult = method.typeSpec.returnType.`is`(typeOf<ListenResult>())
                     || method.typeSpec.returnType.`is`(typeOf<ListenResult.Value>())
                     || method.typeSpec.returnType.`is`(typeOf<ListenResult.Failed>())
+                    || isSuspend
 
             val invoke = invoke(
                     invokeType = if (isStatic) InvokeType.INVOKE_STATIC else InvokeType.get(
@@ -314,7 +323,7 @@ internal object MethodListenerGenerator {
                 invoke
             }
 
-            val returnExpr = returnValue(typeOf<ListenResult>(),
+            val returnExpr = returnValue(typeOf<Any>(),
                     returnValue
             )
 
@@ -332,11 +341,14 @@ internal object MethodListenerGenerator {
                 .annotations(overrideAnnotation())
                 .modifiers(KoresModifier.PUBLIC)
                 .body(genOnEventBody())
-                .returnType(ListenResult::class.java)
+                // Careful here, `suspend` listeners MUST return ListenResult directly because their
+                // return is propagated directly to avoid handling Coroutine Machine Code
+                .returnType(Any::class.java) // Implicitly ListenResult
                 .name("onEvent")
                 .parameters(
                         parameter(type = eventType, name = eventVariableName),
-                        parameter(type = Any::class.java, name = ownerVariableName)
+                        parameter(type = Any::class.java, name = ownerVariableName),
+                        parameter(type = Continuation::class.java, name = continuationVariableName)
                 )
                 .build()
 

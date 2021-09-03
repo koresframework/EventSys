@@ -90,14 +90,14 @@ public class ContextLoggerTest {
                     factory.messageSendEvent("0.0.0.0", "Hello");
 
 
-            DispatchResult<MessageSendEvent> dispatch = eventManager.dispatch(messageSendEvent, MessageSendEvent.class, this);
-            dispatch.await();
+            DispatchResult<MessageSendEvent> dispatch = eventManager.dispatchBlocking(messageSendEvent, MessageSendEvent.class, this);
+            dispatch.awaitBlocking();
 
             Assert.assertEquals(1, this.dispatch);
             Assert.assertNull(this.origin);
 
-            dispatch = eventManager.dispatch(messageSendEvent, MessageSendEvent.class, this, ctx);
-            dispatch.await();
+            dispatch = eventManager.dispatchBlocking(messageSendEvent, MessageSendEvent.class, this, ctx);
+            dispatch.awaitBlocking();
         } catch (IllegalStateException e) {
             Assert.assertEquals("Fatal error occurred: Factory class must be an interface.", e.getMessage());
         }

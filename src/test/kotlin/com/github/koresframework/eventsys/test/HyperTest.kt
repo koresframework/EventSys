@@ -31,6 +31,7 @@ import com.github.koresframework.eventsys.impl.DefaultEventManager
 import com.github.koresframework.eventsys.test.factory.HyperEventFactory
 import com.github.koresframework.eventsys.test.hyper.HyperManager
 import com.github.koresframework.eventsys.util.createFactory
+import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
 class HyperTest {
@@ -43,7 +44,9 @@ class HyperTest {
         val element = "Heyo"
         val manager = HyperMng()
         val event = factory.resolver().createHyperEvent(element, manager, manager)
-        em.dispatch(event, this)
+        runBlocking {
+            em.dispatch(event, this)
+        }
 
     }
 

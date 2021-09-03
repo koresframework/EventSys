@@ -32,6 +32,7 @@ import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.gen.event.EventGenerator
 import com.github.koresframework.eventsys.result.DispatchResult
 import com.github.koresframework.eventsys.util.getEventType
+import kotlinx.coroutines.runBlocking
 import java.lang.reflect.Type
 
 /**
@@ -56,7 +57,19 @@ interface EventManager {
      * @param dispatcher Dispatcher of the [event].
      * @param channel Channel of listeners to receive event.
      */
-    fun <T : Event> dispatch(event: T, dispatcher: Any, channel: String) =
+    fun <T : Event> dispatchBlocking(event: T, dispatcher: Any, channel: String) =
+        runBlocking {
+            dispatch(event, getEventType(event), dispatcher, channel, EnvironmentContext())
+        }
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param dispatcher Dispatcher of the [event].
+     * @param channel Channel of listeners to receive event.
+     */
+    suspend fun <T : Event> dispatch(event: T, dispatcher: Any, channel: String) =
             this.dispatch(event, getEventType(event), dispatcher, channel, EnvironmentContext())
 
     /**
@@ -66,7 +79,19 @@ interface EventManager {
      * @param dispatcher Dispatcher of the [event].
      * @param channel Channel of listeners to receive event.
      */
-    fun <T : Event> dispatch(event: T, dispatcher: Any, channel: String, ctx: EnvironmentContext) =
+    fun <T : Event> dispatchBlocking(event: T, dispatcher: Any, channel: String, ctx: EnvironmentContext) =
+        runBlocking {
+            dispatch(event, getEventType(event), dispatcher, channel, ctx)
+        }
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param dispatcher Dispatcher of the [event].
+     * @param channel Channel of listeners to receive event.
+     */
+    suspend fun <T : Event> dispatch(event: T, dispatcher: Any, channel: String, ctx: EnvironmentContext) =
             this.dispatch(event, getEventType(event), dispatcher, channel, ctx)
 
     /**
@@ -77,7 +102,20 @@ interface EventManager {
      * @param event [Event] to dispatch do listeners.
      * @param dispatcher Dispatcher of the [event].
      */
-    fun <T : Event> dispatch(event: T, dispatcher: Any) =
+    fun <T : Event> dispatchBlocking(event: T, dispatcher: Any) =
+        runBlocking {
+            dispatch(event, dispatcher, ChannelSet.Expression.ALL, EnvironmentContext())
+        }
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
+     *
+     * All listeners will be called (no matter the channel it listen).
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param dispatcher Dispatcher of the [event].
+     */
+    suspend fun <T : Event> dispatch(event: T, dispatcher: Any) =
             this.dispatch(event, dispatcher, ChannelSet.Expression.ALL, EnvironmentContext())
 
     /**
@@ -88,9 +126,21 @@ interface EventManager {
      * @param event [Event] to dispatch do listeners.
      * @param dispatcher Dispatcher of the [event].
      */
-    fun <T : Event> dispatch(event: T, dispatcher: Any, ctx: EnvironmentContext) =
-            this.dispatch(event, dispatcher, ChannelSet.Expression.ALL, ctx)
+    fun <T : Event> dispatchBlocking(event: T, dispatcher: Any, ctx: EnvironmentContext) =
+        runBlocking {
+            dispatch(event, dispatcher, ChannelSet.Expression.ALL, ctx)
+        }
 
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
+     *
+     * All listeners will be called (no matter the channel it listen).
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param dispatcher Dispatcher of the [event].
+     */
+    suspend fun <T : Event> dispatch(event: T, dispatcher: Any, ctx: EnvironmentContext) =
+        this.dispatch(event, dispatcher, ChannelSet.Expression.ALL, ctx)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
@@ -104,7 +154,24 @@ interface EventManager {
      * @param dispatcher Dispatcher of the [event].
      * @param channel Channel of listeners to receive event.
      */
-    fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any, channel: String) =
+    fun <T : Event> dispatchBlocking(event: T, type: Type, dispatcher: Any, channel: String) =
+        runBlocking {
+            dispatch(event, type, dispatcher, channel, EnvironmentContext())
+        }
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
+     *
+     * This dispatch also includes [generic type information][type], normally EventSys infer the type
+     * from generated event class, but if inference fails, or the class does not have generic information,
+     * you need to use this method to dispatch events.
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param type Information of generic event type.
+     * @param dispatcher Dispatcher of the [event].
+     * @param channel Channel of listeners to receive event.
+     */
+    suspend fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any, channel: String) =
             this.dispatch(event, type, dispatcher, channel, EnvironmentContext())
 
     /**
@@ -119,7 +186,24 @@ interface EventManager {
      * @param dispatcher Dispatcher of the [event].
      * @param channel Channel of listeners to receive event.
      */
-    fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any, channel: String, ctx: EnvironmentContext) =
+    fun <T : Event> dispatchBlocking(event: T, type: Type, dispatcher: Any, channel: String, ctx: EnvironmentContext) =
+        runBlocking {
+            eventDispatcher.dispatch(event, type, dispatcher, channel, false, ctx)
+        }
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
+     *
+     * This dispatch also includes [generic type information][type], normally EventSys infer the type
+     * from generated event class, but if inference fails, or the class does not have generic information,
+     * you need to use this method to dispatch events.
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param type Information of generic event type.
+     * @param dispatcher Dispatcher of the [event].
+     * @param channel Channel of listeners to receive event.
+     */
+    suspend fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any, channel: String, ctx: EnvironmentContext) =
             this.eventDispatcher.dispatch(event, type, dispatcher, channel, false, ctx)
 
     /**
@@ -135,7 +219,25 @@ interface EventManager {
      * @param type Information of generic event type.
      * @param dispatcher Dispatcher of the [event].
      */
-    fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any) =
+    fun <T : Event> dispatchBlocking(event: T, type: Type, dispatcher: Any) =
+        runBlocking {
+            dispatch(event, type, dispatcher, ChannelSet.Expression.ALL, EnvironmentContext())
+        }
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
+     *
+     * This dispatch also includes [generic type information][type], normally EventSys infer the type
+     * from generated event class, but if inference fails, or the class does not have generic information,
+     * you need to use this method to dispatch events.
+     *
+     * All listeners will be called (no matter the channel it listen).
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param type Information of generic event type.
+     * @param dispatcher Dispatcher of the [event].
+     */
+    suspend fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any) =
             this.dispatch(event, type, dispatcher, ChannelSet.Expression.ALL, EnvironmentContext())
 
     /**
@@ -151,7 +253,25 @@ interface EventManager {
      * @param type Information of generic event type.
      * @param dispatcher Dispatcher of the [event].
      */
-    fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any, ctx: EnvironmentContext) =
+    fun <T : Event> dispatchBlocking(event: T, type: Type, dispatcher: Any, ctx: EnvironmentContext) =
+        runBlocking {
+            dispatch(event, type, dispatcher, ChannelSet.Expression.ALL, ctx)
+        }
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
+     *
+     * This dispatch also includes [generic type information][type], normally EventSys infer the type
+     * from generated event class, but if inference fails, or the class does not have generic information,
+     * you need to use this method to dispatch events.
+     *
+     * All listeners will be called (no matter the channel it listen).
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param type Information of generic event type.
+     * @param dispatcher Dispatcher of the [event].
+     */
+    suspend fun <T : Event> dispatch(event: T, type: Type, dispatcher: Any, ctx: EnvironmentContext) =
             this.dispatch(event, type, dispatcher, ChannelSet.Expression.ALL, ctx)
 
 
@@ -160,20 +280,34 @@ interface EventManager {
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
      *
-     * Non blocking asynchronous dispatch.
+     * Non-blocking asynchronous dispatch.
      *
      * @param event [Event] to dispatch do listeners.
      * @param dispatcher Dispatcher of the [event].
      * @param channel Channel to dispatch event (`-1` = all).
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, dispatcher: Any, channel: String) =
+    fun <T : Event> dispatchAsyncBlocking(event: T, dispatcher: Any, channel: String) =
+        runBlocking { dispatchAsync(event, getEventType(event), dispatcher, channel, EnvironmentContext()) }
+
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
+     *
+     * Non-blocking asynchronous dispatch.
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param dispatcher Dispatcher of the [event].
+     * @param channel Channel to dispatch event (`-1` = all).
+     */
+    @Suppress("UNCHECKED_CAST")
+    suspend fun <T : Event> dispatchAsync(event: T, dispatcher: Any, channel: String) =
             this.dispatchAsync(event, getEventType(event), dispatcher, channel, EnvironmentContext())
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
      *
-     * Non blocking asynchronous dispatch.
+     * Non-blocking asynchronous dispatch.
      *
      * @param event [Event] to dispatch do listeners.
      * @param dispatcher Dispatcher of the [event].
@@ -181,13 +315,27 @@ interface EventManager {
      * @param ctx Context.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, dispatcher: Any, channel: String, ctx: EnvironmentContext) =
+    fun <T : Event> dispatchAsyncBlocking(event: T, dispatcher: Any, channel: String, ctx: EnvironmentContext) =
+            runBlocking { dispatchAsync(event, getEventType(event), dispatcher, channel, ctx) }
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
+     *
+     * Non-blocking asynchronous dispatch.
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param dispatcher Dispatcher of the [event].
+     * @param channel Channel to dispatch event (`-1` = all).
+     * @param ctx Context.
+     */
+    @Suppress("UNCHECKED_CAST")
+    suspend fun <T : Event> dispatchAsync(event: T, dispatcher: Any, channel: String, ctx: EnvironmentContext) =
             this.dispatchAsync(event, getEventType(event), dispatcher, channel, ctx)
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
      *
-     * Non blocking asynchronous dispatch
+     * Non-blocking asynchronous dispatch
      *
      * All listeners will be called (no matter the channel it listen).
      *
@@ -195,13 +343,27 @@ interface EventManager {
      * @param dispatcher Dispatcher of the [event].
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, dispatcher: Any) =
+    fun <T : Event> dispatchAsyncBlocking(event: T, dispatcher: Any) =
+            runBlocking { dispatchAsync(event, dispatcher, ChannelSet.Expression.ALL, EnvironmentContext()) }
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
+     *
+     * Non-blocking asynchronous dispatch
+     *
+     * All listeners will be called (no matter the channel it listen).
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param dispatcher Dispatcher of the [event].
+     */
+    @Suppress("UNCHECKED_CAST")
+    suspend fun <T : Event> dispatchAsync(event: T, dispatcher: Any) =
             this.dispatchAsync(event, dispatcher, ChannelSet.Expression.ALL, EnvironmentContext())
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
      *
-     * Non blocking asynchronous dispatch
+     * Non-blocking asynchronous dispatch
      *
      * All listeners will be called (no matter the channel it listen).
      *
@@ -210,7 +372,23 @@ interface EventManager {
      * @param ctx Context.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, dispatcher: Any, ctx: EnvironmentContext) =
+    fun <T : Event> dispatchAsyncBlocking(event: T, dispatcher: Any, ctx: EnvironmentContext) =
+            runBlocking { dispatchAsync(event, dispatcher, ChannelSet.Expression.ALL, ctx) }
+
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] (all channels).
+     *
+     * Non-blocking asynchronous dispatch
+     *
+     * All listeners will be called (no matter the channel it listen).
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param dispatcher Dispatcher of the [event].
+     * @param ctx Context.
+     */
+    @Suppress("UNCHECKED_CAST")
+    suspend fun <T : Event> dispatchAsync(event: T, dispatcher: Any, ctx: EnvironmentContext) =
             this.dispatchAsync(event, dispatcher, ChannelSet.Expression.ALL, ctx)
 
 
@@ -221,7 +399,7 @@ interface EventManager {
      * from generated event class, but if inference fails, or the class does not have generic information,
      * you need to use this method to dispatch events.
      *
-     * Non blocking asynchronous dispatch.
+     * Non-blocking asynchronous dispatch.
      *
      * @param event [Event] to dispatch do listeners.
      * @param type Information of generic event type.
@@ -229,7 +407,25 @@ interface EventManager {
      * @param channel Channel to dispatch event.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, type: Type, dispatcher: Any, channel: String) =
+    fun <T : Event> dispatchAsyncBlocking(event: T, type: Type, dispatcher: Any, channel: String) =
+            runBlocking { dispatchAsync(event, type, dispatcher, channel, EnvironmentContext()) }
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
+     *
+     * This dispatch also includes [generic type information][type], normally EventSys infer the type
+     * from generated event class, but if inference fails, or the class does not have generic information,
+     * you need to use this method to dispatch events.
+     *
+     * Non-blocking asynchronous dispatch.
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param type Information of generic event type.
+     * @param dispatcher Dispatcher of the [event].
+     * @param channel Channel to dispatch event.
+     */
+    @Suppress("UNCHECKED_CAST")
+    suspend fun <T : Event> dispatchAsync(event: T, type: Type, dispatcher: Any, channel: String) =
             this.dispatchAsync(event, type, dispatcher, channel, EnvironmentContext())
 
     /**
@@ -239,7 +435,7 @@ interface EventManager {
      * from generated event class, but if inference fails, or the class does not have generic information,
      * you need to use this method to dispatch events.
      *
-     * Non blocking asynchronous dispatch.
+     * Non-blocking asynchronous dispatch.
      *
      * @param event [Event] to dispatch do listeners.
      * @param type Information of generic event type.
@@ -248,7 +444,26 @@ interface EventManager {
      * @param ctx Context.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, type: Type, dispatcher: Any, channel: String, ctx: EnvironmentContext) =
+    fun <T : Event> dispatchAsyncBlocking(event: T, type: Type, dispatcher: Any, channel: String, ctx: EnvironmentContext) =
+            runBlocking { eventDispatcher.dispatch(event, type, dispatcher, channel, true, ctx) }
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
+     *
+     * This dispatch also includes [generic type information][type], normally EventSys infer the type
+     * from generated event class, but if inference fails, or the class does not have generic information,
+     * you need to use this method to dispatch events.
+     *
+     * Non-blocking asynchronous dispatch.
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param type Information of generic event type.
+     * @param dispatcher Dispatcher of the [event].
+     * @param channel Channel to dispatch event.
+     * @param ctx Context.
+     */
+    @Suppress("UNCHECKED_CAST")
+    suspend fun <T : Event> dispatchAsync(event: T, type: Type, dispatcher: Any, channel: String, ctx: EnvironmentContext) =
             this.eventDispatcher.dispatch(event, type, dispatcher, channel, true, ctx)
 
     /**
@@ -258,7 +473,7 @@ interface EventManager {
      * from generated event class, but if inference fails, or the class does not have generic information,
      * you need to use this method to dispatch events.
      *
-     * Non blocking asynchronous dispatch.
+     * Non-blocking asynchronous dispatch.
      *
      * All listeners will be called (no matter the channel it listen).
      *
@@ -267,7 +482,26 @@ interface EventManager {
      * @param dispatcher Dispatcher of the [event].
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, type: Type, dispatcher: Any) =
+    fun <T : Event> dispatchAsyncBlocking(event: T, type: Type, dispatcher: Any) =
+            runBlocking { dispatchAsync(event, type, dispatcher, ChannelSet.Expression.ALL, EnvironmentContext()) }
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event].
+     *
+     * This dispatch also includes [generic type information][type], normally EventSys infer the type
+     * from generated event class, but if inference fails, or the class does not have generic information,
+     * you need to use this method to dispatch events.
+     *
+     * Non-blocking asynchronous dispatch.
+     *
+     * All listeners will be called (no matter the channel it listen).
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param type Information of generic event type.
+     * @param dispatcher Dispatcher of the [event].
+     */
+    @Suppress("UNCHECKED_CAST")
+    suspend fun <T : Event> dispatchAsync(event: T, type: Type, dispatcher: Any) =
             this.dispatchAsync(event, type, dispatcher, ChannelSet.Expression.ALL, EnvironmentContext())
 
     /**
@@ -277,7 +511,7 @@ interface EventManager {
      * from generated event class, but if inference fails, or the class does not have generic information,
      * you need to use this method to dispatch events.
      *
-     * Non blocking asynchronous dispatch.
+     * Non-blocking asynchronous dispatch.
      *
      * All listeners will be called (no matter the channel it listen).
      *
@@ -287,7 +521,28 @@ interface EventManager {
      * @param ctx Context.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <T : Event> dispatchAsync(event: T, type: Type, dispatcher: Any, ctx: EnvironmentContext) =
+    fun <T : Event> dispatchAsyncBlocking(event: T, type: Type, dispatcher: Any, ctx: EnvironmentContext) =
+            runBlocking { dispatchAsync(event, type, dispatcher, ChannelSet.Expression.ALL, ctx) }
+
+
+    /**
+     * Dispatch an [Event] to all [EventListener]s that listen to the [event].
+     *
+     * This dispatch also includes [generic type information][type], normally EventSys infer the type
+     * from generated event class, but if inference fails, or the class does not have generic information,
+     * you need to use this method to dispatch events.
+     *
+     * Non-blocking asynchronous dispatch.
+     *
+     * All listeners will be called (no matter the channel it listen).
+     *
+     * @param event [Event] to dispatch do listeners.
+     * @param type Information of generic event type.
+     * @param dispatcher Dispatcher of the [event].
+     * @param ctx Context.
+     */
+    @Suppress("UNCHECKED_CAST")
+    suspend fun <T : Event> dispatchAsync(event: T, type: Type, dispatcher: Any, ctx: EnvironmentContext) =
             this.dispatchAsync(event, type, dispatcher, ChannelSet.Expression.ALL, ctx)
 
 
@@ -306,10 +561,42 @@ interface EventDispatcher {
      * all listeners), if [isAsync] is true, each listener may be called on different threads,
      * the behavior depends on implementation, but the dispatch will never block current thread.
      */
-    fun <T : Event> dispatch(event: T,
-                             eventType: Type,
-                             dispatcher: Any,
-                             channel: String,
-                             isAsync: Boolean,
-                             ctx: EnvironmentContext): DispatchResult<T>
+    suspend fun <T : Event> dispatch(
+        event: T,
+        eventType: Type,
+        dispatcher: Any,
+        channel: String,
+        isAsync: Boolean,
+        ctx: EnvironmentContext
+    ): DispatchResult<T>
 }
+
+interface BlockingEventDispatcher : EventDispatcher {
+    override suspend fun <T : Event> dispatch(
+        event: T,
+        eventType: Type,
+        dispatcher: Any,
+        channel: String,
+        isAsync: Boolean,
+        ctx: EnvironmentContext
+    ): DispatchResult<T> = this.dispatchBlocking(event, eventType, dispatcher, channel, isAsync, ctx)
+
+    fun <T : Event> dispatchBlocking(
+        event: T,
+        eventType: Type,
+        dispatcher: Any,
+        channel: String,
+        isAsync: Boolean,
+        ctx: EnvironmentContext
+    ): DispatchResult<T>
+}
+
+fun <T : Event> EventDispatcher.dispatchBlocking(
+    event: T,
+    eventType: Type,
+    dispatcher: Any,
+    channel: String,
+    isAsync: Boolean,
+    ctx: EnvironmentContext
+): DispatchResult<T> =
+    runBlocking { this@dispatchBlocking.dispatch(event, eventType, dispatcher, channel, isAsync, ctx) }

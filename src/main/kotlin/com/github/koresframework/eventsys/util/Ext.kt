@@ -87,7 +87,7 @@ inline fun <reified T : Event> EventListenerRegistry.registerListener(plugin: An
     this.registerListener(plugin, genericTypeOf<T>(), eventListener)
 }
 
-inline fun <T : Event> EventListener(crossinline f: (event: T, dispatcher: Any) -> ListenResult): EventListener<T> =
+inline fun <T : Event> EventListener(crossinline f: suspend (event: T, dispatcher: Any) -> ListenResult): EventListener<T> =
         object : EventListener<T> {
-            override fun onEvent(event: T, dispatcher: Any) = f(event, dispatcher)
+            override suspend fun onEvent(event: T, dispatcher: Any) = f(event, dispatcher)
         }

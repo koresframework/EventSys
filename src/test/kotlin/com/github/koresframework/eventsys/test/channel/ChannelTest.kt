@@ -34,6 +34,7 @@ import com.github.koresframework.eventsys.event.annotation.Listener
 import com.github.koresframework.eventsys.event.annotation.Name
 import com.github.koresframework.eventsys.impl.DefaultEventManager
 import com.github.koresframework.eventsys.util.createFactory
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -55,11 +56,15 @@ class ChannelTest {
         val user = User(id = 0, name = "Test", email = "test@test.com")
         val factory = eventManager.eventGenerator.createFactory<EventFactory>().resolve()
 
-        eventManager.dispatch(factory.createUserRegisterEvent(user), this, "user")
+        runBlocking {
+            eventManager.dispatch(factory.createUserRegisterEvent(user), this, "user")
+        }
 
         Assert.assertEquals(1, this.calls)
 
-        eventManager.dispatch(factory.createUserRegisterEvent(user), this, "other")
+        runBlocking {
+            eventManager.dispatch(factory.createUserRegisterEvent(user), this, "other")
+        }
 
         Assert.assertEquals(1, this.calls)
     }
