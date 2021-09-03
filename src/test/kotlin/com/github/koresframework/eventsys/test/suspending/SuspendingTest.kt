@@ -27,7 +27,7 @@ class SuspendingTest {
 class MyListener {
 
     @Listener
-    suspend fun onMessage(event: MyMessage): Any {
+    suspend fun onMessage(event: MyMessage): ListenResult {
         println("Event: $event")
         delay(100)
         return ListenResult.Value(Unit)
