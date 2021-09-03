@@ -28,11 +28,11 @@
 package com.github.koresframework.eventsys.ap
 
 import com.github.jonathanxd.iutils.type.TypeUtil
-import com.github.jonathanxd.kores.type.KoresType
-import com.github.jonathanxd.kores.type.PlainKoresType
-import com.github.jonathanxd.kores.type.getKoresType
-import com.github.jonathanxd.kores.type.koresType
-import com.github.jonathanxd.kores.util.KoresTypeResolverFunc
+import com.koresframework.kores.type.KoresType
+import com.koresframework.kores.type.PlainKoresType
+import com.koresframework.kores.type.getKoresType
+import com.koresframework.kores.type.koresType
+import com.koresframework.kores.util.KoresTypeResolverFunc
 import com.github.koresframework.eventsys.util.DeclarationCache
 import javax.lang.model.util.Elements
 

@@ -27,7 +27,7 @@
  */
 package com.github.koresframework.eventsys.util
 
-import com.github.jonathanxd.kores.type.genericTypeOf
+import com.koresframework.kores.type.genericTypeOf
 import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.event.EventListener

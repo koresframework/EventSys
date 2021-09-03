@@ -27,10 +27,10 @@
  */
 package com.github.koresframework.eventsys.bootstrap;
 
-import com.github.jonathanxd.kores.common.MethodTypeSpec;
-import com.github.jonathanxd.kores.factory.Factories;
-import com.github.jonathanxd.kores.type.ImplicitKoresType;
-import com.github.jonathanxd.kores.type.KoresTypes;
+import com.koresframework.kores.common.MethodTypeSpec;
+import com.koresframework.kores.factory.Factories;
+import com.koresframework.kores.type.ImplicitKoresType;
+import com.koresframework.kores.type.KoresTypes;
 import com.github.koresframework.eventsys.context.EnvironmentContext;
 import com.github.koresframework.eventsys.event.Cancellable;
 import com.github.koresframework.eventsys.event.Event;

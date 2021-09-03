@@ -30,8 +30,8 @@ package com.github.koresframework.eventsys.gen.check
 import com.github.jonathanxd.iutils.description.Description
 import com.github.jonathanxd.iutils.description.DescriptionUtil
 import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.kores.base.*
-import com.github.jonathanxd.kores.type.*
+import com.koresframework.kores.base.*
+import com.koresframework.kores.type.*
 import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.event.annotation.Check

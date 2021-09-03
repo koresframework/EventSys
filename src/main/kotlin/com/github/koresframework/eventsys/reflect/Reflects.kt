@@ -27,13 +27,13 @@
  */
 package com.github.koresframework.eventsys.reflect
 
-import com.github.jonathanxd.kores.base.KoresAnnotation
-import com.github.jonathanxd.kores.base.KoresParameter
-import com.github.jonathanxd.kores.base.MethodDeclaration
-import com.github.jonathanxd.kores.base.TypeDeclaration
-import com.github.jonathanxd.kores.type.KoresType
-import com.github.jonathanxd.kores.type.`is`
-import com.github.jonathanxd.kores.util.conversion.koresParameter
+import com.koresframework.kores.base.KoresAnnotation
+import com.koresframework.kores.base.KoresParameter
+import com.koresframework.kores.base.MethodDeclaration
+import com.koresframework.kores.base.TypeDeclaration
+import com.koresframework.kores.type.KoresType
+import com.koresframework.kores.type.`is`
+import com.koresframework.kores.util.conversion.koresParameter
 import com.github.koresframework.eventsys.util.DeclarationCache
 import com.github.koresframework.eventsys.util.DeclaredMethod
 import com.github.koresframework.eventsys.util.NameCaching

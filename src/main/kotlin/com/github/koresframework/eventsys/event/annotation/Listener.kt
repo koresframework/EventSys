@@ -27,8 +27,8 @@
  */
 package com.github.koresframework.eventsys.event.annotation
 
-import com.github.jonathanxd.kores.base.EnumValue
-import com.github.jonathanxd.kores.base.KoresAnnotation
+import com.koresframework.kores.base.EnumValue
+import com.koresframework.kores.base.KoresAnnotation
 import com.github.koresframework.eventsys.channel.ChannelSet
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.event.EventPriority

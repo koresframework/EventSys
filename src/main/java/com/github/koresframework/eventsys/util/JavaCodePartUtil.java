@@ -27,11 +27,11 @@
  */
 package com.github.koresframework.eventsys.util;
 
-import com.github.jonathanxd.kores.Instruction;
-import com.github.jonathanxd.kores.factory.Factories;
-import com.github.jonathanxd.kores.factory.InvocationFactory;
-import com.github.jonathanxd.kores.type.KoresType;
-import com.github.jonathanxd.kores.type.KoresTypes;
+import com.koresframework.kores.Instruction;
+import com.koresframework.kores.factory.Factories;
+import com.koresframework.kores.factory.InvocationFactory;
+import com.koresframework.kores.type.KoresType;
+import com.koresframework.kores.type.KoresTypes;
 import com.github.jonathanxd.iutils.collection.Collections3;
 
 import java.lang.reflect.Type;

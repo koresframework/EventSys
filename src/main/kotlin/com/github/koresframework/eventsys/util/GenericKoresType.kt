@@ -28,12 +28,12 @@
 package com.github.koresframework.eventsys.util
 
 import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.kores.Instruction
-import com.github.jonathanxd.kores.Types
-import com.github.jonathanxd.kores.base.TypeSpec
-import com.github.jonathanxd.kores.factory.*
-import com.github.jonathanxd.kores.literal.Literals
-import com.github.jonathanxd.kores.type.*
+import com.koresframework.kores.Instruction
+import com.koresframework.kores.Types
+import com.koresframework.kores.base.TypeSpec
+import com.koresframework.kores.factory.*
+import com.koresframework.kores.literal.Literals
+import com.koresframework.kores.type.*
 import java.lang.reflect.Type
 
 fun GenericType.toTypeInfo(): TypeInfo<*> =

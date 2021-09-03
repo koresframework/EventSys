@@ -27,8 +27,8 @@
  */
 package com.github.koresframework.eventsys.gen.event
 
-import com.github.jonathanxd.kores.generic.GenericSignature
-import com.github.jonathanxd.kores.type.GenericType
+import com.koresframework.kores.generic.GenericSignature
+import com.koresframework.kores.type.GenericType
 import java.lang.reflect.Type
 
 /**

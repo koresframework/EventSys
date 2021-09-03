@@ -27,7 +27,7 @@
  */
 package com.github.koresframework.eventsys.util
 
-import com.github.jonathanxd.kores.base.KoresAnnotation
+import com.koresframework.kores.base.KoresAnnotation
 import com.github.koresframework.eventsys.event.annotation.Filter
 import java.lang.reflect.Type
 

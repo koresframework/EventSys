@@ -27,8 +27,8 @@
  */
 package com.github.koresframework.eventsys.gen.check
 
-import com.github.jonathanxd.kores.base.*
-import com.github.jonathanxd.kores.type.KoresType
+import com.koresframework.kores.base.*
+import com.koresframework.kores.type.KoresType
 import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.gen.event.EventGenerator
 import com.github.koresframework.eventsys.extension.ExtensionSpecification

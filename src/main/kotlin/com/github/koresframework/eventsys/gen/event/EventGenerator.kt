@@ -28,8 +28,8 @@
 package com.github.koresframework.eventsys.gen.event
 
 import com.github.jonathanxd.iutils.option.Options
-import com.github.jonathanxd.kores.base.MethodDeclaration
-import com.github.jonathanxd.kores.type.Generic
+import com.koresframework.kores.base.MethodDeclaration
+import com.koresframework.kores.type.Generic
 import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.event.EventListener

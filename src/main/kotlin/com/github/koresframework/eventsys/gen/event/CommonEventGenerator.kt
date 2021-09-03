@@ -30,11 +30,11 @@ package com.github.koresframework.eventsys.gen.event
 import com.github.jonathanxd.iutils.`object`.Tristate
 import com.github.jonathanxd.iutils.map.ConcurrentListMap
 import com.github.jonathanxd.iutils.option.Options
-import com.github.jonathanxd.kores.base.ClassDeclaration
-import com.github.jonathanxd.kores.base.MethodDeclaration
-import com.github.jonathanxd.kores.type.`is`
-import com.github.jonathanxd.kores.type.bindedDefaultResolver
-import com.github.jonathanxd.kores.type.canonicalName
+import com.koresframework.kores.base.ClassDeclaration
+import com.koresframework.kores.base.MethodDeclaration
+import com.koresframework.kores.type.`is`
+import com.koresframework.kores.type.bindedDefaultResolver
+import com.koresframework.kores.type.canonicalName
 import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.event.EventListener

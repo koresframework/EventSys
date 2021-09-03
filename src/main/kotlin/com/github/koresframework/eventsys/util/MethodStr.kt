@@ -27,9 +27,9 @@
  */
 package com.github.koresframework.eventsys.util
 
-import com.github.jonathanxd.kores.base.FieldDeclaration
-import com.github.jonathanxd.kores.base.MethodDeclaration
-import com.github.jonathanxd.kores.type.simpleName
+import com.koresframework.kores.base.FieldDeclaration
+import com.koresframework.kores.base.MethodDeclaration
+import com.koresframework.kores.type.simpleName
 import java.lang.reflect.Method
 import java.lang.reflect.Type
 

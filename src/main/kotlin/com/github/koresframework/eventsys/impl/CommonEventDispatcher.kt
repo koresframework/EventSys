@@ -27,9 +27,9 @@
  */
 package com.github.koresframework.eventsys.impl
 
-import com.github.jonathanxd.kores.type.GenericType
-import com.github.jonathanxd.kores.type.asGeneric
-import com.github.jonathanxd.kores.type.isAssignableFrom
+import com.koresframework.kores.type.GenericType
+import com.koresframework.kores.type.asGeneric
+import com.koresframework.kores.type.isAssignableFrom
 import com.github.koresframework.eventsys.channel.ChannelSet
 import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.error.EventCancelledError

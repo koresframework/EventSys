@@ -27,7 +27,7 @@
  */
 package com.github.koresframework.eventsys.gen
 
-import com.github.jonathanxd.kores.base.ClassDeclaration
+import com.koresframework.kores.base.ClassDeclaration
 
 data class ResolvableDeclaration<out T>(
     val classDeclaration: ClassDeclaration,

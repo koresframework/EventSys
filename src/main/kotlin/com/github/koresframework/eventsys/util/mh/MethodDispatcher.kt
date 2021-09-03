@@ -29,9 +29,9 @@ package com.github.koresframework.eventsys.util.mh
 
 import com.github.jonathanxd.iutils.`object`.result.Result
 import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.kores.type.GenericType
-import com.github.jonathanxd.kores.type.`is`
-import com.github.jonathanxd.kores.type.concreteType
+import com.koresframework.kores.type.GenericType
+import com.koresframework.kores.type.`is`
+import com.koresframework.kores.type.concreteType
 import com.github.koresframework.eventsys.error.CouldNotDispatchError
 import com.github.koresframework.eventsys.event.*
 import com.github.koresframework.eventsys.event.property.GetterProperty

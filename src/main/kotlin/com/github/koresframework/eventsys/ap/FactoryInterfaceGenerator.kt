@@ -29,15 +29,15 @@ package com.github.koresframework.eventsys.ap
 
 import com.github.jonathanxd.iutils.`object`.Default
 import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.kores.base.*
-import com.github.jonathanxd.kores.base.Annotation
-import com.github.jonathanxd.kores.base.Retention
-import com.github.jonathanxd.kores.factory.parameter
-import com.github.jonathanxd.kores.generic.GenericSignature
-import com.github.jonathanxd.kores.type.Generic
-import com.github.jonathanxd.kores.type.KoresType
-import com.github.jonathanxd.kores.type.koresType
-import com.github.jonathanxd.kores.util.eraseType
+import com.koresframework.kores.base.*
+import com.koresframework.kores.base.Annotation
+import com.koresframework.kores.base.Retention
+import com.koresframework.kores.factory.parameter
+import com.koresframework.kores.generic.GenericSignature
+import com.koresframework.kores.type.Generic
+import com.koresframework.kores.type.KoresType
+import com.koresframework.kores.type.koresType
+import com.koresframework.kores.util.eraseType
 import com.github.koresframework.eventsys.event.annotation.Extension
 import com.github.koresframework.eventsys.event.annotation.LazyGeneration
 import com.github.koresframework.eventsys.event.annotation.Name

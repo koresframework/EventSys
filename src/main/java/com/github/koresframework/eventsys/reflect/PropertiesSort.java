@@ -28,8 +28,8 @@
 package com.github.koresframework.eventsys.reflect;
 
 import com.github.jonathanxd.iutils.object.Lazy;
-import com.github.jonathanxd.kores.base.KoresParameter;
-import com.github.jonathanxd.kores.util.conversion.ConversionsKt;
+import com.koresframework.kores.base.KoresParameter;
+import com.koresframework.kores.util.conversion.ConversionsKt;
 import com.github.koresframework.eventsys.event.Cancellable;
 import com.github.koresframework.eventsys.event.annotation.Name;
 

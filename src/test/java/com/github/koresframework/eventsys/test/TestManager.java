@@ -31,7 +31,7 @@ import com.github.jonathanxd.iutils.description.Description;
 import com.github.jonathanxd.iutils.description.DescriptionUtil;
 import com.github.jonathanxd.iutils.type.TypeInfo;
 import com.github.jonathanxd.iutils.type.TypeParameterProvider;
-import com.github.jonathanxd.kores.type.Generic;
+import com.koresframework.kores.type.Generic;
 import com.github.koresframework.eventsys.event.EventDispatcher;
 import com.github.koresframework.eventsys.event.EventListener;
 import com.github.koresframework.eventsys.event.EventListenerRegistry;
@@ -137,7 +137,7 @@ public class TestManager {
 
         ProvidedExt extension = messageEvent.getExtension(ProvidedExt.class);
 
-        Assert.assertTrue(extension != null);
+        Assert.assertNotNull(extension);
         Assert.assertEquals("_OK_", extension.getTest());
 
     }

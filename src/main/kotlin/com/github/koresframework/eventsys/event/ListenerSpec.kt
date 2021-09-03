@@ -28,14 +28,14 @@
 package com.github.koresframework.eventsys.event
 
 import com.github.jonathanxd.iutils.type.TypeParameterProvider
-import com.github.jonathanxd.kores.base.KoresAnnotation
-import com.github.jonathanxd.kores.base.MethodDeclaration
-import com.github.jonathanxd.kores.type.GenericType
-import com.github.jonathanxd.kores.type.asGeneric
-import com.github.jonathanxd.kores.type.bindedDefaultResolver
-import com.github.jonathanxd.kores.util.conversion.koresAnnotation
-import com.github.jonathanxd.kores.util.conversion.kotlinParameters
-import com.github.jonathanxd.kores.util.isKotlin
+import com.koresframework.kores.base.KoresAnnotation
+import com.koresframework.kores.base.MethodDeclaration
+import com.koresframework.kores.type.GenericType
+import com.koresframework.kores.type.asGeneric
+import com.koresframework.kores.type.bindedDefaultResolver
+import com.koresframework.kores.util.conversion.koresAnnotation
+import com.koresframework.kores.util.conversion.kotlinParameters
+import com.koresframework.kores.util.isKotlin
 import com.github.koresframework.eventsys.event.annotation.*
 import com.github.koresframework.eventsys.util.filterValue
 import com.github.koresframework.eventsys.util.hasEventFirstArg

@@ -27,10 +27,10 @@
  */
 package com.github.koresframework.eventsys.gen
 
-import com.github.jonathanxd.kores.type.KoresTypeResolver
-import com.github.jonathanxd.kores.type.defaultResolver
-import com.github.jonathanxd.kores.util.GenericResolver
-import com.github.jonathanxd.kores.util.MixedResolver
+import com.koresframework.kores.type.KoresTypeResolver
+import com.koresframework.kores.type.defaultResolver
+import com.koresframework.kores.util.GenericResolver
+import com.koresframework.kores.util.MixedResolver
 import com.github.koresframework.eventsys.util.DeclarationCache
 import java.lang.reflect.Type
 

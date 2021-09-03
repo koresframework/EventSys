@@ -28,7 +28,7 @@
 package com.github.koresframework.eventsys.test.factory;
 
 import com.github.jonathanxd.iutils.type.TypeInfo;
-import com.github.jonathanxd.kores.type.GenericType;
+import com.koresframework.kores.type.GenericType;
 import com.github.koresframework.eventsys.event.annotation.Extension;
 import com.github.koresframework.eventsys.event.annotation.LazyGeneration;
 import com.github.koresframework.eventsys.event.annotation.Name;

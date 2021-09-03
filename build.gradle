@@ -15,7 +15,7 @@ plugins {
 }
 
 group 'com.github.koresframework'
-version '1.9.1'
+version '2.0.0'
 
 // Programming Language
 apply plugin: 'kotlin'
@@ -28,24 +28,48 @@ apply plugin: 'license'
 // Shade
 apply plugin: 'com.github.johnrengelman.shadow'
 
-sourceCompatibility = 1.8
-
 repositories {
     mavenCentral()
-    maven { url "https://jitpack.io" }
+    //maven { url "https://jitpack.io" }
+    // JwIUtils
+    maven {
+        url "https://gitlab.com/api/v4/projects/28895078/packages/maven"
+    }
+    // BytecodeDisassembler
+    maven {
+        url 'https://gitlab.com/api/v4/projects/28905629/packages/maven'
+    }
+    // Kores
+    maven {
+        url 'https://gitlab.com/api/v4/projects/28894889/packages/maven'
+    }
+    maven {
+        url 'https://gitlab.com/api/v4/projects/28905266/packages/maven'
+    }
+    maven {
+        url 'https://gitlab.com/api/v4/projects/28905428/packages/maven'
+    }
+    maven {
+        url 'https://gitlab.com/api/v4/projects/29289915/packages/maven'
+    }
 }
 
 dependencies {
     // Kotlin
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     implementation "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.1"
 
     // Utilities
-    implementation 'com.github.koresframework:Kores:4.0.1.base'
-    implementation 'com.github.koresframework.Kores-SourceWriter:Kores-SourceWriter:4.0.1.source'
-    implementation 'com.github.koresframework.Kores-BytecodeWriter:Kores-BytecodeWriter:4.0.1.bytecode.1'
-    implementation 'com.github.koresframework:Kores-Extra:1.4.3'
-    implementation 'com.github.JonathanxD:JwIUtils:4.17.2'
+    implementation("com.koresframework:kores:4.2.8.base")
+    implementation("com.koresframework:kores-bytecodewriter:4.2.8.bytecode")
+    implementation("com.koresframework:kores-sourcewriter:4.2.4.source")
+    implementation 'com.github.jonathanxd:bytecode-disassembler:2.4.1'
+    implementation 'com.github.jonathanxd:kores-extra:1.5.1'
+
+    implementation "com.github.jonathanxd:jwiutils:4.17.8"
+    implementation "com.github.jonathanxd:jwiutils-kt:4.17.8"
+    implementation "com.github.jonathanxd:specializations:4.17.8"
     implementation "io.github.lukehutch:fast-classpath-scanner:3.1.15"
 
     testImplementation group: 'junit', name: 'junit', version: '4.12'
@@ -86,12 +110,12 @@ artifacts {
 }
 
 compileKotlin {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "16"
     kotlinOptions.freeCompilerArgs = ["-Xuse-experimental=kotlin.Experimental"]
 }
 
 compileTestKotlin {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "16"
     kotlinOptions.freeCompilerArgs = ["-Xuse-experimental=kotlin.Experimental"]
 }
 

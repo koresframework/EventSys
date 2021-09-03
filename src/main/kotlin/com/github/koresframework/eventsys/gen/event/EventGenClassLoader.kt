@@ -27,8 +27,8 @@
  */
 package com.github.koresframework.eventsys.gen.event
 
-import com.github.jonathanxd.kores.base.TypeDeclaration
-import com.github.jonathanxd.kores.bytecode.classloader.CodeClassLoader
+import com.koresframework.kores.base.TypeDeclaration
+import com.koresframework.kores.bytecode.classloader.CodeClassLoader
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.gen.GeneratedEventClass
 import java.util.*

@@ -28,8 +28,8 @@
 package com.github.koresframework.eventsys.gen.check
 
 import com.github.jonathanxd.iutils.description.Description
-import com.github.jonathanxd.kores.base.MethodDeclaration
-import com.github.jonathanxd.kores.base.TypeDeclaration
+import com.koresframework.kores.base.MethodDeclaration
+import com.koresframework.kores.base.TypeDeclaration
 import com.github.koresframework.eventsys.gen.event.EventGenerator
 import com.github.koresframework.eventsys.extension.ExtensionSpecification
 import java.lang.reflect.Method

@@ -29,5 +29,5 @@ package com.github.koresframework.eventsys.annotation
 
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.BINARY)
-@Experimental
+@RequiresOptIn
 annotation class EventSysExperimental

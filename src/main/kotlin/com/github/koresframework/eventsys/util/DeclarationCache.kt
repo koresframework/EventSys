@@ -32,19 +32,20 @@ import com.github.jonathanxd.iutils.kt.rightOrFail
 import com.github.jonathanxd.iutils.recursion.Element
 import com.github.jonathanxd.iutils.recursion.ElementUtil
 import com.github.jonathanxd.iutils.recursion.Elements
-import com.github.jonathanxd.kores.base.ImplementationHolder
-import com.github.jonathanxd.kores.base.MethodDeclaration
-import com.github.jonathanxd.kores.base.SuperClassHolder
-import com.github.jonathanxd.kores.base.TypeDeclaration
-import com.github.jonathanxd.kores.type.*
+import com.koresframework.kores.base.ImplementationHolder
+import com.koresframework.kores.base.MethodDeclaration
+import com.koresframework.kores.base.SuperClassHolder
+import com.koresframework.kores.base.TypeDeclaration
+import com.koresframework.kores.type.*
 import com.github.koresframework.eventsys.reflect.isEqual
 import java.lang.reflect.Type
+import java.util.concurrent.ConcurrentHashMap
 
 class DeclarationCache {
 
-    private val cache = mutableMapOf<KoresType, TypeDeclaration>()
-    private val mcache = mutableMapOf<TypeDeclaration, List<DeclaredMethod>>()
-    private val scache = mutableMapOf<TypeDeclaration, List<TypeDeclaration>>()
+    private val cache = ConcurrentHashMap<KoresType, TypeDeclaration>()
+    private val mcache = ConcurrentHashMap<TypeDeclaration, List<DeclaredMethod>>()
+    private val scache = ConcurrentHashMap<TypeDeclaration, List<TypeDeclaration>>()
 
     fun has(type: Type) = this.cache.contains(type.koresType)
 

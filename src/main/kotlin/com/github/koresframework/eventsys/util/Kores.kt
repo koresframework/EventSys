@@ -28,9 +28,9 @@
 package com.github.koresframework.eventsys.util
 
 import com.github.jonathanxd.iutils.`object`.Tristate
-import com.github.jonathanxd.kores.base.Annotable
-import com.github.jonathanxd.kores.type.`is`
-import com.github.jonathanxd.kores.type.bindedDefaultResolver
+import com.koresframework.kores.base.Annotable
+import com.koresframework.kores.type.`is`
+import com.koresframework.kores.type.bindedDefaultResolver
 import java.lang.reflect.Modifier
 import java.lang.reflect.Type
 import javax.lang.model.element.TypeElement

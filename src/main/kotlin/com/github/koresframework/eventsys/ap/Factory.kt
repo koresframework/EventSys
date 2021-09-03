@@ -27,10 +27,10 @@
  */
 package com.github.koresframework.eventsys.ap
 
-import com.github.jonathanxd.kores.extra.UnifiedAnnotation
-import com.github.jonathanxd.kores.extra.UnifiedAnnotationData
-import com.github.jonathanxd.kores.type.KoresType
-import com.github.jonathanxd.kores.type.koresType
+import com.koresframework.kores.extra.UnifiedAnnotation
+import com.koresframework.kores.extra.UnifiedAnnotationData
+import com.koresframework.kores.type.KoresType
+import com.koresframework.kores.type.koresType
 import com.github.koresframework.eventsys.event.annotation.Extension
 
 interface FactoryUnification : UnifiedAnnotation {

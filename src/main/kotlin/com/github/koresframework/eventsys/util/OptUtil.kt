@@ -27,14 +27,14 @@
  */
 package com.github.koresframework.eventsys.util
 
-import com.github.jonathanxd.kores.Instruction
-import com.github.jonathanxd.kores.factory.invokeStatic
-import com.github.jonathanxd.kores.factory.typeSpec
+import com.koresframework.kores.Instruction
+import com.koresframework.kores.factory.invokeStatic
+import com.koresframework.kores.factory.typeSpec
 import com.github.jonathanxd.iutils.opt.Opt
 import com.github.jonathanxd.iutils.opt.OptObject
 import com.github.jonathanxd.iutils.opt.specialized.*
-import com.github.jonathanxd.kores.type.concreteType
-import com.github.jonathanxd.kores.type.koresType
+import com.koresframework.kores.type.concreteType
+import com.koresframework.kores.type.koresType
 import java.lang.reflect.Type
 
 fun Type.createNoneRuntime(): Any =

@@ -30,30 +30,30 @@ package com.github.koresframework.eventsys.gen.event
 import com.github.jonathanxd.iutils.function.consumer.BooleanConsumer
 import com.github.jonathanxd.iutils.kt.rightOrFail
 import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.kores.Instruction
-import com.github.jonathanxd.kores.Instructions
-import com.github.jonathanxd.kores.MutableInstructions
-import com.github.jonathanxd.kores.Types
-import com.github.jonathanxd.kores.base.*
-import com.github.jonathanxd.kores.bytecode.GENERATE_BRIDGE_METHODS
-import com.github.jonathanxd.kores.bytecode.VISIT_LINES
-import com.github.jonathanxd.kores.bytecode.VisitLineType
-import com.github.jonathanxd.kores.bytecode.processor.BytecodeGenerator
-import com.github.jonathanxd.kores.bytecode.util.BridgeUtil
-import com.github.jonathanxd.kores.common.FieldRef
-import com.github.jonathanxd.kores.common.MethodInvokeSpec
-import com.github.jonathanxd.kores.common.MethodTypeSpec
-import com.github.jonathanxd.kores.common.Nothing
-import com.github.jonathanxd.kores.factory.*
-import com.github.jonathanxd.kores.generic.GenericSignature
-import com.github.jonathanxd.kores.helper.ConcatHelper
-import com.github.jonathanxd.kores.helper.invokeToString
-import com.github.jonathanxd.kores.literal.Literals
-import com.github.jonathanxd.kores.type.*
-import com.github.jonathanxd.kores.util.conversion.access
-import com.github.jonathanxd.kores.util.conversion.toVariableAccess
-import com.github.jonathanxd.kores.util.inferType
-import com.github.jonathanxd.kores.util.toSourceString
+import com.koresframework.kores.Instruction
+import com.koresframework.kores.Instructions
+import com.koresframework.kores.MutableInstructions
+import com.koresframework.kores.Types
+import com.koresframework.kores.base.*
+import com.koresframework.kores.bytecode.GENERATE_BRIDGE_METHODS
+import com.koresframework.kores.bytecode.VISIT_LINES
+import com.koresframework.kores.bytecode.VisitLineType
+import com.koresframework.kores.bytecode.processor.BytecodeGenerator
+import com.koresframework.kores.bytecode.util.BridgeUtil
+import com.koresframework.kores.common.FieldRef
+import com.koresframework.kores.common.MethodInvokeSpec
+import com.koresframework.kores.common.MethodTypeSpec
+import com.koresframework.kores.common.Nothing
+import com.koresframework.kores.factory.*
+import com.koresframework.kores.generic.GenericSignature
+import com.koresframework.kores.helper.ConcatHelper
+import com.koresframework.kores.helper.invokeToString
+import com.koresframework.kores.literal.Literals
+import com.koresframework.kores.type.*
+import com.koresframework.kores.util.conversion.access
+import com.koresframework.kores.util.conversion.toVariableAccess
+import com.koresframework.kores.util.inferType
+import com.koresframework.kores.util.toSourceString
 import com.github.koresframework.eventsys.Debug
 import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.event.Cancellable
@@ -1235,13 +1235,13 @@ fun genConstructorPropertiesMap(
         constructorBody += if (!inferredType.`is`(realType)) {
             invokePut(
                     accessMap,
-                    com.github.jonathanxd.kores.literal.Literals.STRING(it.propertyName),
+                    com.koresframework.kores.literal.Literals.STRING(it.propertyName),
                     propertyToSProperty(it, inferredType)
             )
         } else {
             invokePut(
                     accessMap,
-                    com.github.jonathanxd.kores.literal.Literals.STRING(it.propertyName),
+                    com.koresframework.kores.literal.Literals.STRING(it.propertyName),
                     propertyToSProperty(it, realType)
             )
         }

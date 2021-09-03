@@ -27,9 +27,9 @@
  */
 package com.github.koresframework.eventsys.gen
 
-import com.github.jonathanxd.kores.type.Generic
-import com.github.jonathanxd.kores.type.GenericType
-import com.github.jonathanxd.kores.type.koresType
+import com.koresframework.kores.type.Generic
+import com.koresframework.kores.type.GenericType
+import com.koresframework.kores.type.koresType
 import com.github.jonathanxd.iutils.type.TypeInfo
 
 fun genericFromTypeInfo(typeInfo: TypeInfo<*>): GenericType {

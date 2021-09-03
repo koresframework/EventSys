@@ -27,17 +27,17 @@
  */
 package com.github.koresframework.eventsys.gen.event
 
-import com.github.jonathanxd.kores.Instruction
-import com.github.jonathanxd.kores.Instructions
-import com.github.jonathanxd.kores.MutableInstructions
-import com.github.jonathanxd.kores.Types
-import com.github.jonathanxd.kores.base.*
-import com.github.jonathanxd.kores.bytecode.VISIT_LINES
-import com.github.jonathanxd.kores.bytecode.VisitLineType
-import com.github.jonathanxd.kores.bytecode.processor.BytecodeGenerator
-import com.github.jonathanxd.kores.factory.*
-import com.github.jonathanxd.kores.literal.Literals
-import com.github.jonathanxd.kores.type.*
+import com.koresframework.kores.Instruction
+import com.koresframework.kores.Instructions
+import com.koresframework.kores.MutableInstructions
+import com.koresframework.kores.Types
+import com.koresframework.kores.base.*
+import com.koresframework.kores.bytecode.VISIT_LINES
+import com.koresframework.kores.bytecode.VisitLineType
+import com.koresframework.kores.bytecode.processor.BytecodeGenerator
+import com.koresframework.kores.factory.*
+import com.koresframework.kores.literal.Literals
+import com.koresframework.kores.type.*
 import com.github.koresframework.eventsys.Debug
 import com.github.koresframework.eventsys.error.ListenError
 import com.github.koresframework.eventsys.error.PropertyNotFoundError

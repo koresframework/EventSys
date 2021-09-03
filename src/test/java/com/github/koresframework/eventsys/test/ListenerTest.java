@@ -28,7 +28,7 @@
 package com.github.koresframework.eventsys.test;
 
 import com.github.jonathanxd.iutils.map.MapUtils;
-import com.github.jonathanxd.kores.type.Generic;
+import com.koresframework.kores.type.Generic;
 import com.github.koresframework.eventsys.event.Event;
 import com.github.koresframework.eventsys.event.EventManager;
 import com.github.koresframework.eventsys.event.annotation.Listener;
