@@ -50,7 +50,7 @@ fun dec() {
 class MyListener {
 
     @Listener
-    suspend fun onMessage(event: MyMessage): Any {
+    suspend fun onMessage(event: MyMessage): ListenResult {
         println("Event: $event")
         inc()
         delay(1200)
@@ -60,7 +60,7 @@ class MyListener {
     }
 
     @Listener
-    suspend fun onMessage2(event: MyMessage): Any {
+    suspend fun onMessage2(event: MyMessage): ListenResult {
         println("Event 2: $event")
         inc()
         delay(1500)
