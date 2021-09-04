@@ -41,10 +41,7 @@ import com.koresframework.kores.type.*
 import com.github.koresframework.eventsys.Debug
 import com.github.koresframework.eventsys.error.ListenError
 import com.github.koresframework.eventsys.error.PropertyNotFoundError
-import com.github.koresframework.eventsys.event.Event
-import com.github.koresframework.eventsys.event.EventListener
-import com.github.koresframework.eventsys.event.EventPriority
-import com.github.koresframework.eventsys.event.ListenerSpec
+import com.github.koresframework.eventsys.event.*
 import com.github.koresframework.eventsys.event.annotation.Listener
 import com.github.koresframework.eventsys.event.property.GetterProperty
 import com.github.koresframework.eventsys.event.property.Property
@@ -178,7 +175,7 @@ internal object MethodListenerGenerator {
         return ClassDeclaration.Builder.builder()
                 .modifiers(KoresModifier.PUBLIC)
                 .qualifiedName(name)
-                .implementations(Generic.type(EventListener::class.java.koresType).of(eventType.toGeneric))
+                .implementations(Generic.type(DynamicEventListener::class.java.koresType).of(eventType.toGeneric))
                 .superClass(Types.OBJECT)
                 .fields(field?.let(::listOf) ?: emptyList())
                 .constructors(constructor?.let(::listOf) ?: emptyList())
@@ -344,7 +341,7 @@ internal object MethodListenerGenerator {
                 // Careful here, `suspend` listeners MUST return ListenResult directly because their
                 // return is propagated directly to avoid handling Coroutine Machine Code
                 .returnType(Any::class.java) // Implicitly ListenResult
-                .name("onEvent")
+                .name("on")
                 .parameters(
                         parameter(type = eventType, name = eventVariableName),
                         parameter(type = Any::class.java, name = ownerVariableName),

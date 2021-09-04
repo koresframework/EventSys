@@ -23,7 +23,7 @@ class SuspendingTest {
         em.eventListenerRegistry.registerListeners(this, MyListener())
 
         val r = em.dispatchAsyncBlocking(envt, typeOf<MyMessage>())
-        runBlocking {
+        val res = runBlocking {
             r.await()
         }
 
@@ -50,13 +50,13 @@ fun dec() {
 class MyListener {
 
     @Listener
-    suspend fun onMessage(event: MyMessage): ListenResult {
+    suspend fun onMessage(event: MyMessage): String {
         println("Event: $event")
         inc()
         delay(1200)
         dec()
         println("Event: $event -> End")
-        return ListenResult.Value(Unit)
+        return "a"//ListenResult.Value(Unit)
     }
 
     @Listener

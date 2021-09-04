@@ -258,29 +258,6 @@ abstract class AbstractEventListenerRegistry : EventListenerRegistry {
                 else true
             else false
 
-        }.filter {
-            if (it.parameterCount != 0 && it.parameters.last().type.isContinuation) {
-                val kFunc = it.kotlinFunction
-
-                if (kFunc?.isSuspend == true) {
-                    val r = kFunc.returnType
-
-                    if (!r.javaType.concreteType.`is`(typeOf<ListenResult>())) {
-                        logger.log(
-                            "@Listener suspend functions must return ListenResult. The following function '$kFunc' was ignored.",
-                            MessageType.INVALID_LISTENER_DECLARATION,
-                            ctx
-                        )
-                        false
-                    } else {
-                        true
-                    }
-                } else {
-                    true
-                }
-            } else {
-                true
-            }
         }.map {
             if (this.eventGenerator.options[EventGeneratorOptions.USE_METHOD_HANDLE_LISTENER]) {
                 val data = this.eventGenerator.createListenerSpecFromMethod(it)
