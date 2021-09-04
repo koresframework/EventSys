@@ -4,6 +4,9 @@ import com.github.koresframework.eventsys.error.ExceptionListenError
 import com.github.koresframework.eventsys.error.ListenError
 import com.github.koresframework.eventsys.result.ListenResult
 
+/**
+ * [EventListener] implemented dynamically by generated listeners.
+ */
 interface DynamicEventListener<in T: Event> : EventListener<T> {
     override suspend fun onEvent(event: T, dispatcher: Any): ListenResult {
         return try {

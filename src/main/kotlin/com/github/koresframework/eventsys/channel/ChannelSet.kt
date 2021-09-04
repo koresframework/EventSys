@@ -50,6 +50,11 @@ sealed class ChannelSet {
     abstract fun containsAny(channels: Collection<String>): Boolean
 
     /**
+     * Filter out channels of [channelSet] that are not included in this set.
+     */
+    abstract fun filterChannels(channelSet: Set<String>): Set<String>
+
+    /**
      * Join to string representation.
      */
     abstract fun joinToString(): String
@@ -64,6 +69,7 @@ sealed class ChannelSet {
         override fun containsAll(channels: Collection<String>): Boolean = true
         override fun containsAny(channels: Collection<String>): Boolean = true
         override fun joinToString(): String = "@all"
+        override fun filterChannels(channelSet: Set<String>): Set<String> = channelSet
         override fun toSet(): Set<String> = setOf("@all")
     }
 
@@ -72,6 +78,7 @@ sealed class ChannelSet {
         override fun containsAll(channels: Collection<String>): Boolean = false
         override fun containsAny(channels: Collection<String>): Boolean = false
         override fun joinToString(): String = "![@all]"
+        override fun filterChannels(channelSet: Set<String>): Set<String> = emptySet()
         override fun toSet(): Set<String> = setOf("!@all")
     }
 
@@ -89,13 +96,15 @@ sealed class ChannelSet {
 
         override fun joinToString(): String = this.channels.joinToString()
 
+        override fun filterChannels(channelSet: Set<String>): Set<String> =
+            channelSet.filterTo(mutableSetOf()) { this.contains(it) }
+
         override fun toSet(): Set<String> = this.channels
     }
 
     /**
      * Not implemented yet.
      */
-    @EventSysExperimental
     class Exclude(channels: Set<String>) : ChannelSet() {
         private val channels: Set<String> = WrapperCollections.immutableSet(channels.toSet())
 
@@ -109,6 +118,9 @@ sealed class ChannelSet {
                 channels.none { this.channels.contains(it) }
 
         override fun joinToString(): String = "!${this.channels.joinToString()}"
+
+        override fun filterChannels(channelSet: Set<String>): Set<String> =
+            channelSet.filterTo(mutableSetOf()) { this.contains(it) }
 
         override fun toSet(): Set<String> = emptySet() // TODO
     }
@@ -140,7 +152,9 @@ sealed class ChannelSet {
         fun fromExpr(expr: String) = when (expr) {
             ALL -> All
             NONE -> None
-            else -> Include(setOf(expr))
+            else ->
+                if (expr.startsWith("!")) Exclude(expr.split(",").toSet())
+                else Include(expr.split(",").toSet())
         }
     }
 

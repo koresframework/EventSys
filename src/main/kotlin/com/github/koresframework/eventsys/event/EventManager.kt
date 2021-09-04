@@ -36,12 +36,28 @@ import kotlinx.coroutines.runBlocking
 import java.lang.reflect.Type
 
 /**
- * Event manager.
+ * Registers and dispatches events to listeners.
  *
- * [EventManager] register event listeners and dispatches events to listeners.
- * Events can be dispatched in different channels, the channel -1 is the default channel.
- * If a negative channel is provided, the dispatcher will dispatch event to all listeners. Listeners
- * that listen to negative channels will always listen to all channels.
+ * # Dispatch strategy
+ *
+ * ## Sync
+ *
+ * This is the default dispatch strategy for single-thread applications,
+ * listeners are called one-by-one sequentially, respecting the
+ * [listener priority][EventListener.priority].
+ *
+ * ## Async
+ *
+ * This is the default strategy for **Atevist** and multi-thread applications,
+ * listeners are called concurrently, and the [listener priority][EventListener.priority] is not totally ignored,
+ * but can't be guaranteed to be respected.
+ *
+ * ## Sync/Async Blocking
+ *
+ * This is a variant which allows Java-code to interact with `suspend` dispatch, this is not recommended
+ * for Kotlin code to use the `*Blocking` functions, instead, `suspend` variant must be used.
+ *
+ * The `*Blocking` strategy blocks current thread until all listeners have completed the handling logic.
  */
 interface EventManager {
 
@@ -52,6 +68,8 @@ interface EventManager {
 
     /**
      * Dispatch an [Event] to all [EventListener]s that listen to the [event] in [channel].
+     *
+     * Not recommended being used from kotlin code, use `suspend` variant instead.
      *
      * @param event [Event] to dispatch do listeners.
      * @param dispatcher Dispatcher of the [event].

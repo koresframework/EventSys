@@ -39,6 +39,7 @@ import com.github.koresframework.eventsys.result.DispatchResult
 import java.lang.reflect.Type
 import java.util.concurrent.Executor
 import kotlin.coroutines.CoroutineContext
+import kotlin.math.exp
 
 /**
  * Common implementation of [ChannelEventDispatcher] backed to a [normal dispatcher][backendDispatcher].
@@ -53,7 +54,10 @@ class CommonChannelEventDispatcher(override val eventGenerator: EventGenerator,
         get() = this.channelEventListenerRegistry.channels
 
     override fun <T : Event> getListeners(event: T, eventType: Type, channel: String): Iterable<EventListenerContainer<*>> {
-        return if (ChannelSet.Expression.isAll(channel) || channel in this.channelEventListenerRegistry.channels) {
+        val expr = ChannelSet.Expression.fromExpr(channel)
+        val filteredChannels = expr.filterChannels(channels.toSet())
+
+        return if (filteredChannels.isNotEmpty()) {
             this.channelEventListenerRegistry.getListenersContainers(event, eventType, channel)
         } else {
             emptyList()
@@ -81,17 +85,32 @@ class ChannelDispatcherDistributor(dispatchers: List<ChannelEventDispatcher>,
                                       dispatcher: Any,
                                       channel: String,
                                       isAsync: Boolean,
-                                      ctx: EnvironmentContext): DispatchResult<T> =
-            if (ChannelSet.Expression.isAll(channel)) {
-                this.registeredChannelDispatchers.map {
-                    it.dispatch(event, eventType, dispatcher, channel, isAsync, ctx)
-                }
-            } else {
-                this.registeredChannelDispatcherMap[channel]?.map {
-                    it.dispatch(event, eventType, dispatcher, channel, isAsync, ctx)
-                }
-            }?.reduce { acc, dispatchResult ->
-                acc.combine(dispatchResult)
-            } ?: DispatchResult(this.context, emptyList())
+                                      ctx: EnvironmentContext): DispatchResult<T> {
 
+        val dispatchers = when (val expr = ChannelSet.Expression.fromExpr(channel)) {
+            ChannelSet.ALL -> {
+                this.registeredChannelDispatchers
+            }
+            ChannelSet.NONE -> {
+                emptyList()
+            }
+            is ChannelSet.Include, is ChannelSet.Exclude -> {
+                val includeChannels =
+                    if (expr is ChannelSet.Include) expr.toSet()
+                    else this.channels.toSet().filter { expr.contains(it) }
+
+                includeChannels
+                    .flatMap { registeredChannelDispatcherMap[it].orEmpty() }
+            }
+            else -> {
+                emptyList()
+            }
+        }
+
+        return dispatchers
+            .map { it.dispatch(event, eventType, dispatcher, channel, isAsync, ctx) }
+            .fold(DispatchResult(this.context, emptyList())) { acc, dispatchResult ->
+                acc.combine(dispatchResult)
+            }
+    }
 }

@@ -30,16 +30,23 @@ package com.github.koresframework.eventsys.impl
 import com.koresframework.kores.type.isAssignableFrom
 import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.event.EventListener
+import com.github.koresframework.eventsys.event.EventPriority
 import java.lang.reflect.Type
 
 data class EventListenerContainer<in T : Event>(
     val owner: Any,
     val eventType: Type,
     val eventListener: EventListener<T>
-) {
+): Comparable<EventListenerContainer<*>> {
     fun isAssignableFrom(eventType: Type) =
             this.eventType.isAssignableFrom(eventType)
 
     fun isSuperTypeOf(eventType: Type) =
             eventType.isAssignableFrom(this.eventType)
+
+    override fun compareTo(other: EventListenerContainer<*>): Int =
+        Comparator.comparing<EventListenerContainer<*>, EventPriority> { it.eventListener.priority }
+            .thenComparing(Comparator.comparing { it.isSuperTypeOf(other.eventType) })
+            .compare(this, other)
+
 }
