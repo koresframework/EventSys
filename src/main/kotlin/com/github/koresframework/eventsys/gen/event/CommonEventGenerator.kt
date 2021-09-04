@@ -57,6 +57,8 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.function.Supplier
+import kotlin.reflect.jvm.javaType
+import kotlin.reflect.jvm.kotlinFunction
 
 class CommonEventGenerator @JvmOverloads constructor(
         override val logger: LoggerInterface,
@@ -256,10 +258,12 @@ class CommonEventGenerator @JvmOverloads constructor(
                         it.isEqual(
                                 method
                         )
-                    })
+                    }, method.kotlinFunction?.isSuspend == true, method.kotlinFunction?.returnType?.javaType)
 
-    override fun createListenerSpecFromMethod(method: MethodDeclaration): ListenerSpec =
-            ListenerSpec.fromMethodDeclaration(method)
+    override fun createListenerSpecFromMethod(method: MethodDeclaration,
+                                              isSuspend: Boolean,
+                                              realReturnType: Type?): ListenerSpec =
+            ListenerSpec.fromMethodDeclaration(method, isSuspend, realReturnType)
 
     private data class EventClass(
             val typeInfo: Type,

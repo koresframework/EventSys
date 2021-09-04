@@ -55,6 +55,7 @@ import com.github.koresframework.eventsys.gen.save.ClassSaver
 import com.github.koresframework.eventsys.reflect.getName
 import com.github.koresframework.eventsys.result.ListenResult
 import com.github.koresframework.eventsys.util.*
+import com.koresframework.kores.operator.Operators
 import java.lang.reflect.Type
 import kotlin.coroutines.Continuation
 
@@ -288,13 +289,16 @@ internal object MethodListenerGenerator {
                     }
                 }
             }
-
+            // TODO: If return value is not instance of realType, return the value
+            // TODO: Otherwise, return Value(data)
             val isSuspend = method.typeSpec.parameterTypes.lastOrNull()?.isContinuation == true
             val isVoid = method.typeSpec.returnType.`is`(Types.VOID)
             val isListenResult = method.typeSpec.returnType.`is`(typeOf<ListenResult>())
                     || method.typeSpec.returnType.`is`(typeOf<ListenResult.Value>())
                     || method.typeSpec.returnType.`is`(typeOf<ListenResult.Failed>())
-                    || isSuspend
+                    || listenerSpec.realReturnType?.concreteType?.`is`(typeOf<ListenResult>()) == true
+                    || listenerSpec.realReturnType?.concreteType?.`is`(typeOf<ListenResult.Value>()) == true
+                    || listenerSpec.realReturnType?.concreteType?.`is`(typeOf<ListenResult.Failed>()) == true
 
             val invoke = invoke(
                     invokeType = if (isStatic) InvokeType.INVOKE_STATIC else InvokeType.get(
@@ -311,14 +315,35 @@ internal object MethodListenerGenerator {
             )
 
             val returnValue = if (!isListenResult) {
-                val valueArgument: Instruction =
+
+
+                if (isSuspend && listenerSpec.realReturnType != null) {
+                    body += variable(Types.OBJECT, "\$\$result", invoke)
+                    val access = accessVariable(Types.OBJECT, "\$\$result")
+                    val valueArgument: Instruction =
+                        if (isVoid) accessStaticField(typeOf<Unit>(), typeOf<Unit>(), "INSTANCE")
+                        else access
+
+                    val ret = typeOf<ListenResult.Value>().invokeConstructor(
+                        constructorTypeSpec(Types.OBJECT),
+                        listOf(valueArgument)
+                    )
+
+                    IfStatement.Builder.builder()
+                        .expressions(IfExpr(isInstanceOf(access, listenerSpec.realReturnType), Operators.EQUAL_TO, Literals.TRUE))
+                        .body(MutableInstructions.create(listOf(access)))
+                        .elseStatement(MutableInstructions.create(listOf(ret)))
+                        .build()
+                } else {
+                    val valueArgument: Instruction =
                         if (isVoid) accessStaticField(typeOf<Unit>(), typeOf<Unit>(), "INSTANCE")
                         else invoke
 
-                typeOf<ListenResult.Value>().invokeConstructor(
+                    typeOf<ListenResult.Value>().invokeConstructor(
                         constructorTypeSpec(Types.OBJECT),
                         listOf(valueArgument)
-                )
+                    )
+                }
             } else {
                 invoke
             }

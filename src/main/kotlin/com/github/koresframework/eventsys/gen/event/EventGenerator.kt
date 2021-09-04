@@ -430,7 +430,9 @@ interface EventGenerator {
     /**
      * Creates a [ListenerSpec] from [Kores method declaration][method].
      */
-    fun createListenerSpecFromMethod(method: MethodDeclaration): ListenerSpec
+    fun createListenerSpecFromMethod(method: MethodDeclaration,
+                                     isSuspend: Boolean,
+                                     realReturnType: Type?): ListenerSpec
 
     /**
      * Creates a [ListenerSpec] from [Java reflection method][method].

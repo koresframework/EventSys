@@ -266,12 +266,12 @@ abstract class AbstractEventListenerRegistry : EventListenerRegistry {
                     val r = kFunc.returnType
 
                     if (!r.javaType.concreteType.`is`(typeOf<ListenResult>())) {
-                        logger.log(
+                        /*logger.log(
                             "@Listener suspend functions must return ListenResult. The following function '$kFunc' was ignored.",
                             MessageType.INVALID_LISTENER_DECLARATION,
                             ctx
-                        )
-                        false
+                        )*/
+                        true
                     } else {
                         true
                     }
