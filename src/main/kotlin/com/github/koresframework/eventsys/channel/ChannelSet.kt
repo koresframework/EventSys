@@ -196,7 +196,7 @@ sealed class ChannelSet {
             ALL -> All
             NONE -> None
             else ->
-                if (expr.startsWith("!")) Exclude(expr.split(",").toSet())
+                if (expr.startsWith("!")) Exclude(expr.substring(1).split(",").toSet())
                 else Include(expr.split(",").toSet())
         }
     }

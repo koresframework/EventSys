@@ -109,5 +109,10 @@ class ChannelTest3 : FunSpec({
 
         ChannelTest3Context.calls.get().shouldBe(3)
         ChannelTest3Context.broadCalls.get().shouldBe(3)
+
+        eventManager.dispatch(factory.createUserRegisterEvent(user), this, "!user").await()
+
+        ChannelTest3Context.calls.get().shouldBe(3)
+        ChannelTest3Context.broadCalls.get().shouldBe(4)
     }
 })
