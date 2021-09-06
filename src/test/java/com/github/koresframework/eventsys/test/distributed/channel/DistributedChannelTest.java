@@ -31,36 +31,22 @@ import com.github.jonathanxd.iutils.collection.Collections3;
 import com.github.koresframework.eventsys.channel.ChannelSet;
 import com.github.koresframework.eventsys.context.EnvironmentContext;
 import com.github.koresframework.eventsys.dispatcher.EventDispatcherKt;
+import com.github.koresframework.eventsys.event.EventListener;
 import com.github.koresframework.eventsys.event.*;
 import com.github.koresframework.eventsys.event.annotation.Listener;
 import com.github.koresframework.eventsys.gen.event.CommonEventGenerator;
 import com.github.koresframework.eventsys.gen.event.EventGenerator;
-import com.github.koresframework.eventsys.impl.AbstractEventManager;
-import com.github.koresframework.eventsys.impl.CommonChannelEventDispatcher;
-import com.github.koresframework.eventsys.impl.CommonChannelEventListenerRegistry;
-import com.github.koresframework.eventsys.impl.CommonEventManager;
-import com.github.koresframework.eventsys.impl.CommonLogger;
+import com.github.koresframework.eventsys.impl.*;
 import com.github.koresframework.eventsys.logging.LoggerInterface;
 import com.github.koresframework.eventsys.result.DispatchResult;
-
-import kotlin.coroutines.Continuation;
-import kotlin.coroutines.CoroutineContext;
-import kotlin.coroutines.EmptyCoroutineContext;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Type;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
-
-import kotlin.Pair;
 
 public class DistributedChannelTest {
 
@@ -70,7 +56,7 @@ public class DistributedChannelTest {
     private int withdrawCalled = 0;
     private int depositCalled = 0;
 
-    @Before
+    @BeforeEach
     public void setup() {
         this.loggerInterface = new CommonLogger();
         this.eg = new CommonEventGenerator(loggerInterface);
@@ -98,17 +84,17 @@ public class DistributedChannelTest {
 
         manager.dispatchBlocking(factory.bankAccountMoneyChangeEvent(-5), this, "withdraw");
 
-        Assert.assertEquals(1, this.withdrawCalled);
-        Assert.assertEquals(0, this.depositCalled);
+        Assertions.assertEquals(1, this.withdrawCalled);
+        Assertions.assertEquals(0, this.depositCalled);
 
         manager.dispatchBlocking(factory.bankAccountMoneyChangeEvent(500), this, "deposit");
-        Assert.assertEquals(1, this.withdrawCalled);
-        Assert.assertEquals(1, this.depositCalled);
+        Assertions.assertEquals(1, this.withdrawCalled);
+        Assertions.assertEquals(1, this.depositCalled);
 
         manager.dispatchBlocking(factory.bankAccountMoneyChangeEvent(500), this, ChannelSet.Expression.ALL);
 
-        Assert.assertEquals(2, this.withdrawCalled);
-        Assert.assertEquals(2, this.depositCalled);
+        Assertions.assertEquals(2, this.withdrawCalled);
+        Assertions.assertEquals(2, this.depositCalled);
     }
 
     @Listener(channel = "withdraw")

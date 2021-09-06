@@ -32,7 +32,7 @@ import com.github.koresframework.eventsys.test.factory.HyperEventFactory
 import com.github.koresframework.eventsys.test.hyper.HyperManager
 import com.github.koresframework.eventsys.util.createFactory
 import kotlinx.coroutines.runBlocking
-import org.junit.Test
+import org.junit.jupiter.api.Test
 
 class HyperTest {
 

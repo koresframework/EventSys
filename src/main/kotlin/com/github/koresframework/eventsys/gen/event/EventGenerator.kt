@@ -42,6 +42,7 @@ import com.github.koresframework.eventsys.logging.LoggerInterface
 import java.lang.reflect.Method
 import java.lang.reflect.Type
 import java.util.concurrent.CompletableFuture
+import kotlin.reflect.KFunction
 
 /**
  * Event generator manager.
@@ -436,4 +437,9 @@ interface EventGenerator {
      * Creates a [ListenerSpec] from [Java reflection method][method].
      */
     fun createListenerSpecFromMethod(method: Method): ListenerSpec
+
+    /**
+     * Creates a [ListenerSpec] from [Kotlin reflection function][function].
+     */
+    fun createListenerSpecFromFunction(function: KFunction<Any>): ListenerSpec
 }

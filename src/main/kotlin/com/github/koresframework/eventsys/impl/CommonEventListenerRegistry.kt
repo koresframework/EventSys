@@ -29,6 +29,7 @@ package com.github.koresframework.eventsys.impl
 
 import com.github.jonathanxd.iutils.collection.wrapper.WrapperCollections
 import com.github.koresframework.eventsys.channel.ChannelSet
+import com.github.koresframework.eventsys.channel.parseChannelSet
 import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.event.*
 import com.github.koresframework.eventsys.event.EventListener
@@ -37,11 +38,14 @@ import com.github.koresframework.eventsys.event.annotation.Listener
 import com.github.koresframework.eventsys.gen.event.EventGenerator
 import com.github.koresframework.eventsys.gen.event.EventGeneratorOptions
 import com.github.koresframework.eventsys.logging.LoggerInterface
+import com.github.koresframework.eventsys.logging.MessageType
 import com.github.koresframework.eventsys.util.hasEventFirstArg
 import com.github.koresframework.eventsys.util.mh.MethodDispatcher
 import java.lang.reflect.Method
 import java.lang.reflect.Type
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentSkipListSet
 
 /**
  * Stores channel listeners in a pair of [Channel name][String] to [EventListener] sorted set,
@@ -53,18 +57,30 @@ class PerChannelEventListenerRegistry(
     override val logger: LoggerInterface,
     override val eventGenerator: EventGenerator
 ) : AbstractEventListenerRegistry() {
-    private val channelListenerMap = mutableMapOf<String, TreeSet<EventListenerContainer<*>>>()
+    private val channelListenerMap = ConcurrentHashMap<String, SortedSet<EventListenerContainer<*>>>()
 
     override fun <T : Event> registerListener(
         owner: Any,
         eventType: Type,
         eventListener: EventListener<T>
     ): ListenerRegistryResults {
-        this.channelListenerMap.computeIfAbsent(eventListener.channel) {
-            TreeSet(eventListenerContainerComparator(sorter))
-        }.add(EventListenerContainer(owner, eventType, eventListener))
+        val validate = this.validateListener(eventListener)
+        if (validate != null) {
+            return validate
+        }
 
-        return registered(eventListener).coerce()
+        val channels = eventListener.channel.parseChannelSet()
+
+        val registered = channels.toSet().map { channel ->
+
+            this.channelListenerMap.computeIfAbsent(channel) {
+                ConcurrentSkipListSet(EventListenerContainerComparator(sorter))
+            }.add(EventListenerContainer(owner, eventType, eventListener))
+
+            registered(eventListener, channel)
+        }
+
+        return ListenerRegistryResults(registered)
     }
 
     override fun <T : Event> getListeners(
@@ -75,13 +91,14 @@ class PerChannelEventListenerRegistry(
         if (ChannelSet.Expression.isAll(channel)) {
             this.channelListenerMap[channel] ?: emptySet()
         } else {
-            val chan = ChannelSet.Expression.fromExpr(channel)
-            (chan.filterChannels(channelListenerMap.keys) + setOf("@all"))
-                .flatMapTo(TreeSet()) {
+            val chan = ChannelSet.Expression.parseExpression(channel)
+            (chan.filterChannels(ChannelSet.include(channelListenerMap.keys)) + setOf("@all"))
+                .flatMapTo(TreeSet(EventListenerContainerComparator(sorter))) {
                     this.channelListenerMap[it] ?: emptySet()
                 }
-
-        }.filter { it.isAssignableFrom(eventType) }
+        }.filter {
+            it.isAssignableFrom(eventType)
+        }
 
     override fun getListenersContainers(): Set<EventListenerContainer<*>> =
         this.channelListenerMap.values.flatten().toSet()
@@ -97,7 +114,7 @@ class SharedSetChannelEventListenerRegistry(
     override val logger: LoggerInterface,
     override val eventGenerator: EventGenerator
 ) : AbstractEventListenerRegistry() {
-    private val listeners = TreeSet(eventListenerContainerComparator(this.sorter))
+    private val listeners: SortedSet<EventListenerContainer<*>> = ConcurrentSkipListSet(EventListenerContainerComparator(this.sorter))
 
     override fun <T : Event> registerListener(
         owner: Any,
@@ -105,7 +122,7 @@ class SharedSetChannelEventListenerRegistry(
         eventListener: EventListener<T>
     ): ListenerRegistryResults {
         this.listeners.add(EventListenerContainer(owner, eventType, eventListener))
-        return registered(eventListener).coerce()
+        return registered(eventListener, eventListener.channel.parseChannelSet().toSet())
     }
 
     override fun <T : Event> getListeners(
@@ -116,7 +133,7 @@ class SharedSetChannelEventListenerRegistry(
         if (ChannelSet.Expression.isAll(channel)) {
             this.listeners
         } else {
-            val expr = ChannelSet.Expression.fromExpr(channel)
+            val expr = channel.parseChannelSet()
             this.listeners
                 .filter { expr.contains(it.eventListener.channel) }
         }.filter { it.isAssignableFrom(eventType) }
@@ -132,6 +149,11 @@ class SharedSetChannelEventListenerRegistry(
  *
  * This registry only allows listeners of [channels] to be registered. If the listener does not meet
  * the criteria, it will be ignored.
+ *
+ * If a Listener does have a `Include` expression, it will only be registered if there are at least
+ * one channel that is included.
+ *
+ * Read more about `ChannelSet` [here][ChannelSet].
  */
 class CommonChannelEventListenerRegistry(
     override val channels: ChannelSet,
@@ -140,21 +162,30 @@ class CommonChannelEventListenerRegistry(
     override val eventGenerator: EventGenerator
 ) : AbstractEventListenerRegistry(), ChannelEventListenerRegistry {
 
-    private val channelToListenerMap: MutableMap<String, TreeSet<EventListenerContainer<*>>> = hashMapOf()
+    private val channelToListenerMap = ConcurrentHashMap<String, SortedSet<EventListenerContainer<*>>>()
 
     override fun <T : Event> registerListener(
         owner: Any,
         eventType: Type,
         eventListener: EventListener<T>
     ): ListenerRegistryResults {
-        return if (channels.contains(eventListener.channel)) {
+        val validate = this.validateListener(eventListener)
+        if (validate != null) {
+            return validate
+        }
+
+        // Always Include or @all
+        val listenerSet = eventListener.channel.parseChannelSet()
+        val filter = listenerSet.filterChannels(this.channels)
+
+        return if (listenerSet.listenTo(channels)) {
             this.channelToListenerMap.computeIfAbsent(eventListener.channel) {
-                TreeSet(eventListenerContainerComparator(sorter))
+                ConcurrentSkipListSet(EventListenerContainerComparator(sorter))
             }.add(EventListenerContainer(owner, eventType, eventListener))
-            registered(eventListener)
+            registered(eventListener, filter)
         } else {
-            notRegistered(eventListener)
-        }.coerce()
+            notRegistered(eventListener, listenerSet.toSet())
+        }
     }
 
     override fun <T : Event> getListeners(
@@ -166,12 +197,12 @@ class CommonChannelEventListenerRegistry(
             if (ChannelSet.Expression.isAll(channel)) {
                 this.channelToListenerMap.values.flatten().toSet()
             } else {
-                val f = ChannelSet.Expression.fromExpr(channel)
-                val chan = f.filterChannels(this.channelToListenerMap.keys)
+                val f = ChannelSet.Expression.parseExpression(channel)
+                val chan = f.filterChannels(ChannelSet.include(this.channelToListenerMap.keys))
                 if (chan.isEmpty())
                     emptySet()
                 else
-                    chan.flatMapTo(TreeSet()) {
+                    chan.flatMapTo(TreeSet(EventListenerContainerComparator(sorter))) {
                         this.channelToListenerMap.getOrDefault(it, emptySet())
                     }
             }
@@ -190,19 +221,24 @@ class CommonChannelEventListenerRegistry(
  * - The logic for reflective registration of methods, backing to normal [registerListener].
  * - Some common implementation of [getListeners] methods.
  *
- * Each implementation may chose your own listener retrieval logic. They could be [channel based][ChannelSet],
+ * Each implementation may choose your own listener retrieval logic. They could be [channel based][ChannelSet],
  * [event type based][Event.eventType], shared and mixed. EventSys provides only shared implementation and
- * channel based one:
- * - [Shared implementation][SharedSetChannelEventListenerRegistry]
- * - [Channel Based implementation][PerChannelEventListenerRegistry]
+ * channel based ones:
+ *
+ * - [Shared implementation][SharedSetChannelEventListenerRegistry]: Shares the same set for all listeners.
+ * - [Channel Based implementation][PerChannelEventListenerRegistry]: Every channel has its own set and the set
+ *   is stored in a `HashMap`, providing `O(1)` avg.
+ * - [Channel filtered implementation][CommonChannelEventListenerRegistry]: Every channel has its own set and the set
+ *   is stored in a `HashMap`, providing `O(1)` avg.
+ *   This implementation only register listeners that listens to the specified
+ *   [*channel set*][CommonChannelEventListenerRegistry.channels].
  *
  * A mixed implementation may be a bit hard to implement and may not provide the enough
- * performance improvement to consider implementing, but if you are curious how to do that, you firstly
- * needs a [channel based][ChannelSet] retrieval and then an [event type based][Event.eventType]
+ * performance improvement to consider doing, but if you are curious how to do that, you firstly
+ * need a [channel based][ChannelSet] retrieval and then an [event type based][Event.eventType]
  * retrieval. Then, stores the listener on each node with sub-types mapped to listener.
  */
 abstract class AbstractEventListenerRegistry : EventListenerRegistry {
-
 
     protected abstract val logger: LoggerInterface
     protected abstract val eventGenerator: EventGenerator
@@ -235,13 +271,13 @@ abstract class AbstractEventListenerRegistry : EventListenerRegistry {
 
     override fun registerMethodListener(
         owner: Any,
-        eventClass: Type,
+        listenerClass: Type,
         instance: Any?,
         method: Method,
         ctx: EnvironmentContext
     ): ListenerRegistryResults =
         this.createMethodListener(
-            listenerClass = eventClass,
+            listenerClass = listenerClass,
             owner = owner,
             instance = instance,
             method = method,
@@ -272,7 +308,6 @@ abstract class AbstractEventListenerRegistry : EventListenerRegistry {
             )
         }
     }
-
 
     private fun createMethodListeners(
         owner: Any,
@@ -309,6 +344,21 @@ abstract class AbstractEventListenerRegistry : EventListenerRegistry {
                 )
             }
         }
+    }
+
+    protected fun validateListener(eventListener: EventListener<*>): ListenerRegistryResults? {
+        val set = eventListener.channel.parseChannelSet()
+
+        if (set.isExclude) {
+            logger.log(
+                "Listeners can not be registered with exclude channels expression! Listener: $eventListener",
+                MessageType.INVALID_LISTENER_DECLARATION,
+                EnvironmentContext()
+            )
+            return notRegistered(eventListener, eventListener.channel).coerce()
+        }
+
+        return null
     }
 
     // /Register

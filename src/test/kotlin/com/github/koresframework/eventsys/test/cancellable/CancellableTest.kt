@@ -37,9 +37,9 @@ import com.github.koresframework.eventsys.impl.DefaultEventManager
 import com.github.koresframework.eventsys.result.ListenResult
 import com.github.koresframework.eventsys.util.createFactory
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 class CancellableTest {
     var call = 0
@@ -47,7 +47,7 @@ class CancellableTest {
     var call3 = 0
     var call4 = 0
 
-    @Before
+    @BeforeEach
     fun setup() {
         call = 0
         call2 = 0
@@ -67,10 +67,10 @@ class CancellableTest {
             eventManager.dispatch(factory.createUserRegisterEvent(user), this)
         }
 
-        Assert.assertEquals(1, this.call)
-        Assert.assertEquals(0, this.call2)
-        Assert.assertEquals(1, this.call3)
-        Assert.assertEquals(0, this.call4)
+        Assertions.assertEquals(1, this.call)
+        Assertions.assertEquals(0, this.call2)
+        Assertions.assertEquals(1, this.call3)
+        Assertions.assertEquals(0, this.call4)
     }
 
 
@@ -92,13 +92,13 @@ class CancellableTest {
 
         val distinctBy = results.distinctBy { it.eventListenerContainer.eventListener }
 
-        Assert.assertEquals(1, this.call)
-        Assert.assertEquals(1, this.call2)
-        Assert.assertEquals(1, this.call3)
-        Assert.assertEquals(1, this.call4)
-        Assert.assertEquals(4, distinctBy.size)
-        Assert.assertTrue(distinctBy.all { it.result is ListenResult.Value })
-        Assert.assertEquals(listOf(true, true, true, true), distinctBy.map { (it.result as ListenResult.Value).value }.toList())
+        Assertions.assertEquals(1, this.call)
+        Assertions.assertEquals(1, this.call2)
+        Assertions.assertEquals(1, this.call3)
+        Assertions.assertEquals(1, this.call4)
+        Assertions.assertEquals(4, distinctBy.size)
+        Assertions.assertTrue(distinctBy.all { it.result is ListenResult.Value })
+        Assertions.assertEquals(listOf(true, true, true, true), distinctBy.map { (it.result as ListenResult.Value).value }.toList())
     }
 
     interface EventFactory {

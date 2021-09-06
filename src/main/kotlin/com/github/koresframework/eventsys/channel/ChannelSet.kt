@@ -34,6 +34,10 @@ import com.github.koresframework.eventsys.annotation.EventSysExperimental
  * Abstract representation of channel inclusion rule.
  */
 sealed class ChannelSet {
+    abstract val isInclude: Boolean
+    val isExclude: Boolean
+        get() = !this.isInclude
+
     /**
      * Returns whether this set has [channel] or not.
      */
@@ -52,7 +56,21 @@ sealed class ChannelSet {
     /**
      * Filter out channels of [channelSet] that are not included in this set.
      */
-    abstract fun filterChannels(channelSet: Set<String>): Set<String>
+    abstract fun filterChannels(channelSet: ChannelSet): Set<String>
+
+    /**
+     * Returns whether this channel listen to [other] channel.
+     *
+     * In other words, this means that this ChannelSet:
+     * - `@all`, i.e. listens to all channels
+     * - Contains at least one of the channels that is present in [other].
+     * - Does not contain any channels of [other] (when this set is an exclusion set).
+     *
+     * It is important to note that channel inclusion is always an OR operation, never an AND operation.
+     */
+    fun listenTo(other: ChannelSet): Boolean {
+        return this.filterChannels(other).isNotEmpty()
+    }
 
     /**
      * Join to string representation.
@@ -65,24 +83,38 @@ sealed class ChannelSet {
     abstract fun toSet(): Set<String>
 
     object All : ChannelSet() {
+        override val isInclude: Boolean get() = true
         override fun contains(channel: String): Boolean = true
         override fun containsAll(channels: Collection<String>): Boolean = true
         override fun containsAny(channels: Collection<String>): Boolean = true
         override fun joinToString(): String = "@all"
-        override fun filterChannels(channelSet: Set<String>): Set<String> = channelSet
+        override fun filterChannels(channelSet: ChannelSet): Set<String> = when (channelSet) {
+            is All -> channelSet.toSet()
+            is None -> emptySet()
+            is Include -> channelSet.toSet()
+            is Exclude -> emptySet()
+        }
         override fun toSet(): Set<String> = setOf("@all")
     }
 
     object None : ChannelSet() {
+        override val isInclude: Boolean get() = false
         override fun contains(channel: String): Boolean = false
         override fun containsAll(channels: Collection<String>): Boolean = false
         override fun containsAny(channels: Collection<String>): Boolean = false
         override fun joinToString(): String = "![@all]"
-        override fun filterChannels(channelSet: Set<String>): Set<String> = emptySet()
+        override fun filterChannels(channelSet: ChannelSet): Set<String> = when (channelSet) {
+            is All -> emptySet()
+            is None -> channelSet.toSet()
+            is Include -> emptySet()
+            is Exclude -> channelSet.toSet()
+        }
+
         override fun toSet(): Set<String> = setOf("!@all")
     }
 
     class Include(channels: Set<String>) : ChannelSet() {
+        override val isInclude: Boolean get() = true
         private val channels: Set<String> = WrapperCollections.immutableSet(channels.toSet())
 
         override fun contains(channel: String): Boolean =
@@ -96,8 +128,13 @@ sealed class ChannelSet {
 
         override fun joinToString(): String = this.channels.joinToString()
 
-        override fun filterChannels(channelSet: Set<String>): Set<String> =
-            channelSet.filterTo(mutableSetOf()) { this.contains(it) }
+        override fun filterChannels(channelSet: ChannelSet): Set<String> =
+            when (channelSet) {
+                is Exclude -> this.toSet().filterTo(mutableSetOf()) { channelSet.contains(it) }
+                is None -> emptySet()
+                is All -> this.toSet()
+                else -> channelSet.toSet().filterTo(mutableSetOf()) { this.contains(it) }
+            }
 
         override fun toSet(): Set<String> = this.channels
     }
@@ -106,6 +143,7 @@ sealed class ChannelSet {
      * Not implemented yet.
      */
     class Exclude(channels: Set<String>) : ChannelSet() {
+        override val isInclude: Boolean get() = false
         private val channels: Set<String> = WrapperCollections.immutableSet(channels.toSet())
 
         override fun contains(channel: String): Boolean =
@@ -119,8 +157,13 @@ sealed class ChannelSet {
 
         override fun joinToString(): String = "!${this.channels.joinToString()}"
 
-        override fun filterChannels(channelSet: Set<String>): Set<String> =
-            channelSet.filterTo(mutableSetOf()) { this.contains(it) }
+        override fun filterChannels(channelSet: ChannelSet): Set<String> =
+            when (channelSet) {
+                is Exclude -> this.toSet().filterTo(mutableSetOf()) { !channelSet.contains(it) }
+                is None -> this.toSet()
+                is All -> emptySet()
+                else -> channelSet.toSet().filterTo(mutableSetOf()) { this.contains(it) }
+            }
 
         override fun toSet(): Set<String> = emptySet() // TODO
     }
@@ -149,7 +192,7 @@ sealed class ChannelSet {
         /**
          * Creates [ChannelSet] from [expr].
          */
-        fun fromExpr(expr: String) = when (expr) {
+        fun parseExpression(expr: String) = when (expr) {
             ALL -> All
             NONE -> None
             else ->
@@ -197,3 +240,4 @@ sealed class ChannelSet {
     }
 }
 
+fun String.parseChannelSet() = ChannelSet.Expression.parseExpression(this)

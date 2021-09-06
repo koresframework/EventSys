@@ -32,6 +32,8 @@ import com.github.koresframework.eventsys.event.annotation.Listener
 import com.github.koresframework.eventsys.impl.EventListenerContainer
 import java.lang.reflect.Method
 import java.lang.reflect.Type
+import kotlin.reflect.KFunction
+import kotlin.reflect.jvm.javaMethod
 
 interface EventListenerRegistry {
     /**
@@ -84,24 +86,25 @@ interface EventListenerRegistry {
      * @return [ListenerRegistryResults] containing data about method listener registration.
      */
     fun registerMethodListener(owner: Any,
-                               eventClass: Type,
-                               instance: Any?,
-                               method: Method): ListenerRegistryResults =
-            this.registerMethodListener(owner, eventClass, instance, method, EnvironmentContext())
-
-    /**
-     * Register [method] as [EventListener]. This method must be annotated with [Listener] annotation.
-     *
-     * @param owner Owner of the [method]
-     * @param instance Instance used to invoke method.
-     * @param method Method to register
-     * @return [ListenerRegistryResults] containing data about method listener registration.
-     */
-    fun registerMethodListener(owner: Any,
-                               eventClass: Type,
+                               listenerClass: Type,
                                instance: Any?,
                                method: Method,
                                ctx: EnvironmentContext = EnvironmentContext()): ListenerRegistryResults
+
+    /**
+     * Register [function] as [EventListener]. This method must be annotated with [Listener] annotation.
+     *
+     * @param owner Owner of the [function]
+     * @param instance Instance used to invoke method.
+     * @param function Function to register
+     * @return [ListenerRegistryResults] containing data about function listener registration.
+     */
+    fun registerFunctionListener(owner: Any,
+                                 listenerClass: Type,
+                                 instance: Any?,
+                                 function: KFunction<Any>,
+                                 ctx: EnvironmentContext = EnvironmentContext()): ListenerRegistryResults =
+        this.registerMethodListener(owner, listenerClass, instance, function.javaMethod!!, ctx)
 
     /**
      * Gets listeners of a specific event.

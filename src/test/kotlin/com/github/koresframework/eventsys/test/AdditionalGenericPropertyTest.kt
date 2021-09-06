@@ -31,7 +31,7 @@ import com.github.koresframework.eventsys.event.Event
 import com.github.koresframework.eventsys.impl.DefaultEventManager
 import com.github.koresframework.eventsys.util.createFactory
 import kotlinx.coroutines.runBlocking
-import org.junit.Test
+import org.junit.jupiter.api.Test
 
 class AdditionalGenericPropertyTest {
     @Test

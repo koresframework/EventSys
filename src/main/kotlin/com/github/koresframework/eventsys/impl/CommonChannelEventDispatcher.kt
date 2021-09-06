@@ -28,6 +28,7 @@
 package com.github.koresframework.eventsys.impl
 
 import com.github.koresframework.eventsys.channel.ChannelSet
+import com.github.koresframework.eventsys.channel.parseChannelSet
 import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.event.ChannelEventDispatcher
 import com.github.koresframework.eventsys.event.ChannelEventListenerRegistry
@@ -39,10 +40,10 @@ import com.github.koresframework.eventsys.result.DispatchResult
 import java.lang.reflect.Type
 import java.util.concurrent.Executor
 import kotlin.coroutines.CoroutineContext
-import kotlin.math.exp
 
 /**
- * Common implementation of [ChannelEventDispatcher] backed to a [normal dispatcher][backendDispatcher].
+ * Common implementation of [ChannelEventDispatcher] that only dispatches to channel
+ * that the [registry][ChannelEventListenerRegistry] supports.
  */
 class CommonChannelEventDispatcher(override val eventGenerator: EventGenerator,
                                    override val executor: Executor,
@@ -54,8 +55,8 @@ class CommonChannelEventDispatcher(override val eventGenerator: EventGenerator,
         get() = this.channelEventListenerRegistry.channels
 
     override fun <T : Event> getListeners(event: T, eventType: Type, channel: String): Iterable<EventListenerContainer<*>> {
-        val expr = ChannelSet.Expression.fromExpr(channel)
-        val filteredChannels = expr.filterChannels(channels.toSet())
+        val expr = channel.parseChannelSet()
+        val filteredChannels = expr.filterChannels(channels)
 
         return if (filteredChannels.isNotEmpty()) {
             this.channelEventListenerRegistry.getListenersContainers(event, eventType, channel)
@@ -87,7 +88,7 @@ class ChannelDispatcherDistributor(dispatchers: List<ChannelEventDispatcher>,
                                       isAsync: Boolean,
                                       ctx: EnvironmentContext): DispatchResult<T> {
 
-        val dispatchers = when (val expr = ChannelSet.Expression.fromExpr(channel)) {
+        val dispatchers = when (val expr = channel.parseChannelSet()) {
             ChannelSet.ALL -> {
                 this.registeredChannelDispatchers
             }

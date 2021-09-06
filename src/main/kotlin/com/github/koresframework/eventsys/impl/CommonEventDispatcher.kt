@@ -31,6 +31,7 @@ import com.koresframework.kores.type.GenericType
 import com.koresframework.kores.type.asGeneric
 import com.koresframework.kores.type.isAssignableFrom
 import com.github.koresframework.eventsys.channel.ChannelSet
+import com.github.koresframework.eventsys.channel.parseChannelSet
 import com.github.koresframework.eventsys.context.EnvironmentContext
 import com.github.koresframework.eventsys.error.EventCancelledError
 import com.github.koresframework.eventsys.error.ExceptionListenError
@@ -129,7 +130,8 @@ abstract class AbstractEventDispatcher : EventDispatcher {
                     ))
                 }
 
-        val dispatches = this.getListeners(event, eventType, channel).filter {
+        val listeners = this.getListeners(event, eventType, channel)
+        val dispatches = listeners.filter {
             this.check(container = it, eventType = eventType, channel = channel)
         }.map {
             tryDispatch(it)
@@ -180,8 +182,16 @@ abstract class AbstractEventDispatcher : EventDispatcher {
         }
 
         val listenerPhase = container.eventListener.channel
+        val listenerChanSet = listenerPhase.parseChannelSet()
+        val eventDispatchChannel = channel.parseChannelSet()
+        val checkType = checkType()
 
-        return checkType() && (ChannelSet.Expression.isAll(listenerPhase) || ChannelSet.Expression.isAll(channel) || listenerPhase == channel)
+        return checkType
+                && (
+                ChannelSet.Expression.isAll(listenerPhase)
+                || ChannelSet.Expression.isAll(channel)
+                || listenerChanSet.listenTo(eventDispatchChannel)
+                )
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -189,12 +199,3 @@ abstract class AbstractEventDispatcher : EventDispatcher {
         return this.onEvent(event as T, dispatcher)
     }
 }
-
-fun eventListenerContainerComparator(sorter: Comparator<EventListener<*>>) =
-        Comparator<EventListenerContainer<*>> { o1, o2 ->
-            val sort = sorter.compare(o1.eventListener, o2.eventListener)
-
-            if (sort == 0)
-                -1
-            else sort
-        }

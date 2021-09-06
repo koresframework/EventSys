@@ -32,11 +32,11 @@ import com.github.koresframework.eventsys.context.EnvironmentContext;
 import com.github.koresframework.eventsys.event.ChannelEventListenerRegistry;
 import com.github.koresframework.eventsys.event.Event;
 import com.github.koresframework.eventsys.event.EventListener;
-import com.github.koresframework.eventsys.event.EventListenerRegistry;
 import com.github.koresframework.eventsys.event.ListenerRegistryResults;
 import com.github.koresframework.eventsys.impl.CommonEventManager;
 import com.github.koresframework.eventsys.impl.EventListenerContainer;
 
+import kotlin.reflect.KFunction;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -84,13 +84,24 @@ public class DistributedRegistry implements ChannelEventListenerRegistry {
 
     @Override
     public ListenerRegistryResults registerMethodListener(@NotNull Object owner,
-                                                          @NotNull Type eventClass,
+                                                          @NotNull Type listenerClass,
                                                           @Nullable Object instance,
                                                           @NotNull Method method,
                                                           @NotNull EnvironmentContext ctx) {
         return new ListenerRegistryResults(
                 this.channelEventListenerRegistries.stream()
-                        .flatMap(it -> it.registerMethodListener(owner, eventClass, instance, method, ctx)
+                        .flatMap(it -> it.registerMethodListener(owner, listenerClass, instance, method, ctx)
+                                .getResults().stream())
+                        .collect(Collectors.toList())
+        );
+    }
+
+    @NotNull
+    @Override
+    public ListenerRegistryResults registerFunctionListener(@NotNull Object owner, @NotNull Type listenerClass, @Nullable Object instance, @NotNull KFunction<?> function, @NotNull EnvironmentContext ctx) {
+        return new ListenerRegistryResults(
+                this.channelEventListenerRegistries.stream()
+                        .flatMap(it -> it.registerFunctionListener(owner, listenerClass, instance, function, ctx)
                                 .getResults().stream())
                         .collect(Collectors.toList())
         );
@@ -158,9 +169,4 @@ public class DistributedRegistry implements ChannelEventListenerRegistry {
         return ChannelEventListenerRegistry.super.registerListeners(owner, listener);
     }
 
-    @NotNull
-    @Override
-    public ListenerRegistryResults registerMethodListener(@NotNull Object owner, @NotNull Type eventClass, @NotNull Object instance, @NotNull Method method) {
-        return ChannelEventListenerRegistry.super.registerMethodListener(owner, eventClass, instance, method);
-    }
 }

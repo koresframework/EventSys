@@ -29,20 +29,17 @@ package com.github.koresframework.eventsys.test;
 
 import com.github.jonathanxd.iutils.description.Description;
 import com.github.jonathanxd.iutils.description.DescriptionUtil;
-import com.github.jonathanxd.iutils.type.TypeInfo;
 import com.github.jonathanxd.iutils.type.TypeParameterProvider;
 import com.github.koresframework.eventsys.dispatcher.EventDispatcherKt;
-import com.koresframework.kores.type.Generic;
 import com.github.koresframework.eventsys.event.EventDispatcher;
 import com.github.koresframework.eventsys.event.EventListener;
 import com.github.koresframework.eventsys.event.EventListenerRegistry;
-import com.github.koresframework.eventsys.event.EventManager;
+import com.github.koresframework.eventsys.extension.ExtensionSpecification;
 import com.github.koresframework.eventsys.gen.check.CheckHandler;
 import com.github.koresframework.eventsys.gen.check.SuppressCapableCheckHandler;
 import com.github.koresframework.eventsys.gen.event.CommonEventGenerator;
 import com.github.koresframework.eventsys.gen.event.EventGenerator;
 import com.github.koresframework.eventsys.gen.event.EventGeneratorOptions;
-import com.github.koresframework.eventsys.extension.ExtensionSpecification;
 import com.github.koresframework.eventsys.gen.event.LazyGenerationMode;
 import com.github.koresframework.eventsys.impl.CommonEventDispatcher;
 import com.github.koresframework.eventsys.impl.CommonEventManager;
@@ -53,16 +50,15 @@ import com.github.koresframework.eventsys.test.event.MessageEvent;
 import com.github.koresframework.eventsys.test.event.MyGenericEvent;
 import com.github.koresframework.eventsys.test.extension.ProvidedExt;
 import com.github.koresframework.eventsys.test.listener.MyListener;
-
-import org.junit.Assert;
-import org.junit.Test;
+import com.koresframework.kores.type.Generic;
+import kotlin.Unit;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
-
-import kotlin.Unit;
 
 public class TestManager {
 
@@ -97,8 +93,8 @@ public class TestManager {
         KtEvent ktEvent = Constant.getMyFactoryInstance().createKtEvent("ProjectSandstone");
 
         KtBridgeStringTest x = Constant.getMyFactoryInstance().createKtBridgeTestEvent("x");
-        Assert.assertEquals("x", x.getValue());
-        Assert.assertEquals("x", ((KtBridgeTest) x).getValue());
+        Assertions.assertEquals("x", x.getValue());
+        Assertions.assertEquals("x", ((KtBridgeTest) x).getValue());
 
         manager.dispatchBlocking(messageEvent, this);
         manager.dispatchBlocking(ktEvent, this);
@@ -134,12 +130,12 @@ public class TestManager {
         Constant.getMyFactoryInstance().createMyTestEvent("Cup", 100);
         Constant.getMyFactoryInstance().createMyTestEvent2("Cup", 100);
 
-        Assert.assertEquals("[TAG] hello world", messageEvent.getMessage());
+        Assertions.assertEquals("[TAG] hello world", messageEvent.getMessage());
 
         ProvidedExt extension = messageEvent.getExtension(ProvidedExt.class);
 
-        Assert.assertNotNull(extension);
-        Assert.assertEquals("_OK_", extension.getTest());
+        Assertions.assertNotNull(extension);
+        Assertions.assertEquals("_OK_", extension.getTest());
 
     }
 

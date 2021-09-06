@@ -30,7 +30,6 @@ package com.github.koresframework.eventsys.test;
 import com.github.jonathanxd.iutils.map.MapUtils;
 import com.github.jonathanxd.iutils.opt.OptObject;
 import com.github.koresframework.eventsys.event.Event;
-import com.github.koresframework.eventsys.event.EventManager;
 import com.github.koresframework.eventsys.event.annotation.Filter;
 import com.github.koresframework.eventsys.event.annotation.Listener;
 import com.github.koresframework.eventsys.event.annotation.Name;
@@ -39,9 +38,8 @@ import com.github.koresframework.eventsys.gen.event.EventGenerator;
 import com.github.koresframework.eventsys.impl.CommonEventManager;
 import com.github.koresframework.eventsys.impl.DefaultEventManager;
 import com.github.koresframework.eventsys.util.EventFactoryHelperKt;
-
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 
@@ -62,7 +60,7 @@ public class ListenerTest2 {
 
         manager.getEventListenerRegistry().registerListeners(this, this);
         manager.dispatchBlocking(event, this);
-        Assert.assertEquals("127.0.0.1", this.ip);
+        Assertions.assertEquals("127.0.0.1", this.ip);
 
         DisconnectEvent event2 =
                 EventFactoryHelperKt.<DisconnectEvent>create(
@@ -73,7 +71,7 @@ public class ListenerTest2 {
 
         manager.dispatchBlocking(event2, this);
 
-        Assert.assertEquals("0.0.0.0", this.ip);
+        Assertions.assertEquals("0.0.0.0", this.ip);
 
         EmptyEvent event3 =
                 EventFactoryHelperKt.<EmptyEvent>create(
@@ -84,7 +82,7 @@ public class ListenerTest2 {
 
         manager.dispatchBlocking(event3, this);
 
-        Assert.assertTrue(this.dispatched);
+        Assertions.assertTrue(this.dispatched);
     }
 
     @Filter

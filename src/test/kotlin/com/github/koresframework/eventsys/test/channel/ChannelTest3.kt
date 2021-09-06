@@ -33,48 +33,33 @@ import com.github.koresframework.eventsys.event.annotation.Listener
 import com.github.koresframework.eventsys.event.annotation.Name
 import com.github.koresframework.eventsys.impl.DefaultEventManager
 import com.github.koresframework.eventsys.util.createFactory
+import com.koresframework.kores.type.typeOf
+import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.util.concurrent.atomic.AtomicInteger
 
-class ChannelTest {
-    var calls = 0
-
-    @BeforeEach
-    fun setup() {
-        calls = 0
-    }
-
-    @Test
-    fun channel() {
-        val eventManager = DefaultEventManager()
-        eventManager.eventListenerRegistry.registerListeners(this, this)
-
-        val user = User(id = 0, name = "Test", email = "test@test.com")
-        val factory = eventManager.eventGenerator.createFactory<EventFactory>().resolve()
-
-        runBlocking {
-            eventManager.dispatch(factory.createUserRegisterEvent(user), this, "user")
-        }
-
-        Assertions.assertEquals(1, this.calls)
-
-        runBlocking {
-            eventManager.dispatch(factory.createUserRegisterEvent(user), this, "other")
-        }
-
-        Assertions.assertEquals(1, this.calls)
-    }
-
-    interface EventFactory {
-        fun createUserRegisterEvent(@Name("user") user: User): UserRegisterEvent
-    }
+object ChannelTest3Context {
+    val calls = AtomicInteger()
+    val broadCalls = AtomicInteger()
 
     @Filter(UserRegisterEvent::class)
     @Listener(channel = "user")
     fun onUserRegister(user: User) {
-        calls++
+        calls.incrementAndGet()
+    }
+
+    @Filter(UserRegisterEvent::class)
+    @Listener(channel = "user,broadcast")
+    fun onUserRegistered(user: User) {
+        broadCalls.incrementAndGet()
+    }
+
+    interface EventFactory {
+        fun createUserRegisterEvent(@Name("user") user: User): UserRegisterEvent
     }
 
     interface UserRegisterEvent : Event {
@@ -82,4 +67,47 @@ class ChannelTest {
     }
 }
 
-data class User(val id: Int, val name: String, val email: String)
+class ChannelTest3 : FunSpec({
+
+    beforeEach { ChannelTest3Context.calls.set(0) }
+
+    test("proper channel dispatch") {
+        val eventManager = DefaultEventManager()
+        eventManager.eventListenerRegistry.registerFunctionListener(
+            this,
+            typeOf<ChannelTest3Context>(),
+            ChannelTest3Context,
+            ChannelTest3Context::onUserRegister,
+        )
+
+        eventManager.eventListenerRegistry.registerFunctionListener(
+            this,
+            typeOf<ChannelTest3Context>(),
+            ChannelTest3Context,
+            ChannelTest3Context::onUserRegistered,
+        )
+
+        val user = User(id = 0, name = "Test", email = "test@test.com")
+        val factory = eventManager.eventGenerator.createFactory<ChannelTest3Context.EventFactory>().resolve()
+
+        eventManager.dispatch(factory.createUserRegisterEvent(user), this, "user").await()
+
+        ChannelTest3Context.calls.get().shouldBe(1)
+        ChannelTest3Context.broadCalls.get().shouldBe(1)
+
+        eventManager.dispatch(factory.createUserRegisterEvent(user), this, "other").await()
+
+        ChannelTest3Context.calls.get().shouldBe(1)
+        ChannelTest3Context.broadCalls.get().shouldBe(1)
+
+        eventManager.dispatch(factory.createUserRegisterEvent(user), this, "user,broadcast").await()
+
+        ChannelTest3Context.calls.get().shouldBe(2)
+        ChannelTest3Context.broadCalls.get().shouldBe(2)
+
+        eventManager.dispatch(factory.createUserRegisterEvent(user), this, "!other").await()
+
+        ChannelTest3Context.calls.get().shouldBe(3)
+        ChannelTest3Context.broadCalls.get().shouldBe(3)
+    }
+})

@@ -28,16 +28,12 @@
 package com.github.koresframework.eventsys.test;
 
 import com.github.koresframework.eventsys.event.Event;
-import com.github.koresframework.eventsys.event.EventManager;
 import com.github.koresframework.eventsys.event.annotation.Listener;
-import com.github.koresframework.eventsys.gen.event.EventGenerator;
 import com.github.koresframework.eventsys.impl.DefaultEventManager;
 import com.github.koresframework.eventsys.result.DispatchResult;
-import com.github.koresframework.eventsys.util.FactoryImplementationGenerationFailure;
-
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class InnerClassListenerTest {
 
@@ -50,7 +46,7 @@ public class InnerClassListenerTest {
         AlertEvent createAlertEvent();
     }
 
-    @Before
+    @BeforeEach
     public void setup() {
         this.dispatch = 0;
     }
@@ -66,7 +62,7 @@ public class InnerClassListenerTest {
         DispatchResult<AlertEvent> result = eventManager.dispatchBlocking(alertEvent, this);
         result.awaitBlocking();
 
-        Assert.assertEquals(1, this.dispatch);
+        Assertions.assertEquals(1, this.dispatch);
     }
 
 

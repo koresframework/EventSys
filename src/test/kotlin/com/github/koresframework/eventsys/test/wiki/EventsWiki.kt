@@ -28,23 +28,19 @@
 package com.github.koresframework.eventsys.test.wiki
 
 import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.iutils.kt.typeInfo
 import com.github.koresframework.eventsys.event.property.GetterProperty
 import com.github.koresframework.eventsys.event.property.Property
 import com.github.koresframework.eventsys.event.property.primitive.IntGetterProperty
-import com.github.koresframework.eventsys.extension.ExtensionSpecification
 import com.github.koresframework.eventsys.gen.event.EventClassSpecification
-import com.github.koresframework.eventsys.gen.event.EventGeneratorOptions
 import com.github.koresframework.eventsys.impl.DefaultEventManager
-import com.github.koresframework.eventsys.result.ListenResult
 import com.github.koresframework.eventsys.result.success
 import com.github.koresframework.eventsys.util.EventListener
 import com.github.koresframework.eventsys.util.create
 import com.github.koresframework.eventsys.util.createEventClass
 import com.github.koresframework.eventsys.util.createFactory
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert
-import org.junit.Test
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Test
 import java.util.*
 import java.util.function.IntSupplier
 import java.util.function.Supplier
@@ -75,26 +71,26 @@ class EventsWiki {
         }
 
         manager.eventListenerRegistry.registerListener<BuyEvent>(this, BuyEvent::class.java, EventListener { theEvent, _ ->
-            Assert.assertEquals("USB Adapter", theEvent.product.name)
-            Assert.assertEquals(10.0, theEvent.product.price, 0.0)
-            Assert.assertEquals(5, theEvent.amount)
+            Assertions.assertEquals("USB Adapter", theEvent.product.name)
+            Assertions.assertEquals(10.0, theEvent.product.price, 0.0)
+            Assertions.assertEquals(5, theEvent.amount)
             return@EventListener success()
         })
 
         val bus = Business("x")
         val c = factory.createBuyEvent(Product("USB Adapter", 10.0), 5, bus)
 
-        Assert.assertEquals(bus, c.getGetterProperty(Business::class.java, "business")?.getValue())
+        Assertions.assertEquals(bus, c.getGetterProperty(Business::class.java, "business")?.getValue())
 
         val evt = factory.createBuyEvent2(Product("USB Adapter", 10.0))
 
-        Assert.assertEquals(10, evt.amount)
+        Assertions.assertEquals(10, evt.amount)
 
         val transac = factory.createTransactionEvent(5.0)
 
         transac.apply { it * it }
 
-        Assert.assertEquals(5.0 * 5.0, transac.amount, 0.0)
+        Assertions.assertEquals(5.0 * 5.0, transac.amount, 0.0)
     }
 
     @Test

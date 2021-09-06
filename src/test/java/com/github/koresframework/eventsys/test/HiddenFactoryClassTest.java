@@ -29,10 +29,9 @@ package com.github.koresframework.eventsys.test;
 
 import com.github.koresframework.eventsys.event.Event;
 import com.github.koresframework.eventsys.impl.DefaultEventManager;
-import com.github.koresframework.eventsys.util.EventImplementationGenerationFailure;
 import com.github.koresframework.eventsys.util.FactoryImplementationGenerationFailure;
-
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class HiddenFactoryClassTest {
 
@@ -43,13 +42,15 @@ public class HiddenFactoryClassTest {
         AlertEvent createAlertEvent();
     }
 
-    @Test(expected = FactoryImplementationGenerationFailure.class)
+    @Test
     public void testHiddenFactoryClass() {
-        DefaultEventManager eventManager = new DefaultEventManager();
+        Assertions.assertThrows(FactoryImplementationGenerationFailure.class, () -> {
+            DefaultEventManager eventManager = new DefaultEventManager();
 
-        Factory factory = eventManager.getEventGenerator().<Factory>createFactory(Factory.class).resolve();
+            Factory factory = eventManager.getEventGenerator().<Factory>createFactory(Factory.class).resolve();
 
-        AlertEvent alertEvent = factory.createAlertEvent();
+            AlertEvent alertEvent = factory.createAlertEvent();
+        });
     }
 
 }

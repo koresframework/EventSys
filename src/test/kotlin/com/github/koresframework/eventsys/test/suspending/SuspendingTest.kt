@@ -9,8 +9,8 @@ import com.github.koresframework.eventsys.util.createFactory
 import com.koresframework.kores.type.typeOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert
-import org.junit.Test
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Test
 import java.util.concurrent.atomic.AtomicInteger
 
 class SuspendingTest {
@@ -28,7 +28,7 @@ class SuspendingTest {
         }
 
         val maximum = max.get()
-        Assert.assertEquals(2, maximum)
+        Assertions.assertEquals(2, maximum)
     }
 
 }

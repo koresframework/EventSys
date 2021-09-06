@@ -28,18 +28,16 @@
 package com.github.koresframework.eventsys.test;
 
 import com.github.jonathanxd.iutils.map.MapUtils;
-import com.koresframework.kores.type.Generic;
 import com.github.koresframework.eventsys.event.Event;
-import com.github.koresframework.eventsys.event.EventManager;
 import com.github.koresframework.eventsys.event.annotation.Listener;
 import com.github.koresframework.eventsys.event.annotation.Name;
 import com.github.koresframework.eventsys.event.annotation.NotNullValue;
 import com.github.koresframework.eventsys.gen.event.EventGenerator;
 import com.github.koresframework.eventsys.impl.DefaultEventManager;
 import com.github.koresframework.eventsys.util.EventFactoryHelperKt;
-
-import org.junit.Assert;
-import org.junit.Test;
+import com.koresframework.kores.type.Generic;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class ListenerTest {
 
@@ -58,19 +56,19 @@ public class ListenerTest {
 
         manager.getEventListenerRegistry().registerListeners(this, this);
         manager.dispatchBlocking(event, this);
-        Assert.assertEquals("Test", this.name);
-        Assert.assertTrue(this.dispatched);
+        Assertions.assertEquals("Test", this.name);
+        Assertions.assertTrue(this.dispatched);
     }
 
     @Listener
     public void myListener(LoginEvent event) {
-        Assert.assertFalse(this.dispatched);
+        Assertions.assertFalse(this.dispatched);
         this.dispatched = true;
     }
 
     @Listener
     public void myListener(LoginEvent event, @Name("name") String name) {
-        Assert.assertNull(this.name);
+        Assertions.assertNull(this.name);
         this.name = name;
     }
 

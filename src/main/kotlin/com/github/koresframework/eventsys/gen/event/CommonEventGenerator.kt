@@ -57,6 +57,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.function.Supplier
+import kotlin.reflect.KFunction
 
 class CommonEventGenerator @JvmOverloads constructor(
         override val logger: LoggerInterface,
@@ -257,6 +258,10 @@ class CommonEventGenerator @JvmOverloads constructor(
                                 method
                         )
                     })
+
+    override fun createListenerSpecFromFunction(function: KFunction<Any>): ListenerSpec {
+        TODO("Not yet implemented")
+    }
 
     override fun createListenerSpecFromMethod(method: MethodDeclaration): ListenerSpec =
             ListenerSpec.fromMethodDeclaration(method)

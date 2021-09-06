@@ -37,13 +37,20 @@ data class ListenerRegistryResults(val results: List<ListenerRegistryResult>) {
 
 data class ListenerRegistryResult(val registry: EventListenerRegistry,
                                   val eventListener: EventListener<*>,
+                                  val channel: String,
                                   val registered: Boolean)
 
-fun EventListenerRegistry.registered(eventListener: EventListener<*>) =
-        ListenerRegistryResult(this, eventListener, true)
+fun EventListenerRegistry.registered(eventListener: EventListener<*>, channel: String) =
+        ListenerRegistryResult(this, eventListener, channel, true)
 
-fun EventListenerRegistry.notRegistered(eventListener: EventListener<*>) =
-        ListenerRegistryResult(this, eventListener, false)
+fun EventListenerRegistry.registered(eventListener: EventListener<*>, channels: Set<String>) =
+    ListenerRegistryResults(channels.map { registered(eventListener, it) })
+
+fun EventListenerRegistry.notRegistered(eventListener: EventListener<*>, channel: String) =
+        ListenerRegistryResult(this, eventListener, channel, false)
+
+fun EventListenerRegistry.notRegistered(eventListener: EventListener<*>, channels: Set<String>) =
+    ListenerRegistryResults(channels.map { notRegistered(eventListener, it) })
 
 fun ListenerRegistryResult.coerce(): ListenerRegistryResults =
         ListenerRegistryResults(this)

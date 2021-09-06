@@ -29,8 +29,6 @@ package com.github.koresframework.eventsys.test;
 
 import com.github.jonathanxd.iutils.map.MapUtils;
 import com.github.jonathanxd.iutils.type.TypeParameterProvider;
-import com.koresframework.kores.type.Generic;
-import com.koresframework.kores.type.KoresTypes;
 import com.github.koresframework.eventsys.event.Event;
 import com.github.koresframework.eventsys.event.annotation.NotNullValue;
 import com.github.koresframework.eventsys.extension.ExtensionSpecification;
@@ -38,9 +36,10 @@ import com.github.koresframework.eventsys.gen.event.CommonEventGenerator;
 import com.github.koresframework.eventsys.gen.event.EventGenerator;
 import com.github.koresframework.eventsys.impl.CommonLogger;
 import com.github.koresframework.eventsys.util.EventFactoryHelperKt;
-
-import org.junit.Assert;
-import org.junit.Test;
+import com.koresframework.kores.type.Generic;
+import com.koresframework.kores.type.KoresTypes;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 
@@ -57,15 +56,15 @@ public class EventTest {
         LoginEvent loginEvent2 = EventFactoryHelperKt.create(eventClass,
                 MapUtils.mapOf("name", "Player2"));
 
-        Assert.assertEquals("Player", loginEvent.getName());
-        Assert.assertEquals("Player2", loginEvent2.getName());
+        Assertions.assertEquals("Player", loginEvent.getName());
+        Assertions.assertEquals("Player2", loginEvent2.getName());
 
         try {
             EventFactoryHelperKt.create(eventClass, MapUtils.mapOf("name", null));
-            Assert.fail("Login must fail to create with null value for 'name' property.");
+            Assertions.fail("Login must fail to create with null value for 'name' property.");
         } catch (Exception e) {
-            Assert.assertTrue("Exception of null property must be NullPointerException",
-                    e instanceof NullPointerException);
+            Assertions.assertTrue(e instanceof NullPointerException,
+                    "Exception of null property must be NullPointerException");
         }
     }
 
@@ -94,7 +93,7 @@ public class EventTest {
         TransformEvent<String, Integer> transform = EventFactoryHelperKt.create(eventClass,
                 Collections.emptyMap());
 
-        Assert.assertEquals("9", transform.transform(9));
+        Assertions.assertEquals("9", transform.transform(9));
     }
 
     public interface LoginEvent extends Event {

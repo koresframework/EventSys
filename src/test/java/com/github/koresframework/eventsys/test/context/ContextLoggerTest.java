@@ -42,14 +42,12 @@ import com.github.koresframework.eventsys.logging.LoggerInterface;
 import com.github.koresframework.eventsys.logging.MessageType;
 import com.github.koresframework.eventsys.result.DispatchResult;
 import com.github.koresframework.eventsys.sorter.EventPrioritySorter;
-
 import org.jetbrains.annotations.NotNull;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 public class ContextLoggerTest {
 
@@ -57,7 +55,7 @@ public class ContextLoggerTest {
     private int dispatch;
     private String origin;
 
-    @Before
+    @BeforeEach
     public void setup() {
         this.dispatch = 0;
         this.origin = null;
@@ -93,16 +91,16 @@ public class ContextLoggerTest {
             DispatchResult<MessageSendEvent> dispatch = eventManager.dispatchBlocking(messageSendEvent, MessageSendEvent.class, this);
             dispatch.awaitBlocking();
 
-            Assert.assertEquals(1, this.dispatch);
-            Assert.assertNull(this.origin);
+            Assertions.assertEquals(1, this.dispatch);
+            Assertions.assertNull(this.origin);
 
             dispatch = eventManager.dispatchBlocking(messageSendEvent, MessageSendEvent.class, this, ctx);
             dispatch.awaitBlocking();
         } catch (IllegalStateException e) {
-            Assert.assertEquals("Fatal error occurred: Factory class must be an interface.", e.getMessage());
+            Assertions.assertEquals("Fatal error occurred: Factory class must be an interface.", e.getMessage());
         }
-        Assert.assertEquals(0, this.dispatch);
-        Assert.assertEquals("main", this.origin);
+        Assertions.assertEquals(0, this.dispatch);
+        Assertions.assertEquals("main", this.origin);
     }
 
     @Listener

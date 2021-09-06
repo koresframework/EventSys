@@ -35,9 +35,8 @@ import com.github.koresframework.eventsys.extension.ExtensionSpecification;
 import com.github.koresframework.eventsys.gen.event.CommonEventGenerator;
 import com.github.koresframework.eventsys.gen.event.EventGenerator;
 import com.github.koresframework.eventsys.impl.CommonLogger;
-
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class FactoryTest {
 
@@ -49,7 +48,7 @@ public class FactoryTest {
 
         RegistryEvent registryEvent = factory.createRegistryEvent("123456");
 
-        Assert.assertEquals("123456", registryEvent.getPassword());
+        Assertions.assertEquals("123456", registryEvent.getPassword());
     }
 
     @Test
@@ -60,7 +59,7 @@ public class FactoryTest {
 
         RegistryEvent registryEvent = factory.createRegistryEventLazy("123456");
 
-        Assert.assertEquals("123456", registryEvent.getPassword());
+        Assertions.assertEquals("123456", registryEvent.getPassword());
 
         generator.registerExtension(RegistryEvent.class, new ExtensionSpecification(
                 this,
@@ -69,9 +68,9 @@ public class FactoryTest {
         ));
 
         registryEvent = factory.createRegistryEventLazy("123456");
-        Assert.assertTrue(registryEvent instanceof Base);
+        Assertions.assertTrue(registryEvent instanceof Base);
         Base base = (Base) registryEvent;
-        Assert.assertEquals("Password: 123456", base.printPassword());
+        Assertions.assertEquals("Password: 123456", base.printPassword());
     }
 
     public interface MyFactory {

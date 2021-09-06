@@ -74,11 +74,11 @@ class DefaultEventManager @JvmOverloads constructor(
 ) {
 
     companion object {
-        private val COMMON_SORTER = Comparator.comparing(EventListener<*>::priority)
-        private val COMMON_THREAD_FACTORY = Executors.defaultThreadFactory()
-        private val COMMON_LOGGER = CommonLogger()
-        private val COMMON_EVENT_GENERATOR = CommonEventGenerator(COMMON_LOGGER)
-        private val COMMON_EVENT_LISTENER_REGISTRY_FACTORY = {
+        val COMMON_SORTER = Comparator.comparing(EventListener<*>::priority)
+        val COMMON_THREAD_FACTORY = Executors.defaultThreadFactory()
+        val COMMON_LOGGER = CommonLogger()
+        val COMMON_EVENT_GENERATOR = CommonEventGenerator(COMMON_LOGGER)
+        val COMMON_EVENT_LISTENER_REGISTRY_FACTORY = {
             PerChannelEventListenerRegistry(
                 COMMON_SORTER,
                 COMMON_LOGGER,
